@@ -1,0 +1,94 @@
+.nav {
+  background: var(--color-card-bg);
+  border-bottom: 1px dashed var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-md);
+  padding-bottom: var(--space-md);
+}
+
+.brand {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--color-text);
+}
+
+.brandAccent {
+  color: var(--color-primary);
+}
+
+.links {
+  display: flex;
+  gap: var(--space-lg);
+}
+
+.link {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+
+.link:hover {
+  color: var(--color-text);
+}
+
+.linkActive {
+  color: var(--color-primary-dark);
+  border-bottom-color: var(--color-primary);
+}
+
+.authGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.userInfo {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.logoutButton {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-primary-dark);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+}
+
+.logoutButton:hover {
+  background: var(--color-bg-alt);
+}
+
+@media (max-width: 560px) {
+  .links {
+    gap: var(--space-md);
+  }
+  .brand {
+    font-size: 1.05rem;
+  }
+  .link {
+    font-size: 0.7rem;
+  }
+  .userInfo {
+    display: none;
+  }
+}

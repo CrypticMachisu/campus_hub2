@@ -1,0 +1,70 @@
+.page {
+  padding: var(--space-lg, 2rem);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: var(--space-xl, 3rem);
+  text-align: center;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md, 1rem);
+  margin-bottom: var(--space-xl, 3rem);
+}
+
+.searchInput {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.filterGroup, .toggleGroup {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filterBtn, .toggleBtn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  background: transparent;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.activeFilter, .activeToggle {
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  background: #0070f3;
+  color: white;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-lg, 2rem);
+}
+
+.emptyStateBox {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem var(--space-lg, 2rem);
+  background: #f9f9f9;
+  border: 1px dashed #ccc;
+  border-radius: 12px;
+  color: #555;
+}
+
+.emptyStateBox h3 {
+  margin-bottom: 0.5rem;
+  color: #222;
+}

@@ -1,0 +1,102 @@
+.page {
+  padding: var(--space-lg, 2rem);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.clubHeader {
+  margin-bottom: var(--space-xl, 3rem);
+}
+
+.headerMain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md, 1rem);
+  margin-bottom: var(--space-md, 1rem);
+}
+
+.logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;   
+    overflow: hidden;  /* clip any fallback alt text to the box if the image fails to load */
+  }
+
+.categoryBadge {
+  background: #eee;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+}
+
+.description {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: var(--space-md, 1rem);
+}
+
+.metaInfo {
+  background: #f9f9f9;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: var(--space-md, 1rem);
+}
+
+.tagList {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  color: #0070f3;
+  font-size: 0.9rem;
+}
+
+.eventsSection {
+  margin-top: var(--space-xl, 3rem);
+}
+
+.eventsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-md, 1rem);
+  margin-top: 1rem;
+}
+
+.emptyEventsBox {
+  color: #666;
+  font-style: italic;
+  padding: 1.5rem;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.sectionDivider {
+  margin: var(--space-xl, 3rem) 0 0 0;
+  border: 0;
+  border-top: 2px solid #e0e0e0;
+}
+
+/* Rule 2: UI separation wrapper background tint specification */
+.commentsWrapper {
+  margin-top: 0;
+  padding: var(--space-xl, 2rem);
+  background-color: #f7f9fa;
+  border-radius: 0 0 12px 12px;
+  border: 1px solid #edf1f2;
+  border-top: none;
+}
+
+.notFoundPage {
+  text-align: center;
+  padding: var(--space-xl, 3rem);
+}
+
+.backLink {
+  color: #0070f3;
+  text-decoration: underline;
+}
