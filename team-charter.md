@@ -5,23 +5,31 @@ Machisu Roy Minani – 219783- Backend dev/Integration/QA Lead
 Wwaweru Tiphanie Nyaruiru – 220525-Docs/DevOps Lead
 
 CampusHub App Audit
-•	The app allows club admins to post announcements for their respective clubs. 
-•	It allows club members to view announcements related to the clubs they belong to. 
-•	It allows clubs to be separated into different categories or groups, such as Academic, Arts & Culture, Sports & Fitness, Technology, Community Service, and Social. 
-•	It allows clubs to be created and managed within the platform. 
-•	It allows events to be created and associated with specific clubs. 
-•	It allows club admins to sign up and create accounts with appropriate permissions. 
-•	It allows clubs to be labelled with relevant tags to make them easier to identify and filter. 
-•	It allows users to post comments on clubs and events and allows other users to read those comments. 
-•	It allows users to view upcoming club events and register to attend them. 
-•	It allows users to create accounts and log in to the system. 
-•	It allows administrators to view and manage registered users. 
-•	It stores club information, including club descriptions, categories, tags, logos, and meeting details. 
-•	It stores event information, including event dates, times, locations, hosting clubs, and promotional images. 
-•	It records event registrations, including the relevant user details at the time of registration. 
-•	It manages different user permissions, including administrators, club managers, and regular student members. 
+### What the app does
 
+- Lets members browse and search clubs and events
+- Lets members sign up for events and cancel signups
+- Lets members comment on clubs and events
+- Lets club admins post announcements
+- Lets club admins create/edit/delete events for their club
+- Lets tier1 admins create new clubs
+- Lets tier1 admins promote users to tier2 (club) admin, or revoke it
+- Lets members request admin access to a club; tier1 approves/denies
+- Handles account signup, login, logout
+- Handles forgot-password / reset-password via a token link
 
+### What it stores
+
+- User accounts: name, email, password hash, role (tier1/tier2/member)
+- Password reset tokens: hashed token + expiry (temporary, cleared after use)
+- Clubs: name, category, description, logo URL, meeting time/location
+- Club tags (labels per club)
+- Club-admin links (which tier2 users admin which clubs)
+- Events: title, description, date/time, location, image URL, category, owning club
+- Event signups: user, event, name/email snapshot at signup time
+- Announcements: text, per club
+- Comments: text, author name snapshot, linked to an event or club
+- Admin requests: user, club, status (pending/approved/denied)
 
 Ring Position
 Who we are consuming from – group 6
