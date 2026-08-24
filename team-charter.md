@@ -5,14 +5,14 @@
 - Rayyan Abdi Mohammed – 220763
 - Hunja Michael Njagi – 220536
 - Machisu Roy Minani – 219783
-- Wwaweru Tiphanie Nyaruiru – 220525
+- Waweru Tiphanie Nyaruiru – 220525
 
 ## Roles
 
 - Rayyan Abdi Mohammed – Backend Dev / Integration & QA Lead
 - Hunja Michael Njagi – API Lead
 - Machisu Roy Minani – Backend Dev / Integration & QA Lead
-- Wwaweru Tiphanie Nyaruiru – Docs / DevOps Lead
+- Waweru Tiphanie Nyaruiru – Docs / DevOps Lead
 
 ## Role Rotation
 
