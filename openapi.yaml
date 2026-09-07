@@ -1,1 +1,499 @@
+openapi: 3.0.0
+info:
+  title: CampusHub API
+  version: 1.0.0
+  description: >
+    API exposed by Team 7 (CampusHub) to downstream partner Team 8 (Marketplace).
+    Covers club and event discovery so Team 8 can display CampusHub clubs and
+    events during marketplace activities, plus club creation.
+
+servers:
+  - url: https://api.campushub.strathmore.edu/v1
+    description: Production
+  - url: http://localhost:4000/v1
+    description: Local development
+
+tags:
+  - name: Clubs
+  - name: Events
+
+paths:
+  /clubs:
+    get:
+      tags: [Clubs]
+      summary: Search and list clubs
+      description: >
+        Returns a paginated list of clubs. Supports free-text search and
+        category filtering so downstream consumers can find clubs relevant
+        to a marketplace activity.
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Free-text search over club name and description.
+          schema:
+            type: string
+            example: "robotics"
+        - name: category
+          in: query
+          required: false
+          description: Filter clubs by category.
+          schema:
+            type: string
+            example: "Technology"
+        - name: page
+          in: query
+          required: false
+          description: 1-indexed page number.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of results per page (max 100).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+      responses:
+        '200':
+          description: A page of clubs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, page, limit, total]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Club'
+                  page:
+                    type: integer
+                    example: 1
+                  limit:
+                    type: integer
+                    example: 20
+                  total:
+                    type: integer
+                    example: 47
+              example:
+                data:
+                  - id: 12
+                    name: "Robotics Club"
+                    description: "Builds and competes with autonomous robots."
+                    category: "Technology"
+                    contactEmail: "robotics@strathmore.edu"
+                    memberCount: 38
+                    createdAt: "2025-09-01T08:00:00Z"
+                page: 1
+                limit: 20
+                total: 47
+        '400':
+          description: Invalid query parameters (e.g. limit out of range).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "invalid_parameter"
+                message: "limit must be between 1 and 100"
+
+  /clubs/{id}:
+    get:
+      tags: [Clubs]
+      summary: Get a single club by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the club.
+          schema:
+            type: integer
+            example: 12
+      responses:
+        '200':
+          description: The requested club.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+              example:
+                id: 12
+                name: "Robotics Club"
+                description: "Builds and competes with autonomous robots."
+                category: "Technology"
+                contactEmail: "robotics@strathmore.edu"
+                memberCount: 38
+                createdAt: "2025-09-01T08:00:00Z"
+        '404':
+          description: No club exists with the given ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "not_found"
+                message: "No club found with id 12"
+
+  /events:
+    get:
+      tags: [Events]
+      summary: Search and list events
+      description: >
+        Returns a paginated list of events, optionally filtered by club,
+        date range, or free-text search, so downstream consumers can surface
+        accurate event dates, locations, and descriptions.
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "hackathon"
+        - name: clubId
+          in: query
+          required: false
+          description: Restrict results to events hosted by a given club.
+          schema:
+            type: integer
+            example: 12
+        - name: from
+          in: query
+          required: false
+          description: Only include events starting on or after this timestamp.
+          schema:
+            type: string
+            format: date-time
+            example: "2026-09-01T00:00:00Z"
+        - name: to
+          in: query
+          required: false
+          description: Only include events starting on or before this timestamp.
+          schema:
+            type: string
+            format: date-time
+            example: "2026-12-31T23:59:59Z"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: A page of events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, page, limit, total]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  total:
+                    type: integer
+              example:
+                data:
+                  - id: 205
+                    clubId: 12
+                    title: "Robotics Open House"
+                    description: "Live demos of this semester's robots."
+                    location: "Engineering Block, Room 204"
+                    startTime: "2026-09-20T14:00:00Z"
+                    endTime: "2026-09-20T16:00:00Z"
+                    capacity: 100
+                    rsvpCount: 42
+                    createdAt: "2026-08-15T09:30:00Z"
+                page: 1
+                limit: 20
+                total: 6
+        '400':
+          description: Invalid query parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/{id}:
+    get:
+      tags: [Events]
+      summary: Get a single event by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the event.
+          schema:
+            type: integer
+            example: 205
+      responses:
+        '200':
+          description: The requested event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+              example:
+                id: 205
+                clubId: 12
+                title: "Robotics Open House"
+                description: "Live demos of this semester's robots."
+                location: "Engineering Block, Room 204"
+                startTime: "2026-09-20T14:00:00Z"
+                endTime: "2026-09-20T16:00:00Z"
+                capacity: 100
+                rsvpCount: 42
+                createdAt: "2026-08-15T09:30:00Z"
+        '404':
+          description: No event exists with the given ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "not_found"
+                message: "No event found with id 205"
+
+  /events/{id}/advertise:
+    post:
+      tags: [Events]
+      summary: Advertise and market an event
+      description: >
+        Lets an authenticated marketplace customer (Team 8) create a
+        marketing listing for an event, so it can be featured and promoted
+        during marketplace marketing activities. Any authenticated
+        marketplace customer may advertise an event — no club admin
+        privileges are required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the event to advertise.
+          schema:
+            type: integer
+            example: 205
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [promotionalMessage, startDate, endDate]
+              properties:
+                promotionalMessage:
+                  type: string
+                  description: Marketing copy the marketplace customer wants to display alongside the event.
+                  example: "Join us for live robot demos — open to all students!"
+                startDate:
+                  type: string
+                  format: date-time
+                  description: When the advertisement should start being shown.
+                  example: "2026-09-10T00:00:00Z"
+                endDate:
+                  type: string
+                  format: date-time
+                  description: When the advertisement should stop being shown.
+                  example: "2026-09-20T14:00:00Z"
+                targetAudience:
+                  type: string
+                  description: Optional audience segment to target the advertisement toward.
+                  example: "Engineering students"
+                advertisedBy:
+                  type: string
+                  description: Optional display name of the marketplace customer creating the listing.
+                  example: "Strath Shop Marketing"
+      responses:
+        '201':
+          description: Advertisement created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Advertisement'
+              example:
+                id: 9
+                eventId: 205
+                promotionalMessage: "Join us for live robot demos — open to all students!"
+                startDate: "2026-09-10T00:00:00Z"
+                endDate: "2026-09-20T14:00:00Z"
+                targetAudience: "Engineering students"
+                advertisedBy: "Strath Shop Marketing"
+                status: "scheduled"
+                createdAt: "2026-09-07T10:00:00Z"
+        '400':
+          description: Validation error — one or more required fields missing or malformed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "validation_error"
+                message: "endDate must be after startDate"
+        '401':
+          description: Missing or invalid authentication token. Only authenticated marketplace customers may advertise events.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "unauthorized"
+                message: "A valid marketplace customer token is required to advertise events"
+        '404':
+          description: No event exists with the given ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "not_found"
+                message: "No event found with id 205"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Club:
+      type: object
+      required: [id, name, description, category, contactEmail, memberCount, createdAt]
+      properties:
+        id:
+          type: integer
+          example: 12
+        name:
+          type: string
+          example: "Robotics Club"
+        description:
+          type: string
+          example: "Builds and competes with autonomous robots."
+        category:
+          type: string
+          example: "Technology"
+        contactEmail:
+          type: string
+          format: email
+          example: "robotics@strathmore.edu"
+        memberCount:
+          type: integer
+          example: 38
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-09-01T08:00:00Z"
+
+    Event:
+      type: object
+      required: [id, clubId, title, description, location, startTime, endTime, capacity, rsvpCount, createdAt]
+      properties:
+        id:
+          type: integer
+          example: 205
+        clubId:
+          type: integer
+          description: ID of the club hosting this event.
+          example: 12
+        title:
+          type: string
+          example: "Robotics Open House"
+        description:
+          type: string
+          example: "Live demos of this semester's robots."
+        location:
+          type: string
+          example: "Engineering Block, Room 204"
+        startTime:
+          type: string
+          format: date-time
+          example: "2026-09-20T14:00:00Z"
+        endTime:
+          type: string
+          format: date-time
+          example: "2026-09-20T16:00:00Z"
+        capacity:
+          type: integer
+          example: 100
+        rsvpCount:
+          type: integer
+          example: 42
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-08-15T09:30:00Z"
+
+    Advertisement:
+      type: object
+      required: [id, eventId, promotionalMessage, startDate, endDate, status, createdAt]
+      properties:
+        id:
+          type: integer
+          example: 9
+        eventId:
+          type: integer
+          description: ID of the event this advertisement promotes.
+          example: 205
+        promotionalMessage:
+          type: string
+          example: "Join us for live robot demos — open to all students!"
+        startDate:
+          type: string
+          format: date-time
+          example: "2026-09-10T00:00:00Z"
+        endDate:
+          type: string
+          format: date-time
+          example: "2026-09-20T14:00:00Z"
+        targetAudience:
+          type: string
+          example: "Engineering students"
+        advertisedBy:
+          type: string
+          description: Display name of the marketplace customer who created this listing.
+          example: "Strath Shop Marketing"
+        status:
+          type: string
+          description: Current state of the advertisement.
+          enum: [scheduled, active, expired]
+          example: "scheduled"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-09-07T10:00:00Z"
+
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code.
+          example: "not_found"
+        message:
+          type: string
+          description: Human-readable explanation.
+          example: "No club found with id 12"
 
