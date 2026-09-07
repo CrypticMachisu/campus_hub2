@@ -15,5 +15,5 @@ Group 8 Endpoints
 | GET    | /clubs       | Return club details                           | "Allows the Strath shop to access different club's details"                            |
 | GET    | /clubs/{id}  | Returns specific club related to its club ID. | "Enables Strath shop users to access a club in relation to its ID making work easier." |
 | GET    | /events      | "Returns specific event details               | "Allows our consumers to search events "                                               |
-| GET    | /events/{id} | "Retrieves needed event ID"                   | "Allows our consumer to "                                                              |
+| GET    | /events/{id} | "Retrieves needed event ID"                   | “Allows our consumers to sign up for specific events.”                                  |
 | POST   | /club        | "Adds club account"                           | "Requires information to create a new club account"                                    |
