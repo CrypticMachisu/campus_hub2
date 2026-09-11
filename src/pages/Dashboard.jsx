@@ -11,6 +11,7 @@ import {
 } from "../utils/eventsStore";
 import { getSignupsByEvent } from "../utils/storage";
 import { getAnnouncements, saveAnnouncement } from "../utils/dashboardStorage";
+import { formatDateTime } from "../utils/dateTime";
 import {
   getPendingAdminRequests,
   getAllUsers,
@@ -21,6 +22,7 @@ import {
 } from "../utils/adminStore";
 import { canManageClub } from "../utils/authStore";
 import styles from "./Dashboard.module.css";
+
 
 const FALLBACK_IMAGE = "https://placehold.co/600x300";
 
@@ -527,21 +529,23 @@ function SignupsTable({ eventId }) {
 
   return (
     <table className={styles.signupsTable}>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Signed up</th>
+      </tr>
+    </thead>
+    <tbody>
+      {signups.map((s) => (
+        <tr key={s.id}>
+          <td>{s.name}</td>
+          <td>{s.email}</td>
+          <td>{formatDateTime(s.createdAt)}</td>
         </tr>
-      </thead>
-      <tbody>
-        {signups.map((s) => (
-          <tr key={s.id}>
-            <td>{s.name}</td>
-            <td>{s.email}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+      ))}
+    </tbody>
+  </table>
   );
 }
 
