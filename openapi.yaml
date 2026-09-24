@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: CampusHub API
-  version: 1.0.0
+  version: 1.1.0
   description: >
     API exposed by Team 7 (CampusHub) to downstream partner Team 8 (Marketplace).
     Covers club and event discovery so Team 8 can display CampusHub clubs and
@@ -279,21 +279,63 @@ paths:
     post:
       tags: [Events]
       summary: Advertise and market an event
-      description: >
+      description: |
         Lets an authenticated marketplace customer (Team 8) create a
         marketing listing for an event, so it can be featured and promoted
         during marketplace marketing activities. Any authenticated
         marketplace customer may advertise an event — no club admin
         privileges are required.
+
+        ### Order of checks (first failure wins; nothing is written until all pass)
+        1. **401** — bearer token missing, malformed, or expired
+        2. **400** — path `id` is not a positive integer, or the body fails validation
+        3. **404** — no event exists with that `id`
+        4. **201** — advertisement inserted; response is the created row, mapped to the `Advertisement` schema
+
+        ### Validation rules
+        - `promotionalMessage`, `startDate`, `endDate` are required.
+        - `promotionalMessage` must be a string containing at least one non-whitespace character.
+        - `startDate` / `endDate` must be strings that are real RFC 3339 date-times (`2026-02-30T00:00:00Z` is invalid).
+        - `endDate` must be strictly after `startDate`.
+        - `targetAudience` / `advertisedBy`, if present, must be strings.
+        - `id`, `status`, `eventId`, `createdAt` are server-controlled: if a client sends them they are ignored, never stored.
+
+        ### Response rules
+        - `status` is derived by the server from the dates: `scheduled` when `startDate` is in the future, `active` when now falls between `startDate` and `endDate`, `expired` when `endDate` has passed.
+        - Optional fields that were not supplied are **omitted** from the response — never returned as `null`.
+        - Keys are camelCase exactly as in the schema; no database column names leak through.
+
+        ### Idempotency
+        POST is **not** idempotent. Sending the same valid request twice creates two advertisements
+        with two different `id`s (both `201`).
+
+        ### How to test this endpoint
+        Every case below is available as a named example in the request body dropdown, so it can be
+        run directly from Swagger UI (Authorize first). Expected status is in each example's summary.
+        The full case list (T01–T29) is in `x-test-cases` on this operation.
+
+        | Direction | What to send | Expect |
+        |---|---|---|
+        | Good input | `valid_full`, `valid_minimal` | 201, body matches `Advertisement`, row exists in DB |
+        | Bad body | any `invalid_*` / `missing_*` / `end_*` example | 400, `error: validation_error`, **no new row** |
+        | Bad path id | `abc`, `205abc`, `0`, `-1` | 400 |
+        | Unknown event | `999999` + valid body | 404 |
+        | Bad auth | no token / garbled token | 401 |
+        | Repeat | same valid request twice | 201 + 201, two different ids, two rows |
+
+        **Persistence check:** the contract has no GET for advertisements, so confirm state changes
+        with SQL (`SELECT COUNT(*)` on your advertisements table before and after). A rejected request
+        must leave the count unchanged.
       security:
         - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          description: Unique identifier of the event to advertise.
+          description: Unique identifier of the event to advertise. Must be a positive integer.
           schema:
             type: integer
+            minimum: 1
             example: 205
       requestBody:
         required: true
@@ -305,7 +347,9 @@ paths:
               properties:
                 promotionalMessage:
                   type: string
-                  description: Marketing copy the marketplace customer wants to display alongside the event.
+                  minLength: 1
+                  pattern: '\S'
+                  description: Marketing copy the marketplace customer wants to display alongside the event. Must contain at least one non-whitespace character.
                   example: "Join us for live robot demos — open to all students!"
                 startDate:
                   type: string
@@ -315,7 +359,7 @@ paths:
                 endDate:
                   type: string
                   format: date-time
-                  description: When the advertisement should stop being shown.
+                  description: When the advertisement should stop being shown. Must be strictly after startDate.
                   example: "2026-09-20T14:00:00Z"
                 targetAudience:
                   type: string
@@ -325,6 +369,104 @@ paths:
                   type: string
                   description: Optional display name of the marketplace customer creating the listing.
                   example: "Strath Shop Marketing"
+            examples:
+              valid_full:
+                summary: "T01 · Expect 201 — all fields"
+                value:
+                  promotionalMessage: "Join us for live robot demos — open to all students!"
+                  startDate: "2026-09-10T00:00:00Z"
+                  endDate: "2026-09-20T14:00:00Z"
+                  targetAudience: "Engineering students"
+                  advertisedBy: "Strath Shop Marketing"
+              valid_minimal:
+                summary: "T02 · Expect 201 — required fields only; response omits targetAudience/advertisedBy"
+                value:
+                  promotionalMessage: "Robotics Open House this Sunday"
+                  startDate: "2026-09-10T00:00:00Z"
+                  endDate: "2026-09-20T14:00:00Z"
+              client_supplied_server_fields:
+                summary: "T04 · Expect 201 — id/status/eventId/createdAt in body are ignored"
+                value:
+                  promotionalMessage: "Server-controlled fields must be ignored"
+                  startDate: "2026-09-10T00:00:00Z"
+                  endDate: "2026-09-20T14:00:00Z"
+                  id: 999
+                  eventId: 1
+                  status: "expired"
+                  createdAt: "2001-01-01T00:00:00Z"
+              missing_promotionalMessage:
+                summary: "T05 · Expect 400 — promotionalMessage missing"
+                value:
+                  startDate: "2026-09-10T00:00:00Z"
+                  endDate: "2026-09-20T14:00:00Z"
+              missing_startDate:
+                summary: "T06 · Expect 400 — startDate missing"
+                value:
+                  promotionalMessage: "Join us!"
+                  endDate: "2026-09-20T14:00:00Z"
+              missing_endDate:
+                summary: "T07 · Expect 400 — endDate missing"
+                value:
+                  promotionalMessage: "Join us!"
+                  startDate: "2026-09-10T00:00:00Z"
+              empty_object:
+                summary: "T08 · Expect 400 — {} (all required fields missing)"
+                value: {}
+              empty_promotionalMessage:
+                summary: "T09 · Expect 400 — promotionalMessage is an empty string"
+                value:
+                  promotionalMessage: ""
+                  startDate: "2026-09-10T00:00:00Z"
+                  endDate: "2026-09-20T14:00:00Z"
+              whitespace_promotionalMessage:
+                summary: "T10 · Expect 400 — promotionalMessage is only spaces"
+                value:
+                  promotionalMessage: "     "
+                  startDate: "2026-09-10T00:00:00Z"
+                  endDate: "2026-09-20T14:00:00Z"
+              wrong_type_promotionalMessage:
+                summary: "T11 · Expect 400 — promotionalMessage is a number"
+                value:
+                  promotionalMessage: 12345
+                  startDate: "2026-09-10T00:00:00Z"
+                  endDate: "2026-09-20T14:00:00Z"
+              wrong_type_startDate:
+                summary: "T12 · Expect 400 — startDate is a number, not a string"
+                value:
+                  promotionalMessage: "Join us!"
+                  startDate: 1789000000
+                  endDate: "2026-09-20T14:00:00Z"
+              malformed_startDate:
+                summary: "T13 · Expect 400 — startDate is not a date-time"
+                value:
+                  promotionalMessage: "Join us!"
+                  startDate: "next friday"
+                  endDate: "2026-09-20T14:00:00Z"
+              impossible_calendar_date:
+                summary: "T14 · Expect 400 — 30 Feb (JavaScript's Date silently rolls this to 2 Mar)"
+                value:
+                  promotionalMessage: "Join us!"
+                  startDate: "2026-02-30T00:00:00Z"
+                  endDate: "2026-09-20T14:00:00Z"
+              end_equals_start:
+                summary: "T15 · Expect 400 — endDate equals startDate"
+                value:
+                  promotionalMessage: "Join us!"
+                  startDate: "2026-09-10T00:00:00Z"
+                  endDate: "2026-09-10T00:00:00Z"
+              end_before_start:
+                summary: "T16 · Expect 400 — endDate before startDate"
+                value:
+                  promotionalMessage: "Join us!"
+                  startDate: "2026-09-20T14:00:00Z"
+                  endDate: "2026-09-10T00:00:00Z"
+              wrong_type_targetAudience:
+                summary: "T17 · Expect 400 — optional field present but wrong type"
+                value:
+                  promotionalMessage: "Join us!"
+                  startDate: "2026-09-10T00:00:00Z"
+                  endDate: "2026-09-20T14:00:00Z"
+                  targetAudience: 42
       responses:
         '201':
           description: Advertisement created.
@@ -343,14 +485,41 @@ paths:
                 status: "scheduled"
                 createdAt: "2026-09-07T10:00:00Z"
         '400':
-          description: Validation error — one or more required fields missing or malformed.
+          description: >
+            Validation error — a required field is missing or malformed, a value has the wrong
+            type, endDate is not after startDate, the request body is not valid JSON, or the path
+            id is not a positive integer. Nothing is written. Always returned in the Error shape
+            (never an HTML error page).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: "validation_error"
-                message: "endDate must be after startDate"
+              examples:
+                missing_field:
+                  summary: Required field missing (T05–T08)
+                  value:
+                    error: "validation_error"
+                    message: "promotionalMessage, startDate and endDate are required"
+                wrong_type_or_empty:
+                  summary: Wrong type / empty value (T09–T14, T17)
+                  value:
+                    error: "validation_error"
+                    message: "startDate must be a valid ISO 8601 date-time string"
+                end_not_after_start:
+                  summary: Date range invalid (T15–T16)
+                  value:
+                    error: "validation_error"
+                    message: "endDate must be after startDate"
+                malformed_json:
+                  summary: Body is not parseable JSON (T18–T19)
+                  value:
+                    error: "validation_error"
+                    message: "Request body must be valid JSON"
+                invalid_path_id:
+                  summary: Path id not a positive integer (T20–T22)
+                  value:
+                    error: "invalid_parameter"
+                    message: "id must be a positive integer"
         '401':
           description: Missing or invalid authentication token. Only authenticated marketplace customers may advertise events.
           content:
@@ -361,7 +530,7 @@ paths:
                 error: "unauthorized"
                 message: "A valid marketplace customer token is required to advertise events"
         '404':
-          description: No event exists with the given ID.
+          description: No event exists with the given ID. Only returned after auth and validation have passed.
           content:
             application/json:
               schema:
@@ -369,6 +538,37 @@ paths:
               example:
                 error: "not_found"
                 message: "No event found with id 205"
+      x-test-cases:
+        # Fields: id, name, path (event id), auth (valid | none | garbled | expired), body (requestBody example name or raw), expect (status), verify (extra checks)
+        - {id: T01, name: valid full request,            path: 205, auth: valid,   body: valid_full,                    expect: 201, verify: [body_matches_Advertisement, eventId_equals_path, status_is_scheduled, row_count_plus_1, row_values_match_request]}
+        - {id: T02, name: valid minimal request,         path: 205, auth: valid,   body: valid_minimal,                 expect: 201, verify: [optional_fields_omitted_not_null, row_count_plus_1]}
+        - {id: T03, name: same valid request twice,      path: 205, auth: valid,   body: valid_full (x2),               expect: "201 then 201", verify: [two_different_ids, row_count_plus_2]}
+        - {id: T04, name: server-controlled fields ignored, path: 205, auth: valid, body: client_supplied_server_fields, expect: 201, verify: [id_not_999, status_not_expired, eventId_equals_path, createdAt_not_2001]}
+        - {id: T05, name: missing promotionalMessage,    path: 205, auth: valid,   body: missing_promotionalMessage,    expect: 400, verify: [error_is_validation_error, row_count_unchanged]}
+        - {id: T06, name: missing startDate,             path: 205, auth: valid,   body: missing_startDate,             expect: 400, verify: [row_count_unchanged]}
+        - {id: T07, name: missing endDate,               path: 205, auth: valid,   body: missing_endDate,               expect: 400, verify: [row_count_unchanged]}
+        - {id: T08, name: empty object,                  path: 205, auth: valid,   body: empty_object,                  expect: 400, verify: [row_count_unchanged]}
+        - {id: T09, name: empty promotionalMessage,      path: 205, auth: valid,   body: empty_promotionalMessage,      expect: 400, verify: [row_count_unchanged]}
+        - {id: T10, name: whitespace-only promotionalMessage, path: 205, auth: valid, body: whitespace_promotionalMessage, expect: 400, verify: [row_count_unchanged]}
+        - {id: T11, name: promotionalMessage wrong type, path: 205, auth: valid,   body: wrong_type_promotionalMessage, expect: 400, verify: [row_count_unchanged]}
+        - {id: T12, name: startDate wrong type,          path: 205, auth: valid,   body: wrong_type_startDate,          expect: 400, verify: [row_count_unchanged]}
+        - {id: T13, name: startDate not a date-time,     path: 205, auth: valid,   body: malformed_startDate,           expect: 400, verify: [row_count_unchanged]}
+        - {id: T14, name: impossible calendar date,      path: 205, auth: valid,   body: impossible_calendar_date,      expect: 400, verify: [row_count_unchanged]}
+        - {id: T15, name: endDate equals startDate,      path: 205, auth: valid,   body: end_equals_start,              expect: 400, verify: [row_count_unchanged]}
+        - {id: T16, name: endDate before startDate,      path: 205, auth: valid,   body: end_before_start,              expect: 400, verify: [row_count_unchanged]}
+        - {id: T17, name: targetAudience wrong type,     path: 205, auth: valid,   body: wrong_type_targetAudience,     expect: 400, verify: [row_count_unchanged]}
+        - {id: T18, name: malformed JSON syntax,         path: 205, auth: valid,   body: '{"promotionalMessage": ',      expect: 400, verify: [response_is_JSON_Error_shape_not_HTML, row_count_unchanged]}
+        - {id: T19, name: no body / no Content-Type,     path: 205, auth: valid,   body: none,                          expect: 400, verify: [not_500, row_count_unchanged]}
+        - {id: T20, name: non-numeric event id,          path: abc, auth: valid,   body: valid_full,                    expect: 400, verify: [error_is_invalid_parameter, row_count_unchanged]}
+        - {id: T21, name: partly-numeric event id,       path: 205abc, auth: valid, body: valid_full,                   expect: 400, verify: [not_treated_as_205, row_count_unchanged]}
+        - {id: T22, name: zero / negative event id,      path: "0 and -1", auth: valid, body: valid_full,               expect: 400, verify: [row_count_unchanged]}
+        - {id: T23, name: nonexistent event,             path: 999999, auth: valid, body: valid_full,                   expect: 404, verify: [error_is_not_found, row_count_unchanged]}
+        - {id: T24, name: no Authorization header,       path: 205, auth: none,    body: valid_full,                    expect: 401, verify: [row_count_unchanged]}
+        - {id: T25, name: garbled or expired token,      path: 205, auth: garbled, body: valid_full,                    expect: 401, verify: [row_count_unchanged]}
+        - {id: T26, name: 401 takes priority over 400,   path: 205, auth: none,    body: empty_object,                  expect: 401, verify: [row_count_unchanged]}
+        - {id: T27, name: 400 takes priority over 404,   path: 999999, auth: valid, body: empty_object,                 expect: 400, verify: [row_count_unchanged]}
+        - {id: T28, name: non-admin marketplace customer, path: 205, auth: "valid, no club-admin role", body: valid_full, expect: 201, verify: [no_403]}
+        - {id: T29, name: no partial data after all failures, path: n/a, auth: n/a, body: n/a, expect: "count after T05–T27 equals count before", verify: [row_count_unchanged]}
 
 components:
   securitySchemes:
@@ -476,7 +676,10 @@ components:
           example: "Strath Shop Marketing"
         status:
           type: string
-          description: Current state of the advertisement.
+          description: >
+            Current state of the advertisement. Set by the server, never by the client:
+            `scheduled` when startDate is in the future, `active` when now falls between
+            startDate and endDate, `expired` when endDate has passed.
           enum: [scheduled, active, expired]
           example: "scheduled"
         createdAt:
@@ -496,4 +699,3 @@ components:
           type: string
           description: Human-readable explanation.
           example: "No club found with id 12"
-
