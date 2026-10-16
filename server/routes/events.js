@@ -19,7 +19,7 @@ eventsRouter.get("/", async (req, res) => {
 });
 
 /**
- * POST /api/events — create a new (non-seed) event.
+ * POST /api/events — create a new event.
  * Requires the caller to manage the target club.
  */
 eventsRouter.post("/", requireAuth, async (req, res) => {

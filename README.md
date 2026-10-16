@@ -3,8 +3,42 @@
 CampusHub is a REST API for a campus clubs-and-events app. It lets students list clubs and events, sign in, and (for authorised users) create clubs and manage events. It is aimed at developers building a front end or integrating another campus service with club and event data. All responses are JSON.
 
 - **Base URL (local):** `http://localhost:5000/api`
+- **Base URL (live, temporary):** `https://movable-eastcoast-showman.ngrok-free.dev/api`
 - **Stack:** Node.js + Express + MySQL
 - **API reference:** open `docs/index.html` in a browser (generated from `openapi.yaml`).
+
+---
+
+## Try it without installing anything (temporary live API)
+
+While the blind test is running, a copy of the API is reachable at:
+
+```
+https://movable-eastcoast-showman.ngrok-free.dev/api
+```
+
+All endpoints live under `/api`. The bare address (without `/api`) returns `Cannot GET /`, which is expected.
+
+Quick check:
+
+```bash
+curl https://movable-eastcoast-showman.ngrok-free.dev/api/health
+curl https://movable-eastcoast-showman.ngrok-free.dev/api/clubs
+```
+
+Expected: `{"ok":true}` and a JSON list of clubs. If you get an HTML warning page instead of JSON, add the header `-H "ngrok-skip-browser-warning: true"` to the request. Browsers show the same warning once; click through it.
+
+Reading clubs and events needs no account. To call a protected endpoint on the live copy, create your own account (the demo accounts below are not available there):
+
+```bash
+curl -X POST https://movable-eastcoast-showman.ngrok-free.dev/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Your Name","email":"you@example.com","password":"at-least-8-chars"}'
+```
+
+Use the returned `token` as `Authorization: Bearer <token>`, for example on `GET /api/auth/me`. New accounts are `member` accounts, so creating clubs or events returns `403`.
+
+This address stops working when the host's machine or tunnel is switched off. All other examples in this README use the local address `http://localhost:5000/api`; swap in the live base URL if you are testing against the live copy.
 
 ---
 
@@ -15,11 +49,11 @@ You need: **Node.js 18+**, **Git**, and **MySQL** (XAMPP's MySQL works). Nothing
 > Only one MySQL server may use port 3306. If you have two (for example XAMPP and a separate MySQL service), stop one of them first.
 
 ```bash
-git clone <https://github.com/CrypticMachisu/campus_hub2.git>
+git clone https://github.com/CrypticMachisu/campus_hub2.git
 cd campus_hub2
 ```
 
-**1. Start MySQL** (in XAMPP, click *Start* next to MySQL).
+**1. Start MySQL** (in XAMPP, click _Start_ next to MySQL).
 
 **2. Create the database and load the schema + demo data.** Run these from the repo root. On macOS/Linux the `mysql` command is usually on your PATH. On Windows with XAMPP use `C:\xampp\mysql\bin\mysql.exe`.
 
@@ -79,28 +113,28 @@ Tokens are JWTs and are valid for 7 days. Roles are `tier1`, `tier2` and `member
 
 All demo accounts use the password **`campushub123`** (set by `npm run set-passwords`; change it with `SEED_PASSWORD` in `server/.env`).
 
-| Email | Role |
+|Email|Role|
 |---|---|
-| `amara.okafor@campus.edu` | `tier1` (can create clubs) |
-| `leo.fischer@campus.edu` | `tier2` |
-| `sofia.ramirez@campus.edu` | `member` |
+|`amara.okafor@campus.edu`|`tier1` (can create clubs)|
+|`leo.fischer@campus.edu`|`tier2`|
+|`sofia.ramirez@campus.edu`|`member`|
 
 ---
 
 ## Endpoints
 
-| Method | Path | Auth | Purpose |
+|Method|Path|Auth|Purpose|
 |---|---|---|---|
-| GET | `/api/health` | none | Check the API is running |
-| POST | `/api/auth/login` | none | Sign in, get a token |
-| POST | `/api/auth/register` | none | Create a member account |
-| GET | `/api/auth/me` | token | Get the signed-in user |
-| GET | `/api/clubs` | none | List clubs |
-| POST | `/api/clubs` | token (tier1) | Create a club |
-| GET | `/api/events` | none | List events |
-| POST | `/api/events` | token | Create an event |
-| PUT | `/api/events/:id` | token | Update an event |
-| DELETE | `/api/events/:id` | token | Delete an event |
+|GET|`/api/health`|none|Check the API is running|
+|POST|`/api/auth/login`|none|Sign in, get a token|
+|POST|`/api/auth/register`|none|Create a member account|
+|GET|`/api/auth/me`|token|Get the signed-in user|
+|GET|`/api/clubs`|none|List clubs|
+|POST|`/api/clubs`|token (tier1)|Create a club|
+|GET|`/api/events`|none|List events|
+|POST|`/api/events`|token|Create an event|
+|PUT|`/api/events/:id`|token|Update an event|
+|DELETE|`/api/events/:id`|token|Delete an event|
 
 ### Health check
 
@@ -360,20 +394,20 @@ Unexpected server failure (`500`):
 
 ### Other error messages
 
-| Status | `error` message | When |
+|Status|`error` message|When|
 |---|---|---|
-| 400 | `Email and password are required.` | Login with a missing field |
-| 400 | `Name and email are required.` | Register with a missing field |
-| 400 | `Enter a valid email address.` | Register or forgot-password with a bad email |
-| 400 | `Password must be at least 8 characters.` | Register or reset-password with a short password |
-| 400 | `Club name is required.` | Create club without a name |
-| 400 | `Title is required.` | Create or update an event without a title |
-| 400 | `Unknown category: <name>` | Create or update a club or event with a category that doesn't exist |
-| 403 | `Tier 1 admin access required.` | Create a club with a token that isn't tier1 |
-| 403 | `You don't have admin access to that club.` | Create, update or delete an event for a club you don't manage |
-| 403 | `Seed events are read-only.` | Update or delete a built-in `event-` event |
-| 404 | `Event not found.` | Update or delete an event ID that doesn't exist |
-| 409 | `That email is already registered.` | Register with an email that exists |
+|400|`Email and password are required.`|Login with a missing field|
+|400|`Name and email are required.`|Register with a missing field|
+|400|`Enter a valid email address.`|Register or forgot-password with a bad email|
+|400|`Password must be at least 8 characters.`|Register or reset-password with a short password|
+|400|`Club name is required.`|Create club without a name|
+|400|`Title is required.`|Create or update an event without a title|
+|400|`Unknown category: <name>`|Create or update a club or event with a category that doesn't exist|
+|403|`Tier 1 admin access required.`|Create a club with a token that isn't tier1|
+|403|`You don't have admin access to that club.`|Create, update or delete an event for a club you don't manage|
+|403|`Seed events are read-only.`|Update or delete a built-in `event-` event|
+|404|`Event not found.`|Update or delete an event ID that doesn't exist|
+|409|`That email is already registered.`|Register with an email that exists|
 
 > **Unknown URLs return an HTML page, not JSON.** A request to a path that doesn't exist returns Express's default `404 Not Found` page (`Cannot GET /api/...`). If you get HTML back, check the URL. There is no `GET /api/clubs/:id` or `GET /api/events/:id`; use the list endpoints and filter by `id`.
 
