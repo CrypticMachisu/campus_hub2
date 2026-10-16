@@ -46,3 +46,15 @@ export function formatEventDate(isoDate) {
 export function todayIso() {
   return new Date().toISOString().split("T")[0];
 }
+
+/** Formats a MySQL DATETIME string as a short local date + time**/
+export function formatDateTime(datetimeStr) {
+  const d = new Date(datetimeStr);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
+}
