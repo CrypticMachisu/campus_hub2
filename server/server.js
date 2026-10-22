@@ -39,7 +39,9 @@ const PORT = process.env.PORT || 5000;
 assertDbConnection()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`CampusHub API listening on http://localhost:${PORT}`);
+      const publicUrl = process.env.PUBLIC_URL;
+      console.log(`CampusHub API listening on port ${PORT}`);
+      if (publicUrl) console.log(`Public URL: ${publicUrl}/api`);
     });
   })
   .catch((err) => {
