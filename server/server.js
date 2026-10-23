@@ -10,6 +10,7 @@ import { eventsRouter } from "./routes/events.js";
 import { signupsRouter } from "./routes/signups.js";
 import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
+import { partnerRouter } from "./routes/partner.js"; // NEW: Team 6 AgroConnect integration
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/events", eventsRouter);
 app.use("/api/signups", signupsRouter);
 app.use("/api/comments", commentsRouter);
 app.use("/api/announcements", announcementsRouter);
+app.use("/api/partner", partnerRouter); // NEW: calls the partner's API from our server
 
 // Centralized error handler so a thrown/rejected error in any route
 // returns clean JSON instead of an HTML stack trace or a hung request.
@@ -39,7 +41,9 @@ const PORT = process.env.PORT || 5000;
 assertDbConnection()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`CampusHub API listening on http://localhost:${PORT}`);
+      const publicUrl = process.env.PUBLIC_URL;
+      console.log(`CampusHub API listening on port ${PORT}`);
+      if (publicUrl) console.log(`Public URL: ${publicUrl}/api`);
     });
   })
   .catch((err) => {

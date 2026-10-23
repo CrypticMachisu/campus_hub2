@@ -5,6 +5,8 @@ import { getAllEvents } from "../utils/eventsStore";
 import ClubCard from "../components/ClubCard";
 import EventCard from "../components/EventCard";
 import styles from "./Home.module.css";
+import PartnerFarmers from "../components/PartnerFarmers";
+import PartnerProduce from "../components/PartnerProduce";
 
 /**
  * Custom hook to debounce fast-changing state values.
@@ -168,6 +170,10 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* NEW: live data from Team 6's AgroConnect API (called via our own backend) */}
+      <PartnerFarmers />
+      <PartnerProduce />
     </div>
   );
 }
