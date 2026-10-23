@@ -1,7 +1,8 @@
 import { Router } from "express";
+import { requireAuth } from "../middleware/auth.js"; // NEW: for the order route
 
 // Calls Team 6's AgroConnect API from the SERVER so the browser never
-// talks to the partner directly. Their GET /produce is public (no key).
+// talks to the partner directly. Their GET routes are public (no key).
 // If they ever add a key, put it in PARTNER_API_KEY and it is sent below.
 export const partnerRouter = Router();
 
@@ -98,6 +99,95 @@ partnerRouter.get("/farmers", async (req, res) => {
         focus: f.focus,
       }))
     );
+  } catch (err) {
+    console.error("partner call failed:", err.cause?.code || err.message);
+    res.status(502).json(FRIENDLY_ERROR);
+  }
+});
+
+// NEW: GET /api/partner/farmers/:id -> their GET /farmers/:id
+// Contract: 200 { farmer: {...} }
+partnerRouter.get("/farmers/:id", async (req, res) => {
+  const base = process.env.PARTNER_URL;
+  const id = Number(req.params.id);
+  if (!base || !Number.isInteger(id) || id < 1) {
+    return res.status(422).json({ error: "Invalid farmer id." });
+  }
+
+  try {
+    const r = await fetch(`${base.replace(/\/$/, "")}/farmers/${id}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (r.status === 404) return res.status(404).json({ error: "Farmer not found." });
+    if (!r.ok) {
+      console.error("partner returned", r.status);
+      return res.status(502).json(FRIENDLY_ERROR);
+    }
+    const data = await r.json();
+    if (!data.farmer) {
+      console.error("partner shape mismatch, expected { farmer }; got keys:", Object.keys(data));
+      return res.status(502).json(FRIENDLY_ERROR);
+    }
+    const f = data.farmer;
+    res.json({ id: f.id, fullName: f.fullName, county: f.county, focus: f.focus });
+  } catch (err) {
+    console.error("partner call failed:", err.cause?.code || err.message);
+    res.status(502).json(FRIENDLY_ERROR);
+  }
+});
+
+// ---------------------------------------------------------------------
+// NEW (OPTIONAL, WRITE): place an order on the partner's API.
+// Needs PARTNER_BUYER_EMAIL / PARTNER_BUYER_PASSWORD in server/.env.
+// This changes THEIR live database: agree with Team 6 before using it.
+// It does nothing unless someone calls POST /api/partner/orders.
+// ---------------------------------------------------------------------
+let partnerToken = null;
+
+async function getPartnerToken(force = false) {
+  if (partnerToken && !force) return partnerToken;
+  const r = await fetch(`${process.env.PARTNER_URL.replace(/\/$/, "")}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: process.env.PARTNER_BUYER_EMAIL,
+      password: process.env.PARTNER_BUYER_PASSWORD,
+    }),
+  });
+  if (!r.ok) throw new Error(`partner login returned ${r.status}`);
+  const data = await r.json();
+  partnerToken = data.token; // expires after 7 days; we re-login on a 401
+  return partnerToken;
+}
+
+async function postOrder(token, body) {
+  return fetch(`${process.env.PARTNER_URL.replace(/\/$/, "")}/orders`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+}
+
+// POST /api/partner/orders   body: { listingId, quantity }
+// Only signed-in CampusHub users can trigger it (requireAuth).
+partnerRouter.post("/orders", requireAuth, async (req, res) => {
+  const { listingId, quantity } = req.body ?? {};
+  if (!Number.isInteger(listingId) || !Number.isInteger(quantity) || quantity < 1) {
+    return res.status(422).json({ error: "listingId and quantity must be positive integers." });
+  }
+  const body = { items: [{ id: listingId, type: "produce", quantity }] }; // only what we allow
+
+  try {
+    let r = await postOrder(await getPartnerToken(), body);
+    if (r.status === 401) r = await postOrder(await getPartnerToken(true), body); // token expired
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error("partner order returned", r.status);
+      return res
+        .status(r.status === 409 || r.status === 422 ? r.status : 502)
+        .json({ error: data.message || "Partner data unavailable" });
+    }
+    res.status(201).json({ orderId: data.order.id, total: data.order.total, status: data.order.status });
   } catch (err) {
     console.error("partner call failed:", err.cause?.code || err.message);
     res.status(502).json(FRIENDLY_ERROR);
