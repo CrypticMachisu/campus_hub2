@@ -23,10 +23,15 @@ Quick check:
 
 ```bash
 curl https://movable-eastcoast-showman.ngrok-free.dev/api/health
-curl https://movable-eastcoast-showman.ngrok-free.dev/api/clubs
 ```
 
-Expected: `{"ok":true}` and a JSON list of clubs. If you get an HTML warning page instead of JSON, add the header `-H "ngrok-skip-browser-warning: true"` to the request. Browsers show the same warning once; click through it.
+Expected: `{"ok":true}`. If you get an HTML warning page instead of JSON, add the header `-H "ngrok-skip-browser-warning: true"` to the request. Browsers show the same warning once; click through it.
+
+From Week 9 on, every request other than the health check must carry an API key (see [API keys](#api-keys) below). The live copy is currently running last week's build, so it may not require a key yet — the local instructions in this README already do:
+
+```bash
+curl https://movable-eastcoast-showman.ngrok-free.dev/api/clubs -H "X-API-Key: <your-api-key>"
+```
 
 Reading clubs and events needs no account. To call a protected endpoint on the live copy, create your own account (the demo accounts below are not available there):
 
@@ -100,9 +105,36 @@ Expected: `{"ok":true}`
 
 ---
 
-## Authentication
+## API keys
 
-Reading clubs and events is **public** (no token needed). Anything that creates or changes data needs a token.
+Every request to the API — reads included — must carry an API key in the `X-API-Key` header. The only exception is [`/api/health`](#health-check), which answers without a key so external uptime checks work and a consumer can confirm the API is alive before spending its quota.
+
+Each consumer (your team, your ring partner, ...) has its **own** key, so usage can be attributed and one key can be revoked without breaking the rest. Keys are handed out privately by direct message — never published in this repository, the class channel, or a screenshot. The API's copy of the keys lives in `server/.env` (outside git); if a key ever leaks, it is rotated there and the consumer is told.
+
+A request without a key, or with an unknown key, gets **401**: `{"error":"Missing or invalid API key."}` — no handler runs.
+
+```bash
+curl -i http://localhost:5000/api/clubs                                   # 401 – no key
+curl -i -H "X-API-Key: wrong" http://localhost:5000/api/clubs             # 401 – wrong key
+curl -i -H "X-API-Key: <your-api-key>" http://localhost:5000/api/clubs    # 200
+```
+
+### Rate limit
+
+Each key may make **100 requests per 60 seconds**. We chose 100 as a defensible default: comfortably above any legitimate consumer's polling loop, low enough that a runaway client can't hammer the server. When it is exceeded, the API answers **429** with a `Retry-After` header (seconds) and a JSON body, so a well-behaved consumer knows exactly when to try again:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 42
+
+{"error":"Too many requests.","retryAfter":42}
+```
+
+➡ All `curl` examples below assume you send `-H "X-API-Key: <your-api-key>"` with every request.
+
+## Authentication (end users)
+
+Every consumer sends its **API key** (above) on every request. On top of that, anything that creates or changes data additionally needs a **token** identifying the signed-in human:
 
 1. Log in with `POST /api/auth/login` to get a `token`.
 2. Send it on later requests as a header: `Authorization: Bearer <token>`.
@@ -123,18 +155,20 @@ All demo accounts use the password **`campushub123`** (set by `npm run set-passw
 
 ## Endpoints
 
+All endpoints require `X-API-Key` (except `/api/health`); the `Auth` column shows what the key consumer additionally needs.
+
 |Method|Path|Auth|Purpose|
 |---|---|---|---|
-|GET|`/api/health`|none|Check the API is running|
-|POST|`/api/auth/login`|none|Sign in, get a token|
-|POST|`/api/auth/register`|none|Create a member account|
-|GET|`/api/auth/me`|token|Get the signed-in user|
-|GET|`/api/clubs`|none|List clubs|
-|POST|`/api/clubs`|token (tier1)|Create a club|
-|GET|`/api/events`|none|List events|
-|POST|`/api/events`|token|Create an event|
-|PUT|`/api/events/:id`|token|Update an event|
-|DELETE|`/api/events/:id`|token|Delete an event|
+|GET|`/api/health`|none (no API key either)|Check the API is running|
+|POST|`/api/auth/login`|none – but API key|Sign in, get a token|
+|POST|`/api/auth/register`|none – but API key|Create a member account|
+|GET|`/api/auth/me`|API key + token|Get the signed-in user|
+|GET|`/api/clubs`|none – but API key|List clubs|
+|POST|`/api/clubs`|API key + token (tier1)|Create a club|
+|GET|`/api/events`|none – but API key|List events|
+|POST|`/api/events`|API key + token|Create an event|
+|PUT|`/api/events/:id`|API key + token|Update an event|
+|DELETE|`/api/events/:id`|API key + token|Delete an event|
 
 ### Health check
 
@@ -152,6 +186,7 @@ curl http://localhost:5000/api/health
 
 ```bash
 curl -X POST http://localhost:5000/api/auth/login \
+  -H "X-API-Key: <your-api-key>" \
   -H "Content-Type: application/json" \
   -d '{"email":"amara.okafor@campus.edu","password":"campushub123"}'
 ```
@@ -184,6 +219,7 @@ Response `200` (token shortened here; yours is longer):
 
 ```bash
 curl -X POST http://localhost:5000/api/auth/register \
+  -H "X-API-Key: <your-api-key>" \
   -H "Content-Type: application/json" \
   -d '{"name":"Test Student","email":"test.student@campus.edu","password":"longenough123"}'
 ```
@@ -210,7 +246,7 @@ Registering an email that already exists returns `409`.
 `GET /api/auth/me` — requires a token.
 
 ```bash
-curl http://localhost:5000/api/auth/me -H "Authorization: Bearer <token>"
+curl http://localhost:5000/api/auth/me -H "X-API-Key: <your-api-key>" -H "Authorization: Bearer <token>"
 ```
 
 Response `200`:
@@ -221,10 +257,10 @@ Response `200`:
 
 ### List clubs
 
-`GET /api/clubs` — public. Returns every club, sorted by name, wrapped in a `clubs` array. Club IDs are strings like `club-01`.
+`GET /api/clubs` — no login token, but still send the API key. Returns every club, sorted by name, wrapped in a `clubs` array. Club IDs are strings like `club-01`.
 
 ```bash
-curl http://localhost:5000/api/clubs
+curl http://localhost:5000/api/clubs -H "X-API-Key: <your-api-key>"
 ```
 
 Response `200` (shortened to one club; the real response has six):
@@ -252,6 +288,7 @@ Response `200` (shortened to one club; the real response has six):
 
 ```bash
 curl -X POST http://localhost:5000/api/clubs \
+  -H "X-API-Key: <your-api-key>" \
   -H "Authorization: Bearer <tier1-token>" \
   -H "Content-Type: application/json" \
   -d '{"name":"Chess Society","category":"Social","description":"Casual and ranked chess nights.","meetingTime":"Wednesdays, 6:00 PM","meetingLocation":"Student Union, Room 102","tags":["chess","games"]}'
@@ -263,10 +300,10 @@ Using a token from a non-tier1 account (for example one from `register`) returns
 
 ### List events
 
-`GET /api/events` — public. Returns every event, ordered by date and time, wrapped in an `events` array. `clubId` points at a club's `id`.
+`GET /api/events` — no login token, but still send the API key. Returns every event, ordered by date and time, wrapped in an `events` array. `clubId` points at a club's `id`.
 
 ```bash
-curl http://localhost:5000/api/events
+curl http://localhost:5000/api/events -H "X-API-Key: <your-api-key>"
 ```
 
 Response `200` (shortened to one event; the real response has twelve):
@@ -296,6 +333,7 @@ Response `200` (shortened to one event; the real response has twelve):
 
 ```bash
 curl -X POST http://localhost:5000/api/events \
+  -H "X-API-Key: <your-api-key>" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"clubId":"club-01","title":"README Test Event","description":"Testing","category":"Academic","date":"2026-11-01","time":"18:00","location":"Room 1"}'
@@ -330,6 +368,7 @@ Note the `date` in this response is one day earlier than the one sent. See [Know
 
 ```bash
 curl -X PUT http://localhost:5000/api/events/custom-1791803508229 \
+  -H "X-API-Key: <your-api-key>" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"title":"README Test Event (updated)","description":"Testing","category":"Academic","date":"2026-11-01","time":"19:00","location":"Room 2"}'
@@ -343,6 +382,7 @@ Response `200`: `{ "event": { ... } }` with the updated event.
 
 ```bash
 curl -i -X DELETE http://localhost:5000/api/events/custom-1791803508229 \
+  -H "X-API-Key: <your-api-key>" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -386,6 +426,25 @@ curl -i -X POST http://localhost:5000/api/events \
 {"error":"Not authenticated."}
 ```
 
+Missing or invalid API key on any endpoint except `GET /api/health` (`401 Unauthorized`):
+
+```bash
+curl -i http://localhost:5000/api/clubs
+```
+
+```json
+{"error":"Missing or invalid API key."}
+```
+
+Too many requests with one key in a minute (`429 Too Many Requests`) — includes a `Retry-After` header so a well-behaved consumer knows when to try again:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 42
+
+{"error":"Too many requests.","retryAfter":42}
+```
+
 Unexpected server failure (`500`):
 
 ```json
@@ -407,9 +466,11 @@ Unexpected server failure (`500`):
 |403|`You don't have admin access to that club.`|Create, update or delete an event for a club you don't manage|
 |403|`Seed events are read-only.`|Update or delete a built-in `event-` event|
 |404|`Event not found.`|Update or delete an event ID that doesn't exist|
+|404|`Not found.`|Any URL that doesn't exist|
 |409|`That email is already registered.`|Register with an email that exists|
+|429|`Too many requests.`|The key exceeded 100 requests in 60 seconds; see `retryAfter` and the `Retry-After` header|
 
-> **Unknown URLs return an HTML page, not JSON.** A request to a path that doesn't exist returns Express's default `404 Not Found` page (`Cannot GET /api/...`). If you get HTML back, check the URL. There is no `GET /api/clubs/:id` or `GET /api/events/:id`; use the list endpoints and filter by `id`.
+> **All responses are JSON now.** A request to a path that doesn't exist returns `404` with `{"error":"Not found."}` instead of Express's HTML page. There is no `GET /api/clubs/:id` or `GET /api/events/:id`; use the list endpoints and filter by `id`.
 
 ---
 

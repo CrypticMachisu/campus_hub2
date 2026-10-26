@@ -3,10 +3,14 @@ info:
   title: CampusHub API
   version: 2.0.0
   description: >
-    REST API for the CampusHub clubs-and-events app. Clubs and events can be
-    read without signing in. Creating or changing data requires a bearer token
-    from POST /auth/login. All responses are JSON, except that unknown URLs
-    return Express's default HTML 404 page.
+    REST API for the CampusHub clubs-and-events app. Every request from a
+    consumer must carry an API key in the `X-API-Key` header (one key per
+    consumer, handed out privately); GET /health is the one exception.
+    Reading clubs and events needs no further sign-in; creating or changing
+    data additionally requires a bearer token from POST /auth/login. Each key
+    may make 100 requests per 60 seconds; exceeding it returns 429 with a
+    Retry-After header. All responses are JSON, including the 404 for
+    unknown URLs.
 
 
 servers:
@@ -22,6 +26,10 @@ tags:
     description: Campus clubs.
   - name: Events
     description: Events hosted by clubs.
+
+# Default for every operation: a valid X-API-Key is required (Week 9).
+security:
+  - apiKeyAuth: []
 
 paths:
   /health:
@@ -51,7 +59,8 @@ paths:
       description: >
         Demo accounts all use the password set by `npm run set-passwords`
         (default `campushub123`). The token is a JWT valid for 7 days.
-      security: []
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -92,6 +101,8 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 error: Invalid email or password.
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/register:
     post:
@@ -99,7 +110,8 @@ paths:
       operationId: register
       summary: Create a member account
       description: Creates a user with the `member` role and signs them in.
-      security: []
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -149,6 +161,10 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 error: That email is already registered.
+        '401':
+          $ref: '#/components/responses/ApiKeyUnauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/forgot-password:
     post:
@@ -158,7 +174,8 @@ paths:
       description: >
         Always returns the same response whether or not the email is registered.
         No email is sent; the reset link is printed to the server console.
-      security: []
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -194,6 +211,10 @@ paths:
                 invalidEmail:
                   value:
                     error: Enter a valid email address.
+        '401':
+          $ref: '#/components/responses/ApiKeyUnauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/reset-password:
     post:
@@ -201,7 +222,8 @@ paths:
       operationId: resetPassword
       summary: Set a new password with a reset token
       description: The token comes from the reset link printed to the server console and is valid for 1 hour.
-      security: []
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -240,6 +262,10 @@ paths:
                 badToken:
                   value:
                     error: That reset link is invalid or has expired.
+        '401':
+          $ref: '#/components/responses/ApiKeyUnauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/me:
     get:
@@ -247,7 +273,8 @@ paths:
       operationId: getCurrentUser
       summary: Get the signed-in user
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       responses:
         '200':
           description: The user the token belongs to.
@@ -267,6 +294,8 @@ paths:
                   adminForClubs: []
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /clubs:
     get:
@@ -274,7 +303,8 @@ paths:
       operationId: listClubs
       summary: List all clubs
       description: Clubs are returned in alphabetical order by name.
-      security: []
+      security:
+        - apiKeyAuth: []
       responses:
         '200':
           description: All clubs.
@@ -297,13 +327,18 @@ paths:
                     meetingTime: Thursdays, 7:00 PM
                     meetingLocation: Engineering Building, Lab 108
                     tags: [coding, hackathon, workshops]
+        '401':
+          $ref: '#/components/responses/ApiKeyUnauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
     post:
       tags: [Clubs]
       operationId: createClub
       summary: Create a club
       description: Only tier1 users can create clubs.
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
@@ -350,6 +385,8 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 error: Tier 1 admin access required.
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /events:
     get:
@@ -357,7 +394,8 @@ paths:
       operationId: listEvents
       summary: List all events
       description: Events are returned in date and time order.
-      security: []
+      security:
+        - apiKeyAuth: []
       responses:
         '200':
           description: All events.
@@ -382,6 +420,10 @@ paths:
                     location: Rec Center steps
                     imageUrl: https://images.unsplash.com/photo-1745790289741-12a211a8325d?w=600
                     isSeed: true
+        '401':
+          $ref: '#/components/responses/ApiKeyUnauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
     post:
       tags: [Events]
       operationId: createEvent
@@ -391,7 +433,8 @@ paths:
         an ID starting with `custom-`. The returned `date` can be one day earlier
         than the date sent when the server runs in a time zone ahead of UTC.
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
@@ -445,6 +488,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/NoClubAccess'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /events/{id}:
     parameters:
@@ -464,7 +509,8 @@ paths:
         can be changed; built-in `event-` events are read-only. The caller must
         manage the event's club. The club of an event cannot be changed.
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
@@ -507,6 +553,8 @@ paths:
           $ref: '#/components/responses/EventForbidden'
         '404':
           $ref: '#/components/responses/EventNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
     delete:
       tags: [Events]
       operationId: deleteEvent
@@ -515,7 +563,8 @@ paths:
         Only events whose ID starts with `custom-` can be deleted. The caller
         must manage the event's club. Signups for the event are deleted with it.
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       responses:
         '204':
           description: Event deleted. The response body is empty.
@@ -525,17 +574,52 @@ paths:
           $ref: '#/components/responses/EventForbidden'
         '404':
           $ref: '#/components/responses/EventNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
 components:
   securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: One private key per consumer, handed out by direct message. Every endpoint requires it except GET /health.
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
 
   responses:
+    ApiKeyUnauthorized:
+      description: Missing or invalid API key.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Missing or invalid API key.
+    TooManyRequests:
+      description: The key exceeded 100 requests in 60 seconds.
+      headers:
+        Retry-After:
+          description: Seconds to wait before sending another request with this key.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: string
+              retryAfter:
+                type: integer
+          example:
+            error: Too many requests.
+            retryAfter: 42
     Unauthorized:
-      description: Missing or invalid token.
+      description: Missing or invalid API key, or missing/invalid bearer token on a protected endpoint.
       content:
         application/json:
           schema:
