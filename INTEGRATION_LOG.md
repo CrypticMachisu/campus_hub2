@@ -25,7 +25,6 @@ Only log what actually happened. Rows below are things to CHECK; delete any that
 | 1 | Handout expects an API key, partner has none | Their public routes need no key | Called without a key; key kept optional in env | Handout assumption, no bug |
 | 2 | First request after idle is very slow / times out | Render Free wakes after ~1 min (per their README) | Warm up before demo; timeouts are Week 11 | Hosting limit, logged only |
 | 3 | TO CHECK: README says single-item reads use `GET /produce/{id}` but also says "individual listing detail" is PROPOSED and returns 404 | README contradicts itself, or one part is stale | Test `GET /produce/1`; report result with the bug-report template | Partner docs, partner to fix |
-| 4 | (yours) | | | |
 
 ## Tests done on purpose (record what each did)
 | Test | Expected (their README) | Actual |
@@ -44,12 +43,9 @@ What I did: ____ / What I expected: ____ (their README, section __) / What I got
 
 ## Downstream partner (Part E) — Team 8 calling us
 Our base URL (ngrok, changes on restart): https://movable-eastcoast-showman.ngrok-free.dev/api
-- [ ] 401s seen in our terminal: ____
-- [ ] 404s (paths our contract doesn't have): ____
-- [ ] 429s: ____
-- [ ] Bugs on our side + fix: ____
-- [ ] Contract/README clarified: ____
+- [ ] 401s seen in our terminal: When the idle time is exceeded  it was shown when group 8 tried accessing it.
+- [ ] Contract/README clarified: The initial readme was locally oriented but once we publicised the api we sent an updated README.
 Tip we gave them: send header `ngrok-skip-browser-warning: true`.
 
 ## Collaboration evidence
-Who we contacted on Team 6, when, what we agreed: ____
+We contacted Jochebed Mukami from group 6 and we agreed to communicate on any issues faced with their api access.
