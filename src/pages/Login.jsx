@@ -4,6 +4,24 @@ import { useAuth } from "../context/AuthContext";
 import PasswordField from "../components/PasswordField";
 import styles from "./Login.module.css";
 
+// Demo accounts from the seeded database (server/campushub_database.sql,
+// password set by `npm run set-passwords`). Lets a user pick a role: the
+// admin account can create clubs/manage everything, the member account
+// has standard user permissions.
+const DEMO_ADMIN = {
+  label: "Log in as Admin",
+  name: "Amara Okafor (tier1)",
+  email: "amara.okafor@campus.edu",
+  // Seeded demo password (SEED_PASSWORD in server/.env, set by npm run set-passwords).
+  password: "campushub123",
+};
+const DEMO_USER = {
+  label: "Log in as User",
+  name: "Sofia Ramirez (member)",
+  email: "sofia.ramirez@campus.edu",
+  password: "campushub123",
+};
+
 export default function Login() {
   const navigate = useNavigate();
   const { login, signup } = useAuth();
@@ -19,6 +37,14 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [signupError, setSignupError] = useState("");
+
+  // Role chooser: pick admin or user and prefill the demo credentials.
+  // The password is the seeded demo password — only for demo data; anyone
+  // can still clear the form and type their own account instead.
+  function fillDemo(account) {
+    setLoginEmail(account.email);
+    setLoginPassword(account.password);
+  }
 
   async function handleLoginSubmit(e) {
     e.preventDefault();
@@ -78,6 +104,23 @@ export default function Login() {
               Input your email and the correct password.
             </blockquote>
           </p>
+
+          <div className={styles.demoPicker}>
+            <span className={styles.demoLabel}>Quick login (demo accounts):</span>
+            <div className={styles.demoButtons}>
+              {[DEMO_ADMIN, DEMO_USER].map((account) => (
+                <button
+                  key={account.email}
+                  type="button"
+                  className={styles.demoButton}
+                  onClick={() => fillDemo(account)}
+                >
+                  <span className={styles.demoRole}>{account.label}</span>
+                  <span className={styles.demoName}>{account.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <form className={styles.form} onSubmit={handleLoginSubmit}>
             <label className={styles.label} htmlFor="login-email">
