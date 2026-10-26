@@ -1,5 +1,11 @@
 import "dotenv/config";
 import express from "express";
+// Express 4 doesn't catch rejected async route handlers, so any thrown DB
+// error (e.g. a FK violation from a bad clubId) used to escape the router,
+// go unhandled and crash the whole server. This tiny shim simply routes
+// async rejections into Express's normal error chain, which is what our
+// JSON 500 handler below assumes.
+import "express-async-errors";
 import cors from "cors";
 import { assertDbConnection } from "./db.js";
 import { authRouter } from "./routes/auth.js";
