@@ -91,14 +91,6 @@
   padding: 4px 10px;
 }
 
-/* Badge variant for the badge on the filled primary button: the default
-   badge is primary-on-transparent, which would vanish here. White pill with
-   primary-dark text keeps it visible and reads "pending" unmistakably. */
-.buttonBadge {
-  background: var(--color-white);
-  color: var(--color-primary-dark);
-}
-
 .dashboardButton:hover {
   background: var(--color-primary-dark);
   border-color: var(--color-primary-dark);
@@ -134,4 +126,14 @@
   font-family: var(--font-mono);
   line-height: 16px;
   vertical-align: middle;
+}
+
+/* Badge variant for the badge on the filled primary button: the default
+   badge is primary-on-transparent, which would vanish there. White pill with
+   primary-dark text keeps it visible and reads "pending" unmistakably.
+   Declared after .badge so it wins the equal-specificity cascade — the two
+   classes share the span. */
+.buttonBadge {
+  background: var(--color-white);
+  color: var(--color-primary-dark);
 }
