@@ -22,7 +22,7 @@ planning is recorded here because everything below follows from it.
   `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`
   — 24 random bytes, 48 hex chars.
 - Neither key appears anywhere in the repo history (checked with `git log -p`
-  for `git grep` on the key values), in logs (only the *count* is logged at
+  for `git grep` on the key values), in logs (only the _count_ is logged at
   startup), or in this document.
 
 ## Part B — API key authentication
@@ -114,7 +114,7 @@ would. "Nothing wrong" entries are recorded too, per the handout.
 
 3. **Error messages — fixed one leak.**
    - The centralized error handler returns `{"error":"Something went wrong
-     on the server."}` — no stack traces, paths, queries, or table names in
+on the server."}` — no stack traces, paths, queries, or table names in
      any response. Route-level errors are short human messages.
    - **Fixed:** unknown URLs used to return Express's default HTML 404
      page, which advertises the framework and doesn't fit our "all

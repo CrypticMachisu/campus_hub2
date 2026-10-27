@@ -27,21 +27,27 @@ curl https://movable-eastcoast-showman.ngrok-free.dev/api/health
 
 Expected: `{"ok":true}`. If you get an HTML warning page instead of JSON, add the header `-H "ngrok-skip-browser-warning: true"` to the request. Browsers show the same warning once; click through it.
 
-From Week 9 on, every request other than the health check must carry an API key (see [API keys](#api-keys) below). The live copy is currently running last week's build, so it may not require a key yet — the local instructions in this README already do:
+From Week 9 on, every request other than the health check must carry an API key in the `X-API-Key` header (see [API keys](#api-keys) below) — the live copy runs the same build, so the live URL enforces this exactly like local:
 
 ```bash
 curl https://movable-eastcoast-showman.ngrok-free.dev/api/clubs -H "X-API-Key: <your-api-key>"
 ```
 
-Reading clubs and events needs no account. To call a protected endpoint on the live copy, create your own account (the demo accounts below are not available there):
+> **Windows PowerShell:** use `curl.exe` and quote each header:
+> `curl.exe https://movable-eastcoast-showman.ngrok-free.dev/api/clubs -H "X-API-Key: <your-api-key>"`
+
+A request without the key (or with an unknown one) returns the same `401` as locally: `{"error":"Missing or invalid API key."}`. The health check needs no key, so `.../api/health` is the quickest way to confirm the tunnel is up before you spend quota.
+
+Reading clubs and events needs no account — just your shipped API key. To call a protected endpoint on the live copy, create your own account (the demo accounts below are not available there):
 
 ```bash
 curl -X POST https://movable-eastcoast-showman.ngrok-free.dev/api/auth/register \
+  -H "X-API-Key: <your-api-key>" \
   -H "Content-Type: application/json" \
   -d '{"name":"Your Name","email":"you@example.com","password":"at-least-8-chars"}'
 ```
 
-Use the returned `token` as `Authorization: Bearer <token>`, for example on `GET /api/auth/me`. New accounts are `member` accounts, so creating clubs or events returns `403`.
+Use the returned `token` as `Authorization: Bearer <token>` — still alongside your `X-API-Key` header, never instead of it — for example on `GET /api/auth/me`. New accounts are `member` accounts, so creating clubs or events returns `403`.
 
 This address stops working when the host's machine or tunnel is switched off. All other examples in this README use the local address `http://localhost:5000/api`; swap in the live base URL if you are testing against the live copy.
 
@@ -145,11 +151,11 @@ Tokens are JWTs and are valid for 7 days. Roles are `tier1`, `tier2` and `member
 
 All demo accounts use the password **`campushub123`** (set by `npm run set-passwords`; change it with `SEED_PASSWORD` in `server/.env`).
 
-|Email|Role|
-|---|---|
-|`amara.okafor@campus.edu`|`tier1` (can create clubs)|
-|`leo.fischer@campus.edu`|`tier2`|
-|`sofia.ramirez@campus.edu`|`member`|
+| Email                      | Role                       |
+| -------------------------- | -------------------------- |
+| `amara.okafor@campus.edu`  | `tier1` (can create clubs) |
+| `leo.fischer@campus.edu`   | `tier2`                    |
+| `sofia.ramirez@campus.edu` | `member`                   |
 
 ---
 
@@ -157,18 +163,18 @@ All demo accounts use the password **`campushub123`** (set by `npm run set-passw
 
 All endpoints require `X-API-Key` (except `/api/health`); the `Auth` column shows what the key consumer additionally needs.
 
-|Method|Path|Auth|Purpose|
-|---|---|---|---|
-|GET|`/api/health`|none (no API key either)|Check the API is running|
-|POST|`/api/auth/login`|none – but API key|Sign in, get a token|
-|POST|`/api/auth/register`|none – but API key|Create a member account|
-|GET|`/api/auth/me`|API key + token|Get the signed-in user|
-|GET|`/api/clubs`|none – but API key|List clubs|
-|POST|`/api/clubs`|API key + token (tier1)|Create a club|
-|GET|`/api/events`|none – but API key|List events|
-|POST|`/api/events`|API key + token|Create an event|
-|PUT|`/api/events/:id`|API key + token|Update an event|
-|DELETE|`/api/events/:id`|API key + token|Delete an event|
+| Method | Path                 | Auth                     | Purpose                  |
+| ------ | -------------------- | ------------------------ | ------------------------ |
+| GET    | `/api/health`        | none (no API key either) | Check the API is running |
+| POST   | `/api/auth/login`    | none – but API key       | Sign in, get a token     |
+| POST   | `/api/auth/register` | none – but API key       | Create a member account  |
+| GET    | `/api/auth/me`       | API key + token          | Get the signed-in user   |
+| GET    | `/api/clubs`         | none – but API key       | List clubs               |
+| POST   | `/api/clubs`         | API key + token (tier1)  | Create a club            |
+| GET    | `/api/events`        | none – but API key       | List events              |
+| POST   | `/api/events`        | API key + token          | Create an event          |
+| PUT    | `/api/events/:id`    | API key + token          | Update an event          |
+| DELETE | `/api/events/:id`    | API key + token          | Delete an event          |
 
 ### Health check
 
@@ -177,7 +183,7 @@ curl http://localhost:5000/api/health
 ```
 
 ```json
-{"ok":true}
+{ "ok": true }
 ```
 
 ### Login
@@ -252,7 +258,15 @@ curl http://localhost:5000/api/auth/me -H "X-API-Key: <your-api-key>" -H "Author
 Response `200`:
 
 ```json
-{"user":{"id":"user-01","name":"Amara Okafor","email":"amara.okafor@campus.edu","role":"tier1","adminForClubs":[]}}
+{
+  "user": {
+    "id": "user-01",
+    "name": "Amara Okafor",
+    "email": "amara.okafor@campus.edu",
+    "role": "tier1",
+    "adminForClubs": []
+  }
+}
 ```
 
 ### List clubs
@@ -411,7 +425,7 @@ curl -i -X POST http://localhost:5000/api/auth/login \
 ```
 
 ```json
-{"error":"Invalid email or password."}
+{ "error": "Invalid email or password." }
 ```
 
 Missing or invalid token on a protected endpoint (`401 Unauthorized`):
@@ -423,7 +437,7 @@ curl -i -X POST http://localhost:5000/api/events \
 ```
 
 ```json
-{"error":"Not authenticated."}
+{ "error": "Not authenticated." }
 ```
 
 Missing or invalid API key on any endpoint except `GET /api/health` (`401 Unauthorized`):
@@ -433,7 +447,7 @@ curl -i http://localhost:5000/api/clubs
 ```
 
 ```json
-{"error":"Missing or invalid API key."}
+{ "error": "Missing or invalid API key." }
 ```
 
 Too many requests with one key in a minute (`429 Too Many Requests`) — includes a `Retry-After` header so a well-behaved consumer knows when to try again:
@@ -448,27 +462,27 @@ Retry-After: 42
 Unexpected server failure (`500`):
 
 ```json
-{"error":"Something went wrong on the server."}
+{ "error": "Something went wrong on the server." }
 ```
 
 ### Other error messages
 
-|Status|`error` message|When|
-|---|---|---|
-|400|`Email and password are required.`|Login with a missing field|
-|400|`Name and email are required.`|Register with a missing field|
-|400|`Enter a valid email address.`|Register or forgot-password with a bad email|
-|400|`Password must be at least 8 characters.`|Register or reset-password with a short password|
-|400|`Club name is required.`|Create club without a name|
-|400|`Title is required.`|Create or update an event without a title|
-|400|`Unknown category: <name>`|Create or update a club or event with a category that doesn't exist|
-|403|`Tier 1 admin access required.`|Create a club with a token that isn't tier1|
-|403|`You don't have admin access to that club.`|Create, update or delete an event for a club you don't manage|
-|403|`Seed events are read-only.`|Update or delete a built-in `event-` event|
-|404|`Event not found.`|Update or delete an event ID that doesn't exist|
-|404|`Not found.`|Any URL that doesn't exist|
-|409|`That email is already registered.`|Register with an email that exists|
-|429|`Too many requests.`|The key exceeded 100 requests in 60 seconds; see `retryAfter` and the `Retry-After` header|
+| Status | `error` message                             | When                                                                                       |
+| ------ | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 400    | `Email and password are required.`          | Login with a missing field                                                                 |
+| 400    | `Name and email are required.`              | Register with a missing field                                                              |
+| 400    | `Enter a valid email address.`              | Register or forgot-password with a bad email                                               |
+| 400    | `Password must be at least 8 characters.`   | Register or reset-password with a short password                                           |
+| 400    | `Club name is required.`                    | Create club without a name                                                                 |
+| 400    | `Title is required.`                        | Create or update an event without a title                                                  |
+| 400    | `Unknown category: <name>`                  | Create or update a club or event with a category that doesn't exist                        |
+| 403    | `Tier 1 admin access required.`             | Create a club with a token that isn't tier1                                                |
+| 403    | `You don't have admin access to that club.` | Create, update or delete an event for a club you don't manage                              |
+| 403    | `Seed events are read-only.`                | Update or delete a built-in `event-` event                                                 |
+| 404    | `Event not found.`                          | Update or delete an event ID that doesn't exist                                            |
+| 404    | `Not found.`                                | Any URL that doesn't exist                                                                 |
+| 409    | `That email is already registered.`         | Register with an email that exists                                                         |
+| 429    | `Too many requests.`                        | The key exceeded 100 requests in 60 seconds; see `retryAfter` and the `Retry-After` header |
 
 > **All responses are JSON now.** A request to a path that doesn't exist returns `404` with `{"error":"Not found."}` instead of Express's HTML page. There is no `GET /api/clubs/:id` or `GET /api/events/:id`; use the list endpoints and filter by `id`.
 

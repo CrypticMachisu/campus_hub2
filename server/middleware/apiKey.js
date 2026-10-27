@@ -35,6 +35,22 @@ function knowsKey(presented, valid) {
 }
 
 /**
+ * Stable, non-reversible identity for one key, for dashboards/logs:
+ * a short SHA-256 prefix plus a masked tail. Never emits the key itself.
+ */
+export function fingerprintApiKey(key) {
+  return {
+    keyId: crypto.createHash("sha256").update(key).digest("hex").slice(0, 12),
+    maskedKey: key.length > 8 ? `${key.slice(0, 3)}…${key.slice(-4)}` : "…",
+  };
+}
+
+/** Every configured key as a fingerprint, in config order. */
+export function configuredKeyFingerprints() {
+  return validKeys().map(fingerprintApiKey);
+}
+
+/**
  * Rejects with 401 unless the X-API-Key header matches one of API_KEYS.
  * On success attaches the presented key to req.apiKey so the rate
  * limiter can count requests per consumer. 401 (not 403) because with

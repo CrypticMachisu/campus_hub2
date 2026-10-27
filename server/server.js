@@ -16,6 +16,7 @@ import { eventsRouter } from "./routes/events.js";
 import { signupsRouter } from "./routes/signups.js";
 import { requireApiKey, validApiKeyCount } from "./middleware/apiKey.js";
 import { rateLimit } from "./middleware/rateLimit.js";
+import { createAdminRouter } from "./routes/admin.js";
 import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { partnerRouter } from "./routes/partner.js"; // NEW: Team 6 AgroConnect integration
@@ -36,12 +37,12 @@ app.use(requireApiKey);
 
 // ... and no consumer may exceed its rate limit (Week 9 Part C).
 // 100 requests per consumer per 60 seconds — see SECURITY_AUDIT.md.
-app.use(
-  rateLimit({
-    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000),
-    max: Number(process.env.RATE_LIMIT_MAX || 100),
-  }),
-);
+// The limiter instance is kept so GET /api/admin can read its stats.
+const limiter = rateLimit({
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000),
+  max: Number(process.env.RATE_LIMIT_MAX || 100),
+});
+app.use(limiter);
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
@@ -52,6 +53,7 @@ app.use("/api/signups", signupsRouter);
 app.use("/api/comments", commentsRouter);
 app.use("/api/announcements", announcementsRouter);
 app.use("/api/partner", partnerRouter); // NEW: calls the partner's API from our server
+app.use("/api/admin", createAdminRouter(limiter));
 
 // Week 9 (Part D) fix: unknown URLs used to return Express's default HTML
 // 404 page, which leaks what framework/version the server runs and
@@ -77,9 +79,13 @@ assertDbConnection()
       // Log the COUNT of loaded keys at startup — never the keys themselves.
       console.log(`API keys loaded: ${validApiKeyCount()}`);
       if (validApiKeyCount() === 0) {
-        console.warn("No API keys configured (set API_KEYS in server/.env) — every request will get 401.");
+        console.warn(
+          "No API keys configured (set API_KEYS in server/.env) — every request will get 401."
+        );
       }
-      console.log(`Rate limit: ${process.env.RATE_LIMIT_MAX || 100} requests per ${process.env.RATE_LIMIT_WINDOW_MS || 60000} ms per key`);
+      console.log(
+        `Rate limit: ${process.env.RATE_LIMIT_MAX || 100} requests per ${process.env.RATE_LIMIT_WINDOW_MS || 60000} ms per key`
+      );
       if (publicUrl) console.log(`Public URL: ${publicUrl}/api`);
     });
   })

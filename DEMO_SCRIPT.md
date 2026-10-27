@@ -8,6 +8,7 @@
 3. **Partner back.** Restore `PARTNER_URL=https://farmers-agroconnect.onrender.com/api`, restart, reload. Data returns, no code changed.
 
 **Before pushing:** `git status` must NOT list `.env`, and the RAW-response `console.log` must still be commented out. Then:
+
 ```
 git add . INTEGRATION_LOG.md .env.example
 git commit -m "Week 10: live integration with upstream partner"
