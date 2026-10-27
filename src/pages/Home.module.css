@@ -24,13 +24,15 @@
   width: 100%;
 }
 
-.filterGroup, .toggleGroup {
+.filterGroup,
+.toggleGroup {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-.filterBtn, .toggleBtn {
+.filterBtn,
+.toggleBtn {
   padding: 0.5rem 1rem;
   border: 1px solid #ddd;
   background: transparent;
@@ -39,7 +41,8 @@
   transition: all 0.2s ease;
 }
 
-.activeFilter, .activeToggle {
+.activeFilter,
+.activeToggle {
   padding: 0.5rem 1rem;
   border: 1px solid transparent;
   background: #0070f3;
@@ -49,6 +52,13 @@
 }
 
 .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-lg, 2rem);
+}
+
+.skeletonGrid {
+  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-lg, 2rem);

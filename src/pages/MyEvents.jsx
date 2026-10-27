@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getAllEvents } from "../utils/eventsStore";
 import { getSignups, deleteSignup } from "../utils/storage";
+import { SkeletonGroup, CardStackSkeleton } from "../components/Skeleton";
 
 export default function MyEvents() {
   const { user } = useAuth();
@@ -74,7 +75,9 @@ export default function MyEvents() {
       <h1>My Events</h1>
 
       {loading ? (
-        <p>Loading your events…</p>
+        <SkeletonGroup label="Loading your events…">
+          <CardStackSkeleton count={3} />
+        </SkeletonGroup>
       ) : myEvents.length === 0 ? (
         <p>You haven't signed up for any upcoming events.</p>
       ) : (
