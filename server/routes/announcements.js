@@ -10,7 +10,9 @@ announcementsRouter.get("/", async (req, res) => {
   const { clubId } = req.query;
   if (!clubId) return res.status(400).json({ error: "clubId is required." });
 
-  const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", { clubId });
+  const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
+    clubId,
+  });
   if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
 
   const [rows] = await pool.query(
