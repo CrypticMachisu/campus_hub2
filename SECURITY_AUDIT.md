@@ -13,17 +13,20 @@ planning is recorded here because everything below follows from it.
 - **One key per consumer, never a shared key** — so we can tell callers apart
   and revoke one without breaking the other.
 - **Rule:** every endpoint requires a valid key in `X-API-Key`, with no
-  exceptions for "harmless" GETs. One exception is kept and justified: see
-  the health check below.
+  exceptions for "harmless" GETs. One exception is kept and justified: the
+  health check (`GET /api/health`). It returns only `{"ok":true}`, reveals no
+  data, and lets uptime checks and partners confirm the API is alive without
+  spending quota.
 - **Keys live in `server/.env`** (the `API_KEYS` variable), which is in
-  `.gitignore` and has never been committed. A committed key is a leaked key.
-  `server/.env.example` carries only placeholders. Keys are handed to
-  consumers by direct message, sorted. Each key is generated as
+  `.gitignore`. A committed key is a leaked key, so `server/.env.example`
+  carries only placeholders. Keys are handed to consumers by direct message,
+  never in the repo or a shared channel. Each key is generated with
   `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`
-  — 24 random bytes, 48 hex chars.
-- Neither key appears anywhere in the repo history (checked with `git log -p`
-  for `git grep` on the key values), in logs (only the _count_ is logged at
-  startup), or in this document.
+  — 24 random bytes, 48 hex characters.
+- **Verified:** `git log --all -- server/.env .env` returns nothing (the
+  file was never tracked), and `git log --all -p -S<first six characters of
+  each key>` returns nothing (no key appears in the history). Keys are also
+  not in logs (only the _count_ is printed at startup) or in this document.
 
 ## Part B — API key authentication
 
@@ -33,17 +36,16 @@ on SHA-256 digests with `crypto.timingSafeEqual`, so a caller can't probe
 the key length/characters by timing. The presented key (`req.apiKey`) is
 reused by the rate limiter to attribute requests per consumer.
 
-Demonstration (server on :5050 — no key, wrong key, valid key, plus a
-formerly-open URL):
+Demonstration (no key, wrong key, valid key, plus a formerly-open URL):
 
 ```
-$ curl -i http://localhost:5050/api/clubs
+$ curl -i http://localhost:5000/api/clubs
 {"error":"Missing or invalid API key."}   HTTP 401
-$ curl -i -H "X-API-Key: wrong" http://localhost:5050/api/clubs
+$ curl -i -H "X-API-Key: wrong" http://localhost:5000/api/clubs
 {"error":"Missing or invalid API key."}   HTTP 401
-$ curl -i -H "X-API-Key: <our-team-key>" http://localhost:5050/api/clubs
+$ curl -i -H "X-API-Key: <our-team-key>" http://localhost:5000/api/clubs
 HTTP 200 (JSON club list)
-$ curl -i -H "X-API-Key: <our-team-key>" http://localhost:5050/api/does-not-exist
+$ curl -i -H "X-API-Key: <our-team-key>" http://localhost:5000/api/does-not-exist
 {"error":"Not found."}   HTTP 404
 ```
 
@@ -67,10 +69,7 @@ consumer knows exactly when to try again.
 Demonstration (limit temporarily lowered to 3, exactly as the lab asks):
 
 ```
-$ for i in 1 2 3 4 5; do
-    curl -s -o /dev/null -w "%{http_code} " -H "X-API-Key: <our-team-key>" \
-      http://localhost:5051/api/clubs
-  done
+$ 1..5 | ForEach-Object { curl.exe -s -o NUL -w "%{http_code} " -H "X-API-Key: <our-team-key>" http://localhost:5000/api/clubs }
 200 200 200 429 429
 ```
 
@@ -94,13 +93,13 @@ store such as Redis.
 Checked every response the API can return, reading each as an attacker
 would. "Nothing wrong" entries are recorded too, per the handout.
 
-1. **Sensitive fields in responses — checked, fixed nothing needed.**
+1. **Sensitive fields in responses — checked, nothing wrong.**
    No endpoint returns raw database rows; every handler maps rows through
    `rowMappers.js`. `rowToUser` deliberately excludes `password_hash` even
    though `SELECT u.*` fetches it (login compares the hash server-side and
    never returns it). Club/event/signup/comment/announcement mappers return
-   only contract fields. Fix applied under "Errors" (+ category_id etc. can
-   be verified with the mapper tests in `server/tests`).
+   only contract fields. No fix needed. The `category_id` assertion in
+   `server/tests` confirms raw column names don't leak into responses.
 
 2. **Other people's data via ID manipulation — checked, nothing wrong.**
    - There is no `GET /api/users/:id` or `GET /events/:id` at all; only
@@ -113,9 +112,10 @@ would. "Nothing wrong" entries are recorded too, per the handout.
    - `DELETE /api/signups/:id` rejects a signup that isn't the caller's.
 
 3. **Error messages — fixed one leak.**
-   - The centralized error handler returns `{"error":"Something went wrong
-on the server."}` — no stack traces, paths, queries, or table names in
-     any response. Route-level errors are short human messages.
+   - The centralized error handler returns
+     `{"error":"Something went wrong on the server."}` — no stack traces,
+     paths, queries, or table names in any response. Route-level errors are
+     short human messages.
    - **Fixed:** unknown URLs used to return Express's default HTML 404
      page, which advertises the framework and doesn't fit our "all
      responses are JSON" contract. Now any unknown path answers
@@ -144,6 +144,40 @@ on the server."}` — no stack traces, paths, queries, or table names in
      reach any HTTP response, and expires in 1 hour. The docs' reset flow
      relies on it.
 
+6. **Admin dashboard (`GET /api/admin`) — checked, one accepted risk.**
+   - Requires a valid API key **and** a tier1 login (`requireAuth` +
+     `requireTier1`). A test confirms a valid key alone gets 401, and a
+     non-admin account gets 403.
+   - It returns, per consumer, a hashed `keyId`, request counts, and the
+     last-seen IP address. IP addresses are personal data, so they are
+     visible to tier1 admins only.
+   - **Accepted risk:** the response also includes `maskedKey`, the first 3
+     and last 4 characters of each key (7 of 48). This is shown to tier1
+     admins only and does not allow reconstructing a key, but it is more
+     than strictly needed; `keyId` alone would identify a consumer.
+   - Behind a proxy such as ngrok, `req.ip` shows the proxy's address
+     unless `trust proxy` is configured, so `lastIp` is not reliable for
+     tunnelled traffic.
+
+7. **The frontend key is visible in the browser — accepted limitation.**
+   Our React app sends its key from `VITE_API_KEY`, which Vite bundles into
+   the JavaScript the browser downloads, so anyone using the site can read
+   it. The key identifies our app and enables per-consumer rate limiting; it
+   is not a secret. User-level protection comes from the login token (JWT)
+   required on writes and private reads. The frontend key is separate from
+   the partner's, so it can be revoked without breaking the partner.
+
+8. **Shared rate-limit bucket for the frontend — noted.**
+   All browser users share the frontend's single key, and so one
+   100-per-minute bucket. Heavy simultaneous use could briefly lock
+   everyone out. For this course the limit stays at 100; a production fix
+   would be a higher limit for the frontend key or per-user limits.
+
+9. **CORS — noted.** `cors()` is configured with no restrictions, so any
+   origin can call the API from a browser. API keys and tokens, not the
+   origin, are what protect the data. A production deployment would restrict
+   CORS to the frontend's own origin.
+
 ## Part E checklist
 
 - [x] Every endpoint requires a valid API key; no key / wrong key → 401
@@ -153,5 +187,6 @@ on the server."}` — no stack traces, paths, queries, or table names in
 - [x] README.md and openapi.yaml describe the real auth + limit, no real key shown
 - [x] This audit documents what was checked, found, and fixed
 - [x] New tests cover the 401 and 200 cases (+ wrong-key 401, exempt health
-      check, and the 429+Retry-After burst); `npm test` passes — 5/5
-- [ ] Commit and push (on approval — this branch is not merged into main yet)
+      check, the 429+Retry-After burst, and the `/admin` checks); `npm test`
+      passes — 8/8
+- [x] Commit and push
