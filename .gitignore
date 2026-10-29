@@ -3,3 +3,6 @@ dist/
 .env
 server/.env
 *.log
+
+# Browser verification screenshots (not part of the app)
+screenshots/

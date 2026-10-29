@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, Navigate } from "react-router-dom";
 import { CATEGORIES, createClub } from "../utils/clubsStore";
 import { useClubs } from "../context/ClubsContext";
 import { useAuth } from "../context/AuthContext";
@@ -21,6 +21,9 @@ import { SkeletonGroup, SkeletonListRow, CardStackSkeleton } from "../components
 import styles from "./Dashboard.module.css";
 
 const FALLBACK_IMAGE = "https://placehold.co/600x300";
+// The default platform dashboard for tier1 admins — also the fallback the
+// parameter-less /dashboard route resolves to when nothing better applies.
+const DEFAULT_ADMIN_CLUB_ID = "club-01";
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -46,6 +49,38 @@ const emptyForm = {
   category: CATEGORIES[0],
   imageUrl: "",
 };
+
+// Entry for the parameter-less /dashboard URL (typed URLs, older
+// bookmarks). The old hardcoded redirect to /dashboard/club-01
+// dead-ended tier2 admins whose managed club is any other club —
+// resolve to THIS user's first manageable club instead.
+export function DashboardHome() {
+  const { user, loading: authLoading } = useAuth();
+  const { clubs, loading: clubsLoading } = useClubs();
+
+  if (authLoading || clubsLoading) {
+    return (
+      <div className={styles.page}>
+        <SkeletonGroup label="Loading dashboard…">
+          <CardStackSkeleton count={1} />
+        </SkeletonGroup>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  // tier1 administers the platform, so any club works for them; everyone
+  // else lands on the first club they can actually manage. The club-01
+  // fallback only fires for a signed-in tier2 with no manageable clubs —
+  // the unauthorized page there explains and points forward.
+  const targetId =
+    user.role === "tier1"
+      ? DEFAULT_ADMIN_CLUB_ID
+      : (clubs.find((c) => canManageClub(user, c.id))?.id ?? DEFAULT_ADMIN_CLUB_ID);
+
+  return <Navigate to={`/dashboard/${targetId}`} replace />;
+}
 
 export default function Dashboard() {
   const { clubId } = useParams();
@@ -98,6 +133,13 @@ export default function Dashboard() {
   }
 
   if (!authorized) {
+    // A tier2 admin deep-linking here isn't an error to explain away —
+    // they *are* an admin, just of other clubs. Show exactly which ones
+    // and link onward instead of dead-ending on "this is expected".
+    const otherManaged = user
+      ? clubs.filter((c) => c.id !== clubId && canManageClub(user, c.id))
+      : [];
+
     return (
       <div className={styles.page}>
         <div className={styles.unauthorized}>
@@ -113,8 +155,23 @@ export default function Dashboard() {
                 with an account that manages this club.
               </>
             )}
-            {user && <> This is expected if you&apos;re not an admin for this club.</>}
+            {user && otherManaged.length === 0 && (
+              <> This is expected if you&apos;re not an admin for this club.</>
+            )}
           </p>
+          {user && otherManaged.length > 0 && (
+            <p>
+              You are an admin for{" "}
+              <strong>
+                {otherManaged.map((c) => c.name).join(otherManaged.length === 2 ? " and " : ", ")}
+              </strong>
+              .{" "}
+              <Link to={`/dashboard/${otherManaged[0].id}`} className={styles.loginLink}>
+                Go to {otherManaged[0].name} dashboard
+              </Link>
+              .
+            </p>
+          )}
         </div>
       </div>
     );
@@ -220,10 +277,30 @@ export default function Dashboard() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>Club Admin</p>
+        {/* The two admin tiers must *read* as different experiences, not
+            just render different panels silently: tier1 is a platform
+            admin (clubs + admin grants, below), tier2 is locked to one
+            club. Same idea as the Navbar's role label, made prominent. */}
+        <div className={styles.tierRow}>
+          <p className={styles.eyebrow}>
+            {user.role === "tier1" ? "Platform admin" : "Club admin"}
+          </p>
+          <span
+            className={
+              user.role === "tier1"
+                ? `${styles.tierPill} ${styles.tierPillTier1}`
+                : `${styles.tierPill} ${styles.tierPillTier2}`
+            }
+          >
+            {user.role === "tier1" ? "Tier 1" : "Tier 2"}
+          </span>
+        </div>
         <h1>{club.name} Dashboard</h1>
-        <p className={styles.subtitle}>
-          Logged in as {user.name} ({user.role === "tier1" ? "Tier 1" : "Tier 2"})
+        <p className={styles.subtitle}>Logged in as {user.name}</p>
+        <p className={styles.scopeNote}>
+          {user.role === "tier1"
+            ? `You can create clubs and grant club-admin access to any club (panels below). This page is scoped to ${club.name} — switch clubs above to manage others.`
+            : `You manage ${club.name} only: its events, sign-ups and announcements. Creating clubs or granting admin access are Tier 1 capabilities — request extra clubs via "Request admin access" on the club's profile.`}
         </p>
       </header>
 

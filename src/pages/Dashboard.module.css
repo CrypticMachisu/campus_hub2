@@ -26,6 +26,49 @@
   font-size: 0.9rem;
 }
 
+/* Tier distinction: a small pill + a scope sentence, so tier1 and tier2
+   dashboards visibly read as different experiences. Tier1 = amber,
+   tier2 = green (matches the toast's success palette). */
+.tierRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tierPill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+/* Tier1 flavour, composed with .tierPill in Dashboard.jsx and declared
+   after .tierPill so it wins the cascade over the base. */
+.tierPillTier1 {
+  color: var(--color-warning-text, #92400e);
+  background: var(--color-warning-bg, #fef3c7);
+  border-color: var(--color-warning-border, #fcd34d);
+}
+
+/* Tier2 flavour, composed with .tierPill the same way; declared after
+   .tierPill so it wins the cascade over the base. */
+.tierPillTier2 {
+  color: var(--color-success-text, #065f46);
+  background: var(--color-success-bg, #ecfdf5);
+  border-color: var(--color-success-border, #6ee7b7);
+}
+
+.scopeNote {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-muted, #6b7280);
+  max-width: 65ch;
+}
+
 /* Unauthorized state — intentional, not an error page */
 .unauthorized {
   border: 1px solid var(--color-border, #e5e7eb);
