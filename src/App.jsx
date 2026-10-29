@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ClubsProvider } from "./context/ClubsContext";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -11,7 +11,7 @@ import Home from "./pages/Home";
 import ClubProfile from "./pages/ClubProfile";
 import EventDetail from "./pages/EventDetail";
 import MyEvents from "./pages/MyEvents";
-import Dashboard from "./pages/Dashboard";
+import Dashboard, { DashboardHome } from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -30,7 +30,9 @@ export default function App() {
               <Route path="/events/:eventId" element={<EventDetail />} />
               <Route path="/my-events" element={<MyEvents />} />
               <Route path="/dashboard/:clubId" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Navigate to="/dashboard/club-01" replace />} />
+              {/* Resolves the plain /dashboard URL per role: logged out → login,
+                  tier1 → platform default, tier2 → their first managed club. */}
+              <Route path="/dashboard" element={<DashboardHome />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <Footer />

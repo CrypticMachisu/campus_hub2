@@ -19,6 +19,7 @@
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 .brandAccent {
@@ -38,12 +39,16 @@
   color: var(--color-text-muted);
   padding-bottom: 2px;
   border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
 
 .link:hover {
   color: var(--color-text);
 }
 
+/* Active nav state, composed with .link in Navbar.jsx and declared after
+   .link so it wins the equal-specificity cascade — the two classes share
+   the same anchor. */
 .linkActive {
   color: var(--color-primary-dark);
   border-bottom-color: var(--color-primary);
@@ -66,6 +71,7 @@
   font-family: var(--font-mono);
   font-size: 0.75rem;
   text-transform: uppercase;
+  white-space: nowrap;
   letter-spacing: 0.03em;
   color: var(--color-primary-dark);
   background: transparent;
@@ -83,6 +89,7 @@
   font-family: var(--font-mono);
   font-size: 0.75rem;
   text-transform: uppercase;
+  white-space: nowrap;
   letter-spacing: 0.03em;
   color: var(--color-white);
   background: var(--color-primary);
@@ -96,18 +103,35 @@
   border-color: var(--color-primary-dark);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 860px) {
+  /* Squeeze 1 (worst case measured ~850px): an admin row overflows with
+     everything shown, and the first thing worth losing is the "Go to
+     dashboard" button — it duplicates the Dashboard nav link — followed
+     by tightening the link gaps. That buys ~130px, enough for every
+     admin row down to ~700px. */
+  .dashboardButton {
+    display: none;
+  }
   .links {
     gap: var(--space-md);
   }
+}
+
+@media (max-width: 700px) {
+  /* Squeeze 2: with the shortcut gone, an admin row still needs ~680px with
+     the name visible, so narrow screens keep the actions (My Events,
+     Dashboard, Log out) and drop the redundant name label. */
+  .userInfo {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
   .brand {
     font-size: 1.05rem;
   }
   .link {
     font-size: 0.7rem;
-  }
-  .userInfo {
-    display: none;
   }
 }
 

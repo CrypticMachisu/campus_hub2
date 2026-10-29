@@ -16,10 +16,19 @@ import { eventsRouter } from "./routes/events.js";
 import { signupsRouter } from "./routes/signups.js";
 import { requireApiKey, validApiKeyCount } from "./middleware/apiKey.js";
 import { rateLimit } from "./middleware/rateLimit.js";
+import { validateEnvOrExit } from "./env.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { partnerRouter } from "./routes/partner.js"; // NEW: Team 6 AgroConnect integration
+
+// Week 10 hardening: check the required .env configuration BEFORE
+// anything else (pool creation happens at import time in db.js, and the
+// auth/rate-limit middleware read JWT_SECRET and API_KEYS per request).
+// A cold start with missing config now fails here, once, with a line
+// per problem — instead of 500ing on login, 401ing every request, or
+// surfacing a raw mysql2 error later.
+validateEnvOrExit();
 
 const app = express();
 
@@ -69,7 +78,26 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong on the server." });
 });
 
-const PORT = process.env.PORT || 5000;
+// PORT shell-proofing (the PORT=0 trap OPERATIONS.md documents): this
+// machine's shells have carried a stray `PORT=0`, and the old
+// `process.env.PORT || 5000` happily bound a random ephemeral port —
+// the server "started" but was unreachable, and node --watch hid the
+// clue from the log. Dotenv never overrides an already-set env var, so
+// the shell value always wins: validate it and refuse instead of lying.
+const PORT = Number(process.env.PORT ?? 5000);
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+  if (PORT === 0) {
+    console.error(
+      "Refusing to start: PORT=0 would bind an arbitrary ephemeral port, which the ngrok tunnel can't address. " +
+        "Unset PORT or pass PORT=5000 explicitly (shell-exported values beat server/.env, since dotenv never overrides them)."
+    );
+  } else {
+    console.error(
+      `Refusing to start: PORT must be a port number 1-65535 (got "${process.env.PORT ?? "<unset>"}").`
+    );
+  }
+  process.exit(1);
+}
 
 assertDbConnection()
   .then(() => {

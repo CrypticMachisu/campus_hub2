@@ -28,6 +28,9 @@
   color: var(--color-text);
 }
 
+/* Selected tab state, composed with .tab in Login.jsx and declared after
+   .tab so it wins the equal-specificity cascade — the two classes share
+   the same button. */
 .tabActive {
   color: var(--color-primary-dark);
   border-bottom-color: var(--color-primary);
@@ -73,6 +76,8 @@
   border-color: var(--color-primary);
 }
 
+/* Selected path state, composed with .rolePathButton in Login.jsx and
+   declared after .rolePathButton so it wins the cascade the same way. */
 .rolePathButtonActive {
   background: var(--color-primary);
   border-color: var(--color-primary);

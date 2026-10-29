@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "lint:css": "node scripts/check-css-order.mjs",
+    "tunnel:watch": "bash scripts/tunnel-watchdog.sh",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "preview": "vite preview",
@@ -15,10 +17,12 @@
   "lint-staged": {
     "*.{js,jsx,mjs,cjs}": [
       "eslint --fix",
-      "prettier --write"
+      "prettier --write",
+      "node scripts/check-css-order.mjs"
     ],
     "*.{css,json,md,yml,yaml}": [
-      "prettier --write"
+      "prettier --write",
+      "node scripts/check-css-order.mjs"
     ]
   },
   "dependencies": {
