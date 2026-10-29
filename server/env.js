@@ -16,7 +16,11 @@
 // PARTNER_URL / PARTNER_API_KEY / SEED_PASSWORD / RATE_LIMIT_* are also
 // optional: the partner routes already return a clean 502 when unset,
 // set-passwords.js falls back to a documented default, and the limiter
-// has its own defaults in server.js.
+// has its own defaults in server.js. When PARTNER_URL or RATE_LIMIT_* ARE
+// set they are still shape-checked — partner.js builds URLs by string
+// concatenation (garbage would TypeError per request instead of 502ing)
+// and the limiter's Number() silently NaNs on garbage, which means the
+// rate limit quietly stops existing.
 
 // The example value in .env.example — signing real tokens with it would
 // let anyone who read the README forge accounts, so it counts as unset.
@@ -109,6 +113,48 @@ export function findEnvProblems({ env = process.env } = {}) {
         problem:
           "contains no actual keys (only blanks/separators) — every request would get 401. Comma-separated, one per consumer: API_KEYS=<partner-key>,<own-team-key>",
       });
+    }
+  }
+
+  // --- Partner bridge (optional; shape-checked when present) ---
+  // The partner routes validate nothing themselves: they string-concatenate
+  // this base onto /produce, /farmers and /auth/login and hand it to new
+  // URL(), so a garbage value there means a raw TypeError mid-request
+  // instead of a clean 502. http/https only — FILE:: and friends would
+  // also make fetch() blow up rather than fail.
+  if (isSet(env.PARTNER_URL)) {
+    let parsed = null;
+    try {
+      parsed = new URL(env.PARTNER_URL.trim());
+    } catch {
+      // falls through to the problem below
+    }
+    if (!parsed || !parsed.protocol.startsWith("http")) {
+      problems.push({
+        name: "PARTNER_URL",
+        problem:
+          "is not an http(s):// URL — the partner routes build `${PARTNER_URL}/produce` and would crash per request instead of failing cleanly. Example: PARTNER_URL=https://farmers-agroconnect.onrender.com/api",
+      });
+    }
+  }
+
+  // --- Rate limit per API key (optional; defaults live in server.js) ---
+  // Number() on garbage silently yields NaN, which disables the limit
+  // entirely — a misconfiguration that looks like a working server.
+  const positiveInt = (name, example) => ({
+    name,
+    problem: `must be a whole number >= 1 if set (the value in server/.env is not, and a NaN limit means the limiter quietly stops limiting) — e.g. ${example}. Unset is fine: the limiter falls back to its default.`,
+  });
+  if (isSet(env.RATE_LIMIT_MAX)) {
+    const max = Number(env.RATE_LIMIT_MAX);
+    if (!Number.isInteger(max) || max < 1) {
+      problems.push(positiveInt("RATE_LIMIT_MAX", "RATE_LIMIT_MAX=100"));
+    }
+  }
+  if (isSet(env.RATE_LIMIT_WINDOW_MS)) {
+    const windowMs = Number(env.RATE_LIMIT_WINDOW_MS);
+    if (!Number.isInteger(windowMs) || windowMs < 1) {
+      problems.push(positiveInt("RATE_LIMIT_WINDOW_MS", "RATE_LIMIT_WINDOW_MS=60000"));
     }
   }
 
