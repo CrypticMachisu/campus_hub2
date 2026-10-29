@@ -33,12 +33,12 @@ partnerRouter.get("/produce", async (req, res) => {
     }
     const data = await r.json();
 
-    // While building: uncomment once to see the real shape, then REMOVE before committing.
-    // console.log("RAW partner response:", JSON.stringify(data).slice(0, 500));
-
     // Shape check. Their contract: 200 { listings: [ ... ] }
     if (!Array.isArray(data.listings)) {
-      console.error("partner shape mismatch, expected { listings: [] }; got keys:", Object.keys(data));
+      console.error(
+        "partner shape mismatch, expected { listings: [] }; got keys:",
+        Object.keys(data)
+      );
       return res.status(502).json(FRIENDLY_ERROR);
     }
 
@@ -83,10 +83,11 @@ partnerRouter.get("/farmers", async (req, res) => {
     }
     const data = await r.json();
 
-    // console.log("RAW partner response:", JSON.stringify(data).slice(0, 500)); // remove before commit
-
     if (!Array.isArray(data.farmers)) {
-      console.error("partner shape mismatch, expected { farmers: [] }; got keys:", Object.keys(data));
+      console.error(
+        "partner shape mismatch, expected { farmers: [] }; got keys:",
+        Object.keys(data)
+      );
       return res.status(502).json(FRIENDLY_ERROR);
     }
 
@@ -187,7 +188,9 @@ partnerRouter.post("/orders", requireAuth, async (req, res) => {
         .status(r.status === 409 || r.status === 422 ? r.status : 502)
         .json({ error: data.message || "Partner data unavailable" });
     }
-    res.status(201).json({ orderId: data.order.id, total: data.order.total, status: data.order.status });
+    res
+      .status(201)
+      .json({ orderId: data.order.id, total: data.order.total, status: data.order.status });
   } catch (err) {
     console.error("partner call failed:", err.cause?.code || err.message);
     res.status(502).json(FRIENDLY_ERROR);

@@ -5,6 +5,7 @@ Machisu Roy Minani – 219783- Backend dev/Integration/QA Lead
 Waweru Tiphanie Nyaruiru – 220525-Docs/DevOps Lead
 
 CampusHub App Audit
+
 ### What the app does
 
 - Lets members browse and search clubs and events
@@ -34,13 +35,6 @@ CampusHub App Audit
 Ring Position
 Who we are consuming from – group 6
 Who will consume from us – group 8
-
-
-
-
-
-
-
 
 One Paragraph Summary
 CampusHub is a full-stack web application designed for students and other members of the school community to conveniently access and manage club and event-related information. The application provides an interactive front-end where users can submit and view information, while the backend processes and manages the data through APIs and stores it in a MySQL database hosted locally using XAMPP. It is intended to provide a centralized platform for managing student and campus information efficiently, reducing the need for manual record management and making important data easier to access, update, and maintain.

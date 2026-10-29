@@ -191,6 +191,26 @@ CREATE TABLE announcements (
         ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- ----------------------------------------------------------------------------
+-- admin_requests
+-- Backs the "request admin access" flow: members ask a tier1 to promote
+-- them to a club's tier2 admin. request_id is auto-numbered because this
+-- is server-side state (unlike clubs/events, which the client names).
+-- ----------------------------------------------------------------------------
+CREATE TABLE admin_requests (
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id    VARCHAR(30) NOT NULL,
+    club_id    VARCHAR(30) NOT NULL,
+    status     ENUM('pending','approved','denied') NOT NULL DEFAULT 'pending',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_admin_requests_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_admin_requests_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- ============================================================================
 -- SEED DATA
 -- Mirrors src/data/mockData.js and src/data/mockUsers.js exactly, so the

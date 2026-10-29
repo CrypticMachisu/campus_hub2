@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../utils/api";
+import { SkeletonGroup, PartnerSkeletonCard } from "./Skeleton";
 import styles from "./PartnerProduce.module.css";
 
 // Shows live produce from Team 6's AgroConnect API (via our own backend).
@@ -21,10 +22,16 @@ export default function PartnerProduce() {
       <h2>Fresh from AgroConnect</h2>
       <p className={styles.sub}>Live produce listings from our partner team.</p>
 
-      {status === "loading" && <p>Loading partner data…</p>}
-      {status === "error" && (
-        <p className={styles.error}>Partner data is unavailable right now.</p>
+      {status === "loading" && (
+        <SkeletonGroup label="Loading partner data…">
+          <div className={styles.grid}>
+            {Array.from({ length: 4 }, (_, i) => (
+              <PartnerSkeletonCard key={i} />
+            ))}
+          </div>
+        </SkeletonGroup>
       )}
+      {status === "error" && <p className={styles.error}>Partner data is unavailable right now.</p>}
       {status === "ok" && listings.length === 0 && <p>No produce listed right now.</p>}
       {status === "ok" && listings.length > 0 && (
         <ul className={styles.grid}>

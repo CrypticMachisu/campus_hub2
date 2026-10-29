@@ -37,10 +37,9 @@ commentsRouter.post("/", requireAuth, async (req, res) => {
 
   const table = targetType === "event" ? "events" : "clubs";
   const idColumn = targetType === "event" ? "event_id" : "club_id";
-  const [targetRows] = await pool.query(
-    `SELECT 1 FROM ${table} WHERE ${idColumn} = :targetId`,
-    { targetId }
-  );
+  const [targetRows] = await pool.query(`SELECT 1 FROM ${table} WHERE ${idColumn} = :targetId`, {
+    targetId,
+  });
   if (!targetRows[0]) {
     return res.status(404).json({ error: `No ${targetType} with that id.` });
   }

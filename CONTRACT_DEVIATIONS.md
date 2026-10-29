@@ -12,26 +12,26 @@ Contract: `openapi_updated.yaml` v1.1.0 · Server: `http://localhost:4000/v1`
 
 ## 2. Validation checklist (Part B), run in this order
 
-| # | Check | Rule | Fails with |
-|---|---|---|---|
-| 0 | Auth | Bearer token present and valid | 401 |
-| 1 | Path id | Positive integer (`abc`, `205abc`, `0`, `-1` all rejected) | 400 |
-| 2 | Required fields | `promotionalMessage`, `startDate`, `endDate` all present | 400 |
-| 3 | Types | The three fields are strings; `targetAudience` / `advertisedBy` are strings if present | 400 |
-| 4 | Usable values | Message has a non-whitespace character; dates are real RFC 3339 date-times; `endDate` strictly after `startDate` | 400 |
-| 5 | Event exists | Lookup by id | 404 |
-| 6 | Write | Insert the row, return it mapped to `Advertisement` | 201 |
+| #   | Check           | Rule                                                                                                             | Fails with |
+| --- | --------------- | ---------------------------------------------------------------------------------------------------------------- | ---------- |
+| 0   | Auth            | Bearer token present and valid                                                                                   | 401        |
+| 1   | Path id         | Positive integer (`abc`, `205abc`, `0`, `-1` all rejected)                                                       | 400        |
+| 2   | Required fields | `promotionalMessage`, `startDate`, `endDate` all present                                                         | 400        |
+| 3   | Types           | The three fields are strings; `targetAudience` / `advertisedBy` are strings if present                           | 400        |
+| 4   | Usable values   | Message has a non-whitespace character; dates are real RFC 3339 date-times; `endDate` strictly after `startDate` | 400        |
+| 5   | Event exists    | Lookup by id                                                                                                     | 404        |
+| 6   | Write           | Insert the row, return it mapped to `Advertisement`                                                              | 201        |
 
 Steps 1–5 all run **before** anything touches the database.
 
 ## 3. Status codes (Part C)
 
-| Outcome | Code |
-|---|---|
-| Advertisement created | **201** (never 200) |
-| Validation failed / bad path id / bad JSON | **400** |
-| Missing or invalid token | **401** |
-| Event doesn't exist | **404** |
+| Outcome                                    | Code                |
+| ------------------------------------------ | ------------------- |
+| Advertisement created                      | **201** (never 200) |
+| Validation failed / bad path id / bad JSON | **400**             |
+| Missing or invalid token                   | **401**             |
+| Event doesn't exist                        | **404**             |
 
 ## 4. How to run the tests (Part D)
 
@@ -65,23 +65,23 @@ SELECT * FROM <advertisements_table> ORDER BY id DESC LIMIT 3; -- compare stored
 
 ## 5. Test matrix (full machine-readable list is `x-test-cases` in the YAML)
 
-| IDs | Case | Expect | Then check |
-|---|---|---|---|
-| T01–T02 | Valid full / minimal request | 201 | Body has every required `Advertisement` field; `eventId` equals path id; T02 omits optional fields rather than returning `null`; row count +1 |
-| T03 | Same valid request twice | 201, 201 | Two different `id`s, two rows (POST is not idempotent) |
-| T04 | Body includes `id`, `status`, `eventId`, `createdAt` | 201 | Server values used, client values ignored |
-| T05–T08 | Missing `promotionalMessage` / `startDate` / `endDate` / everything | 400 | Row count unchanged |
-| T09–T10 | Empty string / whitespace-only message | 400 | Row count unchanged |
-| T11–T12, T17 | Wrong types (number where string expected) | 400 | Row count unchanged |
-| T13–T14 | `"next friday"` / `2026-02-30T00:00:00Z` | 400 | Row count unchanged |
-| T15–T16 | `endDate` equal to / before `startDate` | 400 | Row count unchanged |
-| T18–T19 | Malformed JSON / no body and no Content-Type | 400 | Response is JSON in the Error shape, not an HTML page and not a 500 |
-| T20–T22 | Path id `abc`, `205abc`, `0`, `-1` | 400 | `205abc` is not silently treated as 205 |
-| T23 | Nonexistent event `999999`, valid body | 404 | Row count unchanged |
-| T24–T25 | No token / garbled token | 401 | Row count unchanged |
-| T26–T27 | Priority: no token + bad body; bad body + nonexistent event | 401; 400 | Confirms order 401 → 400 → 404 |
-| T28 | Non-admin marketplace customer | 201 | No 403 (contract says no club-admin role needed) |
-| T29 | After all of T05–T27 | n/a | Row count equals the count from before T05 |
+| IDs          | Case                                                                | Expect   | Then check                                                                                                                                    |
+| ------------ | ------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| T01–T02      | Valid full / minimal request                                        | 201      | Body has every required `Advertisement` field; `eventId` equals path id; T02 omits optional fields rather than returning `null`; row count +1 |
+| T03          | Same valid request twice                                            | 201, 201 | Two different `id`s, two rows (POST is not idempotent)                                                                                        |
+| T04          | Body includes `id`, `status`, `eventId`, `createdAt`                | 201      | Server values used, client values ignored                                                                                                     |
+| T05–T08      | Missing `promotionalMessage` / `startDate` / `endDate` / everything | 400      | Row count unchanged                                                                                                                           |
+| T09–T10      | Empty string / whitespace-only message                              | 400      | Row count unchanged                                                                                                                           |
+| T11–T12, T17 | Wrong types (number where string expected)                          | 400      | Row count unchanged                                                                                                                           |
+| T13–T14      | `"next friday"` / `2026-02-30T00:00:00Z`                            | 400      | Row count unchanged                                                                                                                           |
+| T15–T16      | `endDate` equal to / before `startDate`                             | 400      | Row count unchanged                                                                                                                           |
+| T18–T19      | Malformed JSON / no body and no Content-Type                        | 400      | Response is JSON in the Error shape, not an HTML page and not a 500                                                                           |
+| T20–T22      | Path id `abc`, `205abc`, `0`, `-1`                                  | 400      | `205abc` is not silently treated as 205                                                                                                       |
+| T23          | Nonexistent event `999999`, valid body                              | 404      | Row count unchanged                                                                                                                           |
+| T24–T25      | No token / garbled token                                            | 401      | Row count unchanged                                                                                                                           |
+| T26–T27      | Priority: no token + bad body; bad body + nonexistent event         | 401; 400 | Confirms order 401 → 400 → 404                                                                                                                |
+| T28          | Non-admin marketplace customer                                      | 201      | No 403 (contract says no club-admin role needed)                                                                                              |
+| T29          | After all of T05–T27                                                | n/a      | Row count equals the count from before T05                                                                                                    |
 
 Traps in Node/Express that these cases catch:
 
@@ -97,17 +97,17 @@ Traps in Node/Express that these cases catch:
 ```markdown
 ## Week 6 — POST /events/{id}/advertise (contract v1.0.0 → v1.1.0)
 
-| # | Change | Reason found |
-|---|---|---|
-| 1 | Path `id` now `minimum: 1`; invalid id returns 400 `invalid_parameter` | Bad-input testing (`abc`, `205abc`, `0`, `-1`) |
-| 2 | `promotionalMessage` now `minLength: 1` and must contain a non-whitespace character | Empty / whitespace-only strings are present but not usable |
-| 3 | Documented `endDate` must be strictly after `startDate` (already implied by the 400 example) | Equal dates must be rejected |
-| 4 | 400 description broadened: wrong types, malformed JSON, bad path id. Named examples added | Contract only mentioned missing/malformed fields |
-| 5 | Documented check order 401 → 400 → 404 | Needed for deterministic tests when several problems occur at once |
-| 6 | `status` documented as server-derived; `id`/`eventId`/`status`/`createdAt` in request body ignored | Prevents clients writing server-controlled fields |
-| 7 | Optional response fields omitted when not supplied, never `null` | Schema declares `type: string`, so `null` would violate it |
-| 8 | Documented that POST is not idempotent (same request twice creates two ads) | Handout idempotency check |
-| 9 | Added named request examples and `x-test-cases` (T01–T29) | Documents how each case is tested; no runtime effect |
+| #   | Change                                                                                             | Reason found                                                       |
+| --- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1   | Path `id` now `minimum: 1`; invalid id returns 400 `invalid_parameter`                             | Bad-input testing (`abc`, `205abc`, `0`, `-1`)                     |
+| 2   | `promotionalMessage` now `minLength: 1` and must contain a non-whitespace character                | Empty / whitespace-only strings are present but not usable         |
+| 3   | Documented `endDate` must be strictly after `startDate` (already implied by the 400 example)       | Equal dates must be rejected                                       |
+| 4   | 400 description broadened: wrong types, malformed JSON, bad path id. Named examples added          | Contract only mentioned missing/malformed fields                   |
+| 5   | Documented check order 401 → 400 → 404                                                             | Needed for deterministic tests when several problems occur at once |
+| 6   | `status` documented as server-derived; `id`/`eventId`/`status`/`createdAt` in request body ignored | Prevents clients writing server-controlled fields                  |
+| 7   | Optional response fields omitted when not supplied, never `null`                                   | Schema declares `type: string`, so `null` would violate it         |
+| 8   | Documented that POST is not idempotent (same request twice creates two ads)                        | Handout idempotency check                                          |
+| 9   | Added named request examples and `x-test-cases` (T01–T29)                                          | Documents how each case is tested; no runtime effect               |
 
 Impact on Team 8: valid requests from before still succeed. Requests with whitespace-only messages or `id` values like `205abc` are now rejected with 400.
 ```

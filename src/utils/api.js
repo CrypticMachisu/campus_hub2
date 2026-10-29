@@ -3,6 +3,11 @@
 // touching localStorage directly.
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+// Week 9: the API now requires our consumer's API key on every request
+// (except the health check). The team test key is read at build time
+// from VITE_API_KEY — a browser can't keep a secret, so this key is
+// per-consumer and rate-limited/revocable server-side.
+const API_KEY = import.meta.env.VITE_API_KEY || "";
 const TOKEN_KEY = "campushub_token";
 
 export function getToken() {
@@ -24,6 +29,7 @@ export function clearToken() {
  */
 export async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
   const headers = { "Content-Type": "application/json" };
+  if (API_KEY) headers["X-API-Key"] = API_KEY;
   if (auth) {
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;

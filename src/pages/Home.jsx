@@ -4,6 +4,7 @@ import { useClubs } from "../context/ClubsContext";
 import { getAllEvents } from "../utils/eventsStore";
 import ClubCard from "../components/ClubCard";
 import EventCard from "../components/EventCard";
+import { SkeletonGroup, ClubSkeletonCard, EventSkeletonCard } from "../components/Skeleton";
 import styles from "./Home.module.css";
 import PartnerFarmers from "../components/PartnerFarmers";
 import PartnerProduce from "../components/PartnerProduce";
@@ -136,9 +137,11 @@ export default function Home() {
         {viewMode === "clubs" ? (
           <div className={styles.grid}>
             {clubsLoading ? (
-              <div className={styles.emptyStateBox}>
-                <p>Loading clubs…</p>
-              </div>
+              <SkeletonGroup label="Loading clubs…" className={styles.skeletonGrid}>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <ClubSkeletonCard key={i} />
+                ))}
+              </SkeletonGroup>
             ) : filteredClubs.length > 0 ? (
               filteredClubs.map((club) => <ClubCard key={club.id} club={club} />)
             ) : (
@@ -155,9 +158,11 @@ export default function Home() {
         ) : (
           <div className={styles.grid}>
             {eventsLoading ? (
-              <div className={styles.emptyStateBox}>
-                <p>Loading events…</p>
-              </div>
+              <SkeletonGroup label="Loading events…" className={styles.skeletonGrid}>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <EventSkeletonCard key={i} />
+                ))}
+              </SkeletonGroup>
             ) : upcomingEvents.length > 0 ? (
               upcomingEvents.map((event) => <EventCard key={event.id} event={event} />)
             ) : (

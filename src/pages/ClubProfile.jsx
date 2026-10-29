@@ -7,6 +7,7 @@ import CommentSection from "../components/CommentSection";
 import { useAuth } from "../context/AuthContext";
 import { canManageClub } from "../utils/authStore";
 import { requestClubAdmin } from "../utils/adminStore";
+import { SkeletonGroup, ClubProfileSkeleton } from "../components/Skeleton";
 import styles from "./ClubProfile.module.css";
 
 export default function ClubProfile() {
@@ -14,7 +15,6 @@ export default function ClubProfile() {
   const { clubs, loading: clubsLoading } = useClubs();
   const club = clubs.find((c) => c.id === clubId);
   const { user } = useAuth();
-  
 
   const [events, setEvents] = useState([]);
 
@@ -30,8 +30,10 @@ export default function ClubProfile() {
 
   if (clubsLoading) {
     return (
-      <div className={styles.notFoundPage}>
-        <p>Loading club…</p>
+      <div className={styles.page}>
+        <SkeletonGroup label="Loading club…">
+          <ClubProfileSkeleton />
+        </SkeletonGroup>
       </div>
     );
   }
@@ -42,7 +44,9 @@ export default function ClubProfile() {
       <div className={styles.notFoundPage}>
         <h2>Club Not Found</h2>
         <p>The club profile you are trying to visit does not exist.</p>
-        <Link to="/" className={styles.backLink}>Return to Feed Discovery</Link>
+        <Link to="/" className={styles.backLink}>
+          Return to Feed Discovery
+        </Link>
       </div>
     );
   }
@@ -57,7 +61,7 @@ export default function ClubProfile() {
       {/* Structural Profile Banner Header */}
       <header className={styles.clubHeader}>
         <div className={styles.headerMain}>
-        <img src={club.logoUrl} alt={`${club.name} logo`} className={styles.logo} />
+          <img src={club.logoUrl} alt={`${club.name} logo`} className={styles.logo} />
           <div>
             <span className={styles.categoryBadge}>{club.category}</span>
             <h1>{club.name}</h1>
@@ -66,22 +70,26 @@ export default function ClubProfile() {
         <p className={styles.description}>{club.description}</p>
 
         <div className={styles.metaInfo}>
-          <p><strong>Meeting Interval:</strong> {club.meetingTime}</p>
-          <p><strong>Location Spot:</strong> {club.meetingLocation}</p>
+          <p>
+            <strong>Meeting Interval:</strong> {club.meetingTime}
+          </p>
+          <p>
+            <strong>Location Spot:</strong> {club.meetingLocation}
+          </p>
         </div>
 
         <div className={styles.tagList}>
           {club.tags.map((tag) => (
-            <span key={tag} className={styles.tag}>#{tag}</span>
+            <span key={tag} className={styles.tag}>
+              #{tag}
+            </span>
           ))}
         </div>
-        </header>
+      </header>
 
-        {user && club && !canManageClub(user, club.id) && (
-          <AdminRequestButton clubId={club.id} />
-        )}
+      {user && club && !canManageClub(user, club.id) && <AdminRequestButton clubId={club.id} />}
 
-        {/* Target Club Scheduled Events Segment */}
+      {/* Target Club Scheduled Events Segment */}
 
       <section className={styles.eventsSection}>
         <h2>Upcoming Events</h2>

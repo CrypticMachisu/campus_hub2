@@ -64,6 +64,32 @@ export async function getCurrentUser() {
   }
 }
 
+// Remembers, per account email, which login path was last used ("user" |
+// "admin") — the same data the login page writes so it can preselect the
+// right path next time. The Navbar reads it to tailor controls (e.g. the
+// "Go to dashboard" button for admins who chose the user path).
+const LOGIN_MODES_KEY = "campushub_login_paths";
+
+export function loadLoginPaths() {
+  try {
+    return JSON.parse(localStorage.getItem(LOGIN_MODES_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+/** For an admin (or any user) who signed in via the plain user path. */
+export function getRememberedLoginPath(email) {
+  if (!email) return null;
+  return loadLoginPaths()[email.trim().toLowerCase()] ?? null;
+}
+
+export function saveLoginPath(email, path) {
+  const paths = loadLoginPaths();
+  paths[email] = path;
+  localStorage.setItem(LOGIN_MODES_KEY, JSON.stringify(paths));
+}
+
 /**
  * Whether a given user is allowed to manage a given club's dashboard.
  * Pure client-side logic — kept for instant UI decisions (e.g. which nav
@@ -87,5 +113,9 @@ export async function requestPasswordReset(email) {
 
 /** Sets a new password using a reset token from the forgot-password flow. */
 export async function resetPassword({ token, password }) {
-  await apiFetch("/auth/reset-password", { method: "POST", body: { token, password }, auth: false });
+  await apiFetch("/auth/reset-password", {
+    method: "POST",
+    body: { token, password },
+    auth: false,
+  });
 }
