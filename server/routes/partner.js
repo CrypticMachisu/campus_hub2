@@ -1,144 +1,158 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.js"; // NEW: for the order route
+import { requireAuth } from "../middleware/auth.js";
 
 // Calls Team 6's AgroConnect API from the SERVER so the browser never
-// talks to the partner directly. Their GET routes are public (no key).
-// If they ever add a key, put it in PARTNER_API_KEY and it is sent below.
+// sees the partner's key. Their API now requires an X-API-Key header on
+// every call; the key lives only in server/.env as PARTNER_API_KEY.
 export const partnerRouter = Router();
 
 const FRIENDLY_ERROR = { error: "Partner data unavailable" };
 
-partnerRouter.get("/produce", async (req, res) => {
+function partnerBase() {
   const base = process.env.PARTNER_URL;
-  if (!base) {
-    console.error("PARTNER_URL is not set in server/.env");
-    return res.status(502).json(FRIENDLY_ERROR);
-  }
+  return base ? base.replace(/\/$/, "") : null;
+}
 
-  // Pass through only the filters their contract documents (search, county, category).
-  const url = new URL(`${base.replace(/\/$/, "")}/produce`);
-  for (const name of ["search", "county", "category"]) {
-    const v = req.query[name];
-    if (typeof v === "string" && v.trim()) url.searchParams.set(name, v.trim());
-  }
-
+/** Headers for every partner call. The key is sent, never logged. */
+function partnerHeaders() {
   const headers = { Accept: "application/json" };
   if (process.env.PARTNER_API_KEY) headers["X-API-Key"] = process.env.PARTNER_API_KEY;
+  return headers;
+}
+
+/**
+ * GET <partner>/<path>. Returns { status, data } or null after sending a
+ * friendly 502 itself, so each route stays short. Logs WHY (status or
+ * network code) without ever printing the key.
+ */
+async function partnerGet(res, path, query = {}) {
+  const base = partnerBase();
+  if (!base) {
+    console.error("PARTNER_URL is not set in server/.env");
+    res.status(502).json(FRIENDLY_ERROR);
+    return null;
+  }
+  if (!process.env.PARTNER_API_KEY) {
+    console.error("PARTNER_API_KEY is not set in server/.env — partner will answer 401");
+  }
+
+  const url = new URL(`${base}${path}`);
+  for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
 
   try {
-    const r = await fetch(url, { headers });
+    const r = await fetch(url, { headers: partnerHeaders() });
+    if (r.status === 401 || r.status === 403) {
+      console.error(`partner rejected our API key (${r.status}) — check PARTNER_API_KEY`);
+      res.status(502).json(FRIENDLY_ERROR);
+      return null;
+    }
+    if (r.status === 429) {
+      console.error("partner rate limit hit (429) — call less often");
+      res.status(502).json(FRIENDLY_ERROR);
+      return null;
+    }
+    if (r.status === 404) return { status: 404, data: null };
     if (!r.ok) {
-      console.error("partner returned", r.status); // status only, never the key
-      return res.status(502).json(FRIENDLY_ERROR);
+      console.error("partner returned", r.status);
+      res.status(502).json(FRIENDLY_ERROR);
+      return null;
     }
-    const data = await r.json();
-
-    // Shape check. Their contract: 200 { listings: [ ... ] }
-    if (!Array.isArray(data.listings)) {
-      console.error(
-        "partner shape mismatch, expected { listings: [] }; got keys:",
-        Object.keys(data)
-      );
-      return res.status(502).json(FRIENDLY_ERROR);
-    }
-
-    // Return only what our page needs, using THEIR field names exactly.
-    res.json(
-      data.listings.map((l) => ({
-        id: l.id,
-        title: l.title,
-        category: l.category,
-        price: l.price,
-        unit: l.unit,
-        quantity: l.quantity,
-        county: l.county,
-        sellerName: l.sellerName,
-        availableFrom: l.availableFrom,
-      }))
-    );
+    return { status: r.status, data: await r.json() };
   } catch (err) {
     // ECONNREFUSED = nothing listening; ENOTFOUND = hostname wrong
     console.error("partner call failed:", err.cause?.code || err.message);
     res.status(502).json(FRIENDLY_ERROR);
+    return null;
   }
-});
+}
 
-// GET /api/partner/farmers -> their GET /farmers (public).
-// Contract: 200 { farmers: [ {id, fullName, phone, county, focus, createdAt} ] }
-partnerRouter.get("/farmers", async (req, res) => {
-  const base = process.env.PARTNER_URL;
-  if (!base) {
-    console.error("PARTNER_URL is not set in server/.env");
+// GET /api/partner/produce -> their GET /produce
+// Contract: 200 { listings: [ ... ] }
+partnerRouter.get("/produce", async (req, res) => {
+  // Pass through only the filters their contract documents.
+  const query = {};
+  for (const name of ["search", "county", "category"]) {
+    const v = req.query[name];
+    if (typeof v === "string" && v.trim()) query[name] = v.trim();
+  }
+
+  const result = await partnerGet(res, "/produce", query);
+  if (!result) return;
+
+  if (!Array.isArray(result.data?.listings)) {
+    console.error(
+      "partner shape mismatch, expected { listings: [] }; got keys:",
+      Object.keys(result.data ?? {})
+    );
     return res.status(502).json(FRIENDLY_ERROR);
   }
 
-  const headers = { Accept: "application/json" };
-  if (process.env.PARTNER_API_KEY) headers["X-API-Key"] = process.env.PARTNER_API_KEY;
-
-  try {
-    const r = await fetch(`${base.replace(/\/$/, "")}/farmers`, { headers });
-    if (!r.ok) {
-      console.error("partner returned", r.status);
-      return res.status(502).json(FRIENDLY_ERROR);
-    }
-    const data = await r.json();
-
-    if (!Array.isArray(data.farmers)) {
-      console.error(
-        "partner shape mismatch, expected { farmers: [] }; got keys:",
-        Object.keys(data)
-      );
-      return res.status(502).json(FRIENDLY_ERROR);
-    }
-
-    // Only what the page needs. Their farmers' phone numbers are not forwarded.
-    res.json(
-      data.farmers.map((f) => ({
-        id: f.id,
-        fullName: f.fullName,
-        county: f.county,
-        focus: f.focus,
-      }))
-    );
-  } catch (err) {
-    console.error("partner call failed:", err.cause?.code || err.message);
-    res.status(502).json(FRIENDLY_ERROR);
-  }
+  // Only what our pages need, using THEIR field names exactly.
+  res.json(
+    result.data.listings.map((l) => ({
+      id: l.id,
+      title: l.title,
+      category: l.category,
+      price: l.price,
+      unit: l.unit,
+      quantity: l.quantity,
+      county: l.county,
+      sellerName: l.sellerName,
+      availableFrom: l.availableFrom,
+    }))
+  );
 });
 
-// NEW: GET /api/partner/farmers/:id -> their GET /farmers/:id
+// GET /api/partner/farmers -> their GET /farmers
+// Contract: 200 { farmers: [ {id, fullName, phone, county, focus, createdAt} ] }
+partnerRouter.get("/farmers", async (req, res) => {
+  const result = await partnerGet(res, "/farmers");
+  if (!result) return;
+
+  if (!Array.isArray(result.data?.farmers)) {
+    console.error(
+      "partner shape mismatch, expected { farmers: [] }; got keys:",
+      Object.keys(result.data ?? {})
+    );
+    return res.status(502).json(FRIENDLY_ERROR);
+  }
+
+  // Their farmers' phone numbers are not forwarded.
+  res.json(
+    result.data.farmers.map((f) => ({
+      id: f.id,
+      fullName: f.fullName,
+      county: f.county,
+      focus: f.focus,
+    }))
+  );
+});
+
+// GET /api/partner/farmers/:id -> their GET /farmers/:id
 // Contract: 200 { farmer: {...} }
 partnerRouter.get("/farmers/:id", async (req, res) => {
-  const base = process.env.PARTNER_URL;
   const id = Number(req.params.id);
-  if (!base || !Number.isInteger(id) || id < 1) {
+  if (!Number.isInteger(id) || id < 1) {
     return res.status(422).json({ error: "Invalid farmer id." });
   }
 
-  try {
-    const r = await fetch(`${base.replace(/\/$/, "")}/farmers/${id}`, {
-      headers: { Accept: "application/json" },
-    });
-    if (r.status === 404) return res.status(404).json({ error: "Farmer not found." });
-    if (!r.ok) {
-      console.error("partner returned", r.status);
-      return res.status(502).json(FRIENDLY_ERROR);
-    }
-    const data = await r.json();
-    if (!data.farmer) {
-      console.error("partner shape mismatch, expected { farmer }; got keys:", Object.keys(data));
-      return res.status(502).json(FRIENDLY_ERROR);
-    }
-    const f = data.farmer;
-    res.json({ id: f.id, fullName: f.fullName, county: f.county, focus: f.focus });
-  } catch (err) {
-    console.error("partner call failed:", err.cause?.code || err.message);
-    res.status(502).json(FRIENDLY_ERROR);
+  const result = await partnerGet(res, `/farmers/${id}`);
+  if (!result) return;
+  if (result.status === 404) return res.status(404).json({ error: "Farmer not found." });
+
+  const f = result.data?.farmer;
+  if (!f) {
+    console.error(
+      "partner shape mismatch, expected { farmer }; got keys:",
+      Object.keys(result.data ?? {})
+    );
+    return res.status(502).json(FRIENDLY_ERROR);
   }
+  res.json({ id: f.id, fullName: f.fullName, county: f.county, focus: f.focus });
 });
 
 // ---------------------------------------------------------------------
-// NEW (OPTIONAL, WRITE): place an order on the partner's API.
+// OPTIONAL, WRITE: place an order on the partner's API.
 // Needs PARTNER_BUYER_EMAIL / PARTNER_BUYER_PASSWORD in server/.env.
 // This changes THEIR live database: agree with Team 6 before using it.
 // It does nothing unless someone calls POST /api/partner/orders.
@@ -147,9 +161,9 @@ let partnerToken = null;
 
 async function getPartnerToken(force = false) {
   if (partnerToken && !force) return partnerToken;
-  const r = await fetch(`${process.env.PARTNER_URL.replace(/\/$/, "")}/auth/login`, {
+  const r = await fetch(`${partnerBase()}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { ...partnerHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({
       email: process.env.PARTNER_BUYER_EMAIL,
       password: process.env.PARTNER_BUYER_PASSWORD,
@@ -162,9 +176,13 @@ async function getPartnerToken(force = false) {
 }
 
 async function postOrder(token, body) {
-  return fetch(`${process.env.PARTNER_URL.replace(/\/$/, "")}/orders`, {
+  return fetch(`${partnerBase()}/orders`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      ...partnerHeaders(),
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify(body),
   });
 }
@@ -176,11 +194,11 @@ partnerRouter.post("/orders", requireAuth, async (req, res) => {
   if (!Number.isInteger(listingId) || !Number.isInteger(quantity) || quantity < 1) {
     return res.status(422).json({ error: "listingId and quantity must be positive integers." });
   }
-  const body = { items: [{ id: listingId, type: "produce", quantity }] }; // only what we allow
+  const body = { items: [{ id: listingId, type: "produce", quantity }] };
 
   try {
     let r = await postOrder(await getPartnerToken(), body);
-    if (r.status === 401) r = await postOrder(await getPartnerToken(true), body); // token expired
+    if (r.status === 401) r = await postOrder(await getPartnerToken(true), body);
     const data = await r.json().catch(() => ({}));
     if (!r.ok) {
       console.error("partner order returned", r.status);

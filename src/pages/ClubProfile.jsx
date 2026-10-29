@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { canManageClub } from "../utils/authStore";
 import { requestClubAdmin } from "../utils/adminStore";
 import { SkeletonGroup, ClubProfileSkeleton } from "../components/Skeleton";
+import AgriClubSpotlight, { AGRI_CLUB_ID } from "../components/AgriClubSpotlight";
 import styles from "./ClubProfile.module.css";
 
 export default function ClubProfile() {
@@ -89,9 +90,12 @@ export default function ClubProfile() {
 
       {user && club && !canManageClub(user, club.id) && <AdminRequestButton clubId={club.id} />}
 
+      {/* Agri club only: live AgroConnect data used to market the platform and recruit members */}
+      {club.id === AGRI_CLUB_ID && <AgriClubSpotlight />}
+
       {/* Target Club Scheduled Events Segment */}
 
-      <section className={styles.eventsSection}>
+      <section id="events" className={styles.eventsSection}>
         <h2>Upcoming Events</h2>
         {clubEvents.length > 0 ? (
           <div className={styles.eventsGrid}>

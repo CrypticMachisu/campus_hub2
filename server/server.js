@@ -70,7 +70,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-
+app.use(cors({ origin: "https://effortless-shortbread-2ec7ef.netlify.app" }));
 assertDbConnection()
   .then(() => {
     app.listen(PORT, () => {
