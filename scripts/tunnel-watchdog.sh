@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # tunnel-watchdog.sh — keep the CampusHub ngrok tunnel alive.
 #
-# Automates OPERATIONS.md "Restarting the stack" steps 1-3 so an ngrok death
-# is recovered in seconds instead of "when someone next looks at the log":
+# Automates OPERATIONS.md "Restarting the stack" steps 1-4 so an ngrok or
+# API death is recovered in seconds instead of "when someone next looks at
+# the log":
 #
 #   1. every interval, ask ngrok's web UI (127.0.0.1:4040/api/tunnels) if the
 #      tunnel is actually up — a nodding tasklist entry with a dead :4040 is
@@ -13,12 +14,16 @@
 #   3. after recovery, mirror any rotated public URL into PUBLIC_URL in
 #      server/.env so the startup log stops lying. The README base URL stays
 #      a manual mirror — per the runbook, step 3.
+#   4. every cycle, also ask the API half (127.0.0.1:5000/api/health) if it
+#      is up; when it is not, kill any stale listener still holding :5000
+#      (otherwise the fresh node dies with EADDRINUSE) and relaunch plainly:
+#      `node server.js` with PORT=5000 passed explicitly — the PORT=0 trap
+#      from runbook step 4 is pre-answered here. If the server refuses to
+#      boot (fail-fast env validation, MySQL down) the log shows it and the
+#      loop retries each cycle instead of papering over the real cause.
 #
-# Deliberately does NOT restart the API half (:5000): tunnel-death usually
-# shares a root cause with API-death (sleep/reboot kill both), but the node
-# half has the PORT=0 judgment call — see the runbook before automating it.
-# Also cannot prevent a machine sleep or reboot; at demo time keep the lid
-# open / disable sleep so both halves stay alive. 😅
+# Still cannot prevent a machine sleep or reboot; at demo time keep the lid
+# open / disable sleep so the whole stack stays alive. 😅
 
 set -u
 
@@ -33,6 +38,9 @@ UI_URL="${NGROK_UI_URL:-http://127.0.0.1:4040/api/tunnels}"
 DRY_RUN="${WATCHDOG_DRY_RUN:-0}"
 NGROK_EXE="${NGROK_EXE:-$LOCALAPPDATA/Microsoft/WindowsApps/ngrok.exe}"
 ADDR="${NGROK_ADDR:-5000}"
+API_PORT="${API_PORT:-$ADDR}"
+API_HEALTH_URL="${API_HEALTH_URL:-http://127.0.0.1:$API_PORT/api/health}"
+API_LOG="${API_LOG:-/tmp/campushub-$API_PORT.log}"
 
 stamp() { date +"%Y-%m-%d %H:%M:%S"; }
 say() { echo "[$(stamp)] $*" >> "$LOG_FILE"; }
@@ -41,6 +49,12 @@ say() { echo "[$(stamp)] $*" >> "$LOG_FILE"; }
 tunnel_up() {
   curl -s --max-time 5 "$UI_URL" \
     | grep -q '"public_url":"[^"]'
+}
+
+# 1 if the API answers its one key-exempt endpoint (GET /health → {"ok":true}).
+api_up() {
+  curl -s --max-time 5 "$API_HEALTH_URL" \
+    | grep -q '"ok"[[:space:]]*:[[:space:]]*true'
 }
 
 recover() {
@@ -69,6 +83,31 @@ recover() {
   fi
 }
 
+recover_api() {
+  say "api unhealthy on :$API_PORT — beginning recovery (dry-run=$DRY_RUN)"
+  if [ "$DRY_RUN" = "1" ]; then
+    say "dry-run: would kill any stale listener on :$API_PORT, relaunch 'node server.js' with PORT=$API_PORT, re-check in 10s"
+    return
+  fi
+  # A stale listener must go first or the fresh node exits with EADDRINUSE
+  # (runbook cheat sheet, "EADDRINUSE :5000 at startup").
+  local pid
+  pid="$(netstat -ano 2>/dev/null | awk -v p=":$API_PORT" '$4 == "LISTENING" && index($2, p) {print $5}' | head -1)"
+  if [ -n "$pid" ]; then
+    say "killing stale listener on :$API_PORT (pid $pid)"
+    taskkill //PID "$pid" //F >/dev/null
+  else
+    say "no listener on :$API_PORT — process is gone, starting fresh"
+  fi
+  (cd "$ROOT_DIR/server" && PORT="$API_PORT" node server.js >> "$API_LOG" 2>&1 &)
+  sleep 10
+  if api_up; then
+    say "api is back"
+  else
+    say "api still not answering after restart — will retry next cycle (check $API_LOG for the real cause; fail-fast env validation or MySQL down refuse to boot by design)"
+  fi
+}
+
 # Mirror the freshly rotated URL into server/.env (cosmetic; README manual).
 mirror_url() {
   local url
@@ -87,8 +126,14 @@ mirror_url() {
   fi
 }
 
-say "watchdog starting: ui=$UI_URL interval=${INTERVAL}s addr=:$ADDR dry-run=$DRY_RUN"
+say "watchdog starting: ui=$UI_URL interval=${INTERVAL}s addr=:$ADDR api=:$API_PORT ($API_HEALTH_URL) dry-run=$DRY_RUN"
 while true; do
+  if ! api_up; then
+    export WATCHDOG_API_WAS_DOWN=1
+    recover_api
+  elif [ -n "${WATCHDOG_API_WAS_DOWN:-}" ]; then
+    say "api recovered (was down in a previous check)"; unset WATCHDOG_API_WAS_DOWN
+  fi
   if tunnel_up; then
     if [ -n "${WATCHDOG_WAS_DOWN:-}" ]; then
       say "tunnel recovered (was down in a previous check)"; unset WATCHDOG_WAS_DOWN

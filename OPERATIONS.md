@@ -157,9 +157,9 @@ Note `node --watch` swallows its own startup errors from the redirect; if the lo
 
 **5. Verify the bridge end to end** — section 7's two curls (health + key-authed clubs, both with `ngrok-skip-browser-warning: 1`). A green health check _locally_ is not enough; after a tunnel restart, re-run both through the public URL before telling consumers it's back.
 
-## Keeping the tunnel up (watchdog)
+## Keeping the stack up (watchdog)
 
-`npm run tunnel:watch` automates steps 1–3 above so an ngrok death is recovered in seconds, not "when someone next looks at a log". It polls `127.0.0.1:4040/api/tunnels` every 20s; when the tunnel is unhealthy (web UI dead, or up but zero tunnels — the zombie state counts), it kills any zombie ngrok, relaunches with the WindowsApps alias, re-checks 10s later, and mirrors a rotated URL into `PUBLIC_URL` in `server/.env`.
+`npm run tunnel:watch` automates steps 1–4 above so an ngrok or API death is recovered in seconds, not "when someone next looks at a log". It polls `127.0.0.1:4040/api/tunnels` every 20s; when the tunnel is unhealthy (web UI dead, or up but zero tunnels — the zombie state counts), it kills any zombie ngrok, relaunches with the WindowsApps alias, re-checks 10s later, and mirrors a rotated URL into `PUBLIC_URL` in `server/.env`. Each cycle it also polls the API's key-exempt health check; when `:5000` stops answering it kills any stale listener still holding the port and relaunches `node server.js` with explicit `PORT=5000`.
 
 ```bash
 npm run tunnel:watch
@@ -167,13 +167,14 @@ npm run tunnel:watch
 (bash scripts/tunnel-watchdog.sh > /tmp/tunnel-watchdog-console.log 2>&1 &)
 ```
 
-What it writes: [`ngrok-watchdog.log`](ngrok-watchdog.log) logs every decision (recovery started, zombie killed, URL mirrored). It stays silent while the tunnel is healthy.
+What it writes: [`ngrok-watchdog.log`](ngrok-watchdog.log) logs every decision (recovery started, zombie/stale listener killed, API or tunnel back, URL mirrored). It stays silent while both halves are healthy.
 
 Honest limits — exact speed wins, not immortality:
 
 - **A machine sleep or reboot kills the watchdog with everything else.** Run it per-session after startup step 6, not as a daemon. At demo time, disable sleep so the whole stack (MySQL, API, tunnel, watchdog) stays up.
-- **It does not restart the API half.** Tunnel death usually shares a root cause with API death, but the node side has the PORT=0 judgment call — that stays a runbook step 4. The watchdog log tells you if it had to recover, so you know to check `:5000` too.
-- Test hooks instead of touching the live tunnel: `WATCHDOG_INTERVAL`, `WATCHDOG_DRY_RUN=1`, `NGROK_UI_URL`, `LOG_FILE`, `ENV_FILE`.
+- **It will not rescue a server that refuses to boot.** If the API's own exit-on-boot checks fire (fail-fast env validation, MySQL down), the watchdog reports `api still not answering` every cycle and points you at the API log — fix the listed cause; don't expect the relaunch to paper over it.
+- Restarts are blind, not diagnostic. The kill-listener-and-relaunch path assumes the runbook recipe (explicit `PORT`, valid `server/.env`) is still the right one. If you deliberately stopped the API half to edit it, the watchdog will keep restarting it — set `WATCHDOG_DRY_RUN=1` (or don't run the watchdog) while you work.
+- Test hooks instead of touching the live stack: `WATCHDOG_INTERVAL`, `WATCHDOG_DRY_RUN=1`, `NGROK_UI_URL`, `LOG_FILE`, `ENV_FILE`, and for the API half `API_PORT`, `API_HEALTH_URL`, `API_LOG`.
 
 ## For a throwaway test instance
 
