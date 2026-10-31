@@ -2,7 +2,7 @@ Group 7 Members
 Rayyan Abdi Mohammed – 220763 -Backend dev/Integration/QA Lead
 Hunja Michael Njagi – 220536- API Lead
 Machisu Roy Minani – 219783- Backend dev/Integration/QA Lead
-Wwaweru Tiphanie Nyaruiru – 220525-Docs/DevOps Lead
+Waweru Tiphanie Nyaruiru – 220525-Docs/DevOps Lead
 
 CampusHub App Audit
 

@@ -78,27 +78,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong on the server." });
 });
 
-// PORT shell-proofing (the PORT=0 trap OPERATIONS.md documents): this
-// machine's shells have carried a stray `PORT=0`, and the old
-// `process.env.PORT || 5000` happily bound a random ephemeral port —
-// the server "started" but was unreachable, and node --watch hid the
-// clue from the log. Dotenv never overrides an already-set env var, so
-// the shell value always wins: validate it and refuse instead of lying.
-const PORT = Number(process.env.PORT ?? 5000);
-if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
-  if (PORT === 0) {
-    console.error(
-      "Refusing to start: PORT=0 would bind an arbitrary ephemeral port, which the ngrok tunnel can't address. " +
-        "Unset PORT or pass PORT=5000 explicitly (shell-exported values beat server/.env, since dotenv never overrides them)."
-    );
-  } else {
-    console.error(
-      `Refusing to start: PORT must be a port number 1-65535 (got "${process.env.PORT ?? "<unset>"}").`
-    );
-  }
-  process.exit(1);
-}
-
+const PORT = process.env.PORT || 5000;
+app.use(cors({ origin: "https://effortless-shortbread-2ec7ef.netlify.app" }));
 assertDbConnection()
   .then(() => {
     app.listen(PORT, () => {
