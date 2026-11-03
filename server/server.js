@@ -21,6 +21,7 @@ import { createAdminRouter } from "./routes/admin.js";
 import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { partnerRouter } from "./routes/partner.js"; // NEW: Team 6 AgroConnect integration
+import { monitor, statsHandler } from "./monitoring.js"; // Week 12 (Parts B & C): logging + stats
 
 // Week 10 hardening: check the required .env configuration BEFORE
 // anything else (pool creation happens at import time in db.js, and the
@@ -31,6 +32,10 @@ import { partnerRouter } from "./routes/partner.js"; // NEW: Team 6 AgroConnect 
 validateEnvOrExit();
 
 const app = express();
+
+// Week 12 (Part B): request logging. Registered FIRST so rejected requests
+// (401, 429) are logged too. One JSON line per request — see monitoring.js.
+app.use(monitor);
 
 app.use(cors());
 app.use(express.json());
@@ -52,6 +57,10 @@ const limiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_MAX || 100),
 });
 app.use(limiter);
+
+// Week 12 (Part C): the /stats endpoint. After the key check on purpose —
+// it needs a key like every other endpoint.
+app.get("/api/stats", statsHandler);
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
