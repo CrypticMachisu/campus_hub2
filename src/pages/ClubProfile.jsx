@@ -9,6 +9,7 @@ import { canManageClub } from "../utils/authStore";
 import { requestClubAdmin } from "../utils/adminStore";
 import { SkeletonGroup, ClubProfileSkeleton } from "../components/Skeleton";
 import AgriClubSpotlight, { AGRI_CLUB_ID } from "../components/AgriClubSpotlight";
+import HarvestRadar from "../components/HarvestRadar";
 import styles from "./ClubProfile.module.css";
 
 export default function ClubProfile() {
@@ -92,6 +93,9 @@ export default function ClubProfile() {
 
       {/* Agri club only: live AgroConnect data used to market the platform and recruit members */}
       {club.id === AGRI_CLUB_ID && <AgriClubSpotlight />}
+
+      {/* Agri club only: producer listings arranged by when they reach the market */}
+      {club.id === AGRI_CLUB_ID && <HarvestRadar />}
 
       {/* Target Club Scheduled Events Segment */}
 

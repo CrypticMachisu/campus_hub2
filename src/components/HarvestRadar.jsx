@@ -1,0 +1,219 @@
+import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "../utils/api";
+import { SkeletonGroup, PartnerSkeletonCard } from "./Skeleton";
+import styles from "./HarvestRadar.module.css";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// AgroConnect timestamps look like "2026-08-24 17:30:00" (no ISO T, no
+// timezone), which some browsers refuse to parse directly. Normalize the
+// separator and treat an unparseable date as "no arrival date".
+function parseArrival(value) {
+  if (!value) return null;
+  const ms = Date.parse(String(value).trim().replace(" ", "T"));
+  return Number.isNaN(ms) ? null : ms;
+}
+
+// One human line per listing: ready now / tomorrow / in N days / on the
+// market already. Computed from the current time, re-derived each render.
+function arrivalText(arrival, now, todayStart) {
+  if (arrival == null) return "check with the seller";
+  if (arrival < now) return arrival >= todayStart ? "ready today" : "on the market";
+  const days = Math.ceil((arrival - now) / DAY_MS);
+  return days <= 1 ? "ready tomorrow" : `arriving in ${days} days`;
+}
+
+/**
+ * Harvest Radar — turns the raw produce list from Team 6's AgroConnect API
+ * (proxied through OUR backend, which holds the partner key) into a
+ * time-aware board for Agri club members: what is ready right now, what is
+ * arriving over the next 7 days and what is further out — filterable by
+ * county. A pure read of partner data; nothing is ordered or posted to
+ * their API.
+ *
+ * Fails independently of every other panel: a cold partner start shows
+ * skeletons, a dead partner shows a friendly card with a Retry button.
+ */
+export default function HarvestRadar() {
+  const [listings, setListings] = useState(null);
+  const [status, setStatus] = useState("loading"); // loading | ok | error
+  const [bucketFilter, setBucketFilter] = useState("ready");
+  const [countyFilter, setCountyFilter] = useState("");
+
+  async function load() {
+    setStatus("loading");
+    try {
+      const data = await apiFetch("/partner/produce", { auth: false });
+      setListings(Array.isArray(data) ? data : []);
+      setStatus("ok");
+    } catch {
+      setListings(null);
+      setStatus("error");
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatus("loading");
+    apiFetch("/partner/produce", { auth: false })
+      .then((data) => {
+        if (cancelled) return;
+        setListings(Array.isArray(data) ? data : []);
+        setStatus("ok");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setListings(null);
+        setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Bucketing, sorting and county chips are derived in one pass per
+  // dataset / filter change, so the JSX below stays dumb.
+  const view = useMemo(() => {
+    const now = Date.now();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayStart = startOfToday.getTime();
+    const weekStart = todayStart + DAY_MS; // anything from tomorrow…
+    const weekEnd = weekStart + 7 * DAY_MS; // …up to 7 days out
+
+    const rows = (listings ?? []).map((listing) => ({
+      listing,
+      arrival: parseArrival(listing.availableFrom),
+    }));
+    const byDateThenPrice = (a, b) =>
+      (a.arrival ?? Infinity) - (b.arrival ?? Infinity) || a.listing.price - b.listing.price;
+
+    const buckets = {
+      ready: rows.filter((r) => r.arrival !== null && r.arrival < weekStart).sort(byDateThenPrice),
+      week: rows
+        .filter((r) => r.arrival !== null && r.arrival >= weekStart && r.arrival < weekEnd)
+        .sort(byDateThenPrice),
+      later: rows.filter((r) => r.arrival === null || r.arrival >= weekEnd).sort(byDateThenPrice),
+    };
+    const counties = [...new Set(rows.map((r) => r.listing.county).filter(Boolean))].sort();
+
+    return { buckets, counties, now, todayStart };
+  }, [listings]);
+
+  const labels = { ready: "Ready now", week: "Next 7 days", later: "Later" };
+  const active = view.buckets[bucketFilter] ?? [];
+  const shown = countyFilter ? active.filter((r) => r.listing.county === countyFilter) : active;
+
+  return (
+    <section
+      aria-label="Harvest Radar — producer listings arriving on AgroConnect"
+      className={styles.radar}
+    >
+      <h2>Harvest Radar</h2>
+      <p className={styles.intro}>
+        Producer listings from AgroConnect arranged by when they reach the market — so club members
+        can buy from our partner growers at exactly the right moment.
+      </p>
+
+      {status === "loading" && (
+        <SkeletonGroup label="Loading the market feed…">
+          <div className={styles.board}>
+            {Array.from({ length: 3 }, (_, i) => (
+              <PartnerSkeletonCard key={i} />
+            ))}
+          </div>
+        </SkeletonGroup>
+      )}
+
+      {status === "error" && (
+        <div className={styles.radarCard}>
+          <p className={styles.error}>
+            The AgroConnect market feed is unavailable right now — club events below work without
+            it.
+          </p>
+          <button type="button" className={styles.retry} onClick={load}>
+            Retry the feed
+          </button>
+        </div>
+      )}
+
+      {status === "ok" && listings.length === 0 && (
+        <p className={styles.empty}>
+          No producer listings on AgroConnect yet — check back once the market fills up.
+        </p>
+      )}
+
+      {status === "ok" && listings.length > 0 && (
+        <>
+          {/* Arrival-window tabs; the count shows how much each window holds */}
+          <ul className={styles.tabs} aria-label="Arrival windows">
+            {Object.entries(labels).map(([key, label]) => (
+              <li key={key}>
+                <button
+                  type="button"
+                  className={`${styles.tab} ${bucketFilter === key ? styles.tabActive : ""}`}
+                  aria-pressed={bucketFilter === key}
+                  onClick={() => setBucketFilter(key)}
+                >
+                  {label}
+                  <span className={styles.count}>{view.buckets[key].length}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* County chips derived from the data itself */}
+          <div className={styles.chips}>
+            <button
+              type="button"
+              className={`${styles.chip} ${countyFilter === "" ? styles.chipActive : ""}`}
+              aria-pressed={countyFilter === ""}
+              onClick={() => setCountyFilter("")}
+            >
+              All counties
+            </button>
+            {view.counties.map((county) => (
+              <button
+                key={county}
+                type="button"
+                className={`${styles.chip} ${countyFilter === county ? styles.chipActive : ""}`}
+                aria-pressed={countyFilter === county}
+                onClick={() => setCountyFilter(county)}
+              >
+                {county}
+              </button>
+            ))}
+          </div>
+
+          {shown.length === 0 ? (
+            <p className={styles.empty}>
+              Nothing {labels[bucketFilter].toLowerCase()}
+              {countyFilter ? ` in ${countyFilter}` : ""} — try another window or county.
+            </p>
+          ) : (
+            <ul className={styles.board}>
+              {shown.map(({ listing, arrival }) => (
+                <li
+                  key={listing.id ?? `${listing.title}-${listing.sellerName}`}
+                  className={styles.radarCard}
+                >
+                  <h3>{listing.title}</h3>
+                  <p>
+                    KES {listing.price}&nbsp;/&nbsp;{listing.unit}
+                  </p>
+                  <p>
+                    <strong>{listing.quantity ?? "?"}</strong> {listing.unit} ·{" "}
+                    <span className={styles.seller}>{listing.sellerName}</span>
+                  </p>
+                  <p className={styles.meta}>
+                    {listing.county} · {arrivalText(arrival, view.now, view.todayStart)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

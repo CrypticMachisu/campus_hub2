@@ -1,0 +1,109 @@
+.radar {
+  margin: var(--space-lg, 2rem) 0;
+  padding: var(--space-lg, 2rem);
+  background: var(--color-secondary-light, #eef4f0);
+  border: 1px dashed var(--color-secondary, #2f6e64);
+  border-radius: var(--radius-lg, 10px);
+}
+.radar h2 {
+  margin-top: 0;
+}
+.intro {
+  margin-top: 0;
+  max-width: 60ch;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm, 0.5rem);
+  list-style: none;
+  padding: 0;
+  margin: var(--space-md, 1rem) 0 0.75rem;
+}
+.tab {
+  padding: 0.45rem 0.9rem;
+  background: var(--color-card-bg, #fbf6e9);
+  border: 1px solid var(--color-border, #d8cba9);
+  border-radius: var(--radius, 6px);
+  font-family: var(--font-mono, monospace);
+  cursor: pointer;
+}
+
+/* declared after .tab so the selected window colour wins the cascade */
+.tabActive {
+  background: var(--color-secondary, #2f6e64);
+  border-color: var(--color-secondary, #2f6e64);
+  color: var(--color-white, #fff);
+}
+.count {
+  margin-left: 0.45rem;
+  opacity: 0.75;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs, 0.35rem);
+  margin: 0 0 var(--space-md, 1rem);
+}
+.chip {
+  padding: 0.25rem 0.7rem;
+  background: transparent;
+  border: 1px dotted var(--color-border, #d8cba9);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* declared after .chip so the active county style wins the cascade */
+.chipActive {
+  border-style: solid;
+  background: var(--color-secondary-light, #e3ede9);
+  border-color: var(--color-secondary, #2f6e64);
+  color: var(--color-secondary-dark, #1f4a45);
+  font-weight: 600;
+}
+.board {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-md, 1rem);
+}
+.radarCard {
+  padding: var(--space-md, 1rem);
+  background: var(--color-card-bg, #fbf6e9);
+  border: 1px solid var(--color-border, #d8cba9);
+  border-radius: var(--radius, 6px);
+}
+.radarCard h3 {
+  margin: 0 0 0.25rem;
+}
+.radarCard p {
+  margin: 0.15rem 0;
+  font-size: 0.95rem;
+}
+.seller {
+  color: var(--color-text-muted, #6b6457);
+}
+.meta {
+  color: var(--color-secondary-dark, #1f4a45);
+  font-size: 0.85rem;
+}
+.retry {
+  padding: 0.45rem 0.9rem;
+  background: var(--color-primary, #c1432e);
+  color: var(--color-white, #fff);
+  border: none;
+  border-radius: var(--radius, 6px);
+  font-family: var(--font-mono, monospace);
+  cursor: pointer;
+}
+.empty {
+  color: var(--color-text-muted, #6b6457);
+  font-style: italic;
+}
+.error {
+  color: var(--color-danger, #b3261e);
+  margin-top: 0;
+}
