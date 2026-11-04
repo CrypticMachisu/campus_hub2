@@ -412,6 +412,55 @@ These routes exist but are not documented here: `POST /api/auth/forgot-password`
 
 ---
 
+## Monitoring: request log and `/stats`
+
+Every request writes one JSON line — time, method, path, status, response time and a caller label. Requests rejected by the key check or the rate limiter are logged too, because the logger runs before both:
+
+```json
+{"time":"2026-11-04T08:19:24.449Z","method":"GET","path":"/api/events","status":200,"ms":31.9,"caller":"key-1454b5"}
+{"time":"2026-11-04T08:19:24.521Z","method":"GET","path":"/api/events","status":401,"ms":1.2,"caller":"none"}
+```
+
+The caller label is the first six hex characters of a SHA-256 hash of the key, so callers can be told apart without the key itself ever being written. Query strings, request bodies, passwords and tokens are never logged.
+
+`GET /api/stats` returns running totals since the server started. It needs an API key, like every other endpoint:
+
+```bash
+curl http://localhost:5000/api/stats -H "X-API-Key: <your-api-key>"
+```
+
+```json
+{
+  "startedAt": "2026-11-04T08:19:18.313Z",
+  "uptimeSeconds": 102,
+  "total": 381,
+  "clientErrors": 290,
+  "serverErrors": 0,
+  "errorRatePercent": 0,
+  "avgMs": 3,
+  "routes": {
+    "GET /api/events/": {
+      "count": 46,
+      "clientErrors": 0,
+      "serverErrors": 0,
+      "avgMs": 14.2,
+      "maxMs": 26
+    },
+    "GET (no route)": {
+      "count": 247,
+      "clientErrors": 247,
+      "serverErrors": 0,
+      "avgMs": 0.5,
+      "maxMs": 1
+    }
+  }
+}
+```
+
+`routes` is grouped by route pattern, so every id under one path shares a single row. `(no route)` holds requests rejected before routing — 401s, 429s — plus 404s for paths that do not exist. The totals live in the server's memory and reset on restart.
+
+---
+
 ## Errors
 
 Errors from the API are JSON with a single `error` message and the matching HTTP status code. Check the status code first: `2xx` means success.
