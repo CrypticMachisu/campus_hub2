@@ -21,6 +21,7 @@ import { createAdminRouter } from "./routes/admin.js";
 import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { partnerRouter } from "./routes/partner.js"; // NEW: Team 6 AgroConnect integration
+import { harvestWatchRouter } from "./routes/harvestWatch.js"; // NEW: Agri club Harvest Watch
 import { monitor, statsHandler } from "./monitoring.js"; // Week 12 (Parts B & C): logging + stats
 
 // Week 10 hardening: check the required .env configuration BEFORE
@@ -71,6 +72,7 @@ app.use("/api/signups", signupsRouter);
 app.use("/api/comments", commentsRouter);
 app.use("/api/announcements", announcementsRouter);
 app.use("/api/partner", partnerRouter); // NEW: calls the partner's API from our server
+app.use("/api/harvest-watch", harvestWatchRouter); // NEW: Agri club members' pinned producer listings
 app.use("/api/admin", createAdminRouter(limiter));
 
 // Week 9 (Part D) fix: unknown URLs used to return Express's default HTML

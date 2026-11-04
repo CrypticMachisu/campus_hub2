@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "../utils/api";
+import { apiFetch, getToken } from "../utils/api";
 import { SkeletonGroup, PartnerSkeletonCard } from "./Skeleton";
 import styles from "./HarvestRadar.module.css";
 
@@ -28,8 +28,11 @@ function arrivalText(arrival, now, todayStart) {
  * (proxied through OUR backend, which holds the partner key) into a
  * time-aware board for Agri club members: what is ready right now, what is
  * arriving over the next 7 days and what is further out — filterable by
- * county. A pure read of partner data; nothing is ordered or posted to
- * their API.
+ * county.
+ *
+ * Harvest Watch builds on it: a logged-in member can pin a listing, which
+ * our MySQL database keeps even when the partner feed rotates or is down.
+ * Reading partner data is unaffected by whether anyone is logged in.
  *
  * Fails independently of every other panel: a cold partner start shows
  * skeletons, a dead partner shows a friendly card with a Retry button.
@@ -39,6 +42,11 @@ export default function HarvestRadar() {
   const [status, setStatus] = useState("loading"); // loading | ok | error
   const [bucketFilter, setBucketFilter] = useState("ready");
   const [countyFilter, setCountyFilter] = useState("");
+
+  const [watch, setWatch] = useState([]);
+  const [watchBusy, setWatchBusy] = useState(""); // listingId currently being saved/removed
+  const [watchError, setWatchError] = useState("");
+  const loggedIn = Boolean(getToken());
 
   async function load() {
     setStatus("loading");
@@ -71,6 +79,23 @@ export default function HarvestRadar() {
     };
   }, []);
 
+  // My saved listings live in OUR database; a failed load must not hide the
+  // partner feed, so it only clears the watch panel.
+  useEffect(() => {
+    if (!loggedIn) return undefined;
+    let cancelled = false;
+    apiFetch("/harvest-watch")
+      .then((data) => {
+        if (!cancelled) setWatch(Array.isArray(data?.watch) ? data.watch : []);
+      })
+      .catch(() => {
+        if (!cancelled) setWatch([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
   // Bucketing, sorting and county chips are derived in one pass per
   // dataset / filter change, so the JSX below stays dumb.
   const view = useMemo(() => {
@@ -99,6 +124,40 @@ export default function HarvestRadar() {
 
     return { buckets, counties, now, todayStart };
   }, [listings]);
+
+  const watchedIds = useMemo(() => new Set(watch.map((item) => item.listingId)), [watch]);
+
+  async function toggleWatch(listing) {
+    const id = String(listing.id ?? "");
+    if (!id || watchBusy) return;
+    setWatchBusy(id);
+    setWatchError("");
+    try {
+      if (watchedIds.has(id)) {
+        await apiFetch(`/harvest-watch/${encodeURIComponent(id)}`, { method: "DELETE" });
+        setWatch((current) => current.filter((item) => item.listingId !== id));
+      } else {
+        const data = await apiFetch("/harvest-watch", {
+          method: "POST",
+          body: {
+            listingId: id,
+            title: listing.title,
+            seller: listing.sellerName,
+            county: listing.county,
+            price: listing.price,
+            unit: listing.unit,
+            quantity: listing.quantity,
+            availableFrom: listing.availableFrom,
+          },
+        });
+        if (data?.watch) setWatch((current) => [data.watch, ...current]);
+      }
+    } catch (error) {
+      setWatchError(error.message || "Could not update your watch list.");
+    } finally {
+      setWatchBusy("");
+    }
+  }
 
   const labels = { ready: "Ready now", week: "Next 7 days", later: "Later" };
   const active = view.buckets[bucketFilter] ?? [];
@@ -145,6 +204,43 @@ export default function HarvestRadar() {
 
       {status === "ok" && listings.length > 0 && (
         <>
+          {/* Harvest Watch: what this member pinned, kept in our own database */}
+          <div className={styles.watchPanel} aria-label="Your harvest watch">
+            <p className={styles.watchHead}>
+              <strong>Your harvest watch</strong>{" "}
+              {watch.length === 0
+                ? "— pin a listing below and we'll keep its details, even when the feed is down."
+                : `— ${watch.length} listing${watch.length === 1 ? "" : "s"} saved.`}
+            </p>
+            {!loggedIn && (
+              <p className={styles.watchNote}>
+                Log in to keep producer listings under your own account.
+              </p>
+            )}
+            {watchError && <p className={styles.error}>{watchError}</p>}
+            {watch.length > 0 && (
+              <ul className={styles.watchList}>
+                {watch.map((item) => (
+                  <li key={item.listingId} className={styles.watchItem}>
+                    <span>
+                      <strong>{item.title}</strong>
+                      {item.county ? ` · ${item.county}` : ""} ·{" "}
+                      {arrivalText(parseArrival(item.availableFrom), view.now, view.todayStart)}
+                    </span>
+                    <button
+                      type="button"
+                      className={`${styles.watchBtn} ${styles.watchOn}`}
+                      onClick={() => toggleWatch({ id: item.listingId, ...item })}
+                      disabled={watchBusy === item.listingId}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           {/* Arrival-window tabs; the count shows how much each window holds */}
           <ul className={styles.tabs} aria-label="Arrival windows">
             {Object.entries(labels).map(([key, label]) => (
@@ -192,24 +288,39 @@ export default function HarvestRadar() {
             </p>
           ) : (
             <ul className={styles.board}>
-              {shown.map(({ listing, arrival }) => (
-                <li
-                  key={listing.id ?? `${listing.title}-${listing.sellerName}`}
-                  className={styles.radarCard}
-                >
-                  <h3>{listing.title}</h3>
-                  <p>
-                    KES {listing.price}&nbsp;/&nbsp;{listing.unit}
-                  </p>
-                  <p>
-                    <strong>{listing.quantity ?? "?"}</strong> {listing.unit} ·{" "}
-                    <span className={styles.seller}>{listing.sellerName}</span>
-                  </p>
-                  <p className={styles.meta}>
-                    {listing.county} · {arrivalText(arrival, view.now, view.todayStart)}
-                  </p>
-                </li>
-              ))}
+              {shown.map(({ listing, arrival }) => {
+                const id = String(listing.id ?? "");
+                const saved = watchedIds.has(id);
+                return (
+                  <li
+                    key={id || `${listing.title}-${listing.sellerName}`}
+                    className={styles.radarCard}
+                  >
+                    <h3>{listing.title}</h3>
+                    <p>
+                      KES {listing.price}&nbsp;/&nbsp;{listing.unit}
+                    </p>
+                    <p>
+                      <strong>{listing.quantity ?? "?"}</strong> {listing.unit} ·{" "}
+                      <span className={styles.seller}>{listing.sellerName}</span>
+                    </p>
+                    <p className={styles.meta}>
+                      {listing.county} · {arrivalText(arrival, view.now, view.todayStart)}
+                    </p>
+                    {loggedIn && id && (
+                      <button
+                        type="button"
+                        className={`${styles.watchBtn} ${saved ? styles.watchOn : ""}`}
+                        aria-pressed={saved}
+                        disabled={watchBusy === id}
+                        onClick={() => toggleWatch(listing)}
+                      >
+                        {saved ? "Watching" : "Watch"}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </>
