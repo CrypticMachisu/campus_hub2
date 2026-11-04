@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch, getToken } from "../utils/api";
 import { SkeletonGroup, PartnerSkeletonCard } from "./Skeleton";
 import styles from "./HarvestRadar.module.css";
@@ -48,36 +48,29 @@ export default function HarvestRadar() {
   const [watchError, setWatchError] = useState("");
   const loggedIn = Boolean(getToken());
 
-  async function load() {
+  // One loader for both the first fetch and the Retry button; `isActive`
+  // lets the mount effect ignore a response that arrives after unmount.
+  const load = useCallback(async (isActive = () => true) => {
     setStatus("loading");
     try {
       const data = await apiFetch("/partner/produce", { auth: false });
+      if (!isActive()) return;
       setListings(Array.isArray(data) ? data : []);
       setStatus("ok");
     } catch {
+      if (!isActive()) return;
       setListings(null);
       setStatus("error");
     }
-  }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    setStatus("loading");
-    apiFetch("/partner/produce", { auth: false })
-      .then((data) => {
-        if (cancelled) return;
-        setListings(Array.isArray(data) ? data : []);
-        setStatus("ok");
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setListings(null);
-        setStatus("error");
-      });
+    load(() => !cancelled);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [load]);
 
   // My saved listings live in OUR database; a failed load must not hide the
   // partner feed, so it only clears the watch panel.
