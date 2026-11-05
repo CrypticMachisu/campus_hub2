@@ -57,6 +57,10 @@ This address stops working when the host's machine or tunnel is switched off. Al
 
 You need: **Node.js 18+**, **Git**, and **MySQL** (XAMPP's MySQL works). Nothing else.
 
+For the complete step-by-step — including every command and its fallbacks, first-run
+database setup, the front end, the public tunnel, and a full troubleshooting list — see
+[RUNNING.md](RUNNING.md).
+
 > Only one MySQL server may use port 3306. If you have two (for example XAMPP and a separate MySQL service), stop one of them first.
 
 ```bash
