@@ -459,6 +459,16 @@ curl http://localhost:5000/api/stats -H "X-API-Key: <your-api-key>"
 
 `routes` is grouped by route pattern, so every id under one path shares a single row. `(no route)` holds requests rejected before routing — 401s, 429s — plus 404s for paths that do not exist. The totals live in the server's memory and reset on restart.
 
+### Generating test traffic
+
+`traffic.js` (repo root) sends a random mix of reads, signups-by-event, no-key and nonexistent paths, then prints the status codes it received:
+
+```bash
+API=http://localhost:5000 KEY=<your-api-key> node traffic.js
+```
+
+Optionally set `N` for more requests (`N=200`). Reading `GET /api/stats` afterwards gives you numbers to look at; see `MONITORING_NOTES.md` for what we recorded and observed.
+
 ---
 
 ## Errors
