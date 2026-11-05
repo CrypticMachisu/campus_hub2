@@ -36,3 +36,13 @@
 .error {
   color: var(--color-danger, #b3261e);
 }
+.staleBanner {
+  margin: 0 0 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--color-warn-bg, #fff6e0);
+  border: 1px solid var(--color-border, #d8cba9);
+  border-left: 4px solid var(--color-warn, #b26a00);
+  border-radius: var(--radius, 6px);
+  color: var(--color-text, #40392b);
+  font-size: 0.9rem;
+}
