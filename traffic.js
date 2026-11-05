@@ -1,7 +1,7 @@
 // traffic.js: sends a mix of requests to your API, to give you data.
 // Run: API=http://localhost:5000 KEY=<your-key> node traffic.js
 // Adapt the paths in `mix` to your own API.
-const API = process.env.API || "http://localhost:3000";
+const API = process.env.API || "http://localhost:5000";
 const KEY = process.env.KEY;
 const N = Number(process.env.N || 60);
 
