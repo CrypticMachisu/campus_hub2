@@ -1,8 +1,8 @@
 /*
   Club workspace (member home).
-  Editorial, not dashboard-y: the club name and its paper notices lead,
-  the roster and membership controls sit in a narrower second column.
-  No card-within-card stacking — sections are separated by dashed rules.
+  Editorial, not dashboard-y: the next event leads, the agenda and feed carry
+  the interaction, and the roster/membership sit in a narrower second column.
+  Sections are separated by dashed rules rather than nested cards.
 */
 
 .page {
@@ -136,11 +136,45 @@
   color: var(--color-text);
 }
 
+/* Quick actions: the three things members actually come here to do. */
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.quickAction {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-card-bg);
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  letter-spacing: 0.03em;
+  color: var(--color-text);
+  transition:
+    background-color 0.16s ease,
+    transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.quickAction:hover {
+  background: var(--color-bg-alt);
+}
+
+.quickAction:active {
+  transform: scale(0.98);
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
   gap: clamp(1.5rem, 4vw, 3.5rem);
   align-items: start;
+  margin-top: var(--space-xl);
 }
 
 .column {
@@ -154,6 +188,7 @@
   min-width: 0;
   padding-bottom: var(--space-lg);
   border-bottom: 1px dashed var(--color-border);
+  scroll-margin-top: var(--space-lg);
 }
 
 .column > .section:last-child {
@@ -183,14 +218,8 @@
   white-space: nowrap;
 }
 
-.sectionLink {
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  color: var(--color-primary-dark);
-  border-bottom: 1px dashed currentColor;
-}
-
-.notes {
+/* Activity feed: announcements and club discussion, newest first. */
+.feed {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -199,79 +228,38 @@
   gap: var(--space-sm);
 }
 
-/* Each announcement reads as a pinned index card, tilted a hair. */
-.note {
+.feedItem {
   position: relative;
+  padding: var(--space-sm) var(--space-md);
   background: var(--color-card-bg);
   border: 1px solid var(--color-border);
   border-left: 3px solid var(--color-accent);
   border-radius: 0 var(--radius) var(--radius) 0;
-  padding: var(--space-md);
   box-shadow: var(--shadow-card);
-  transform: rotate(calc((var(--note-index, 0) - 0.5) * 0.3deg));
 }
 
-.noteText {
-  margin: 0 0 var(--space-sm);
-  line-height: 1.55;
+.feedKind {
+  margin: 0 0 2px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.feedText {
+  margin: 0 0 2px;
+  font-size: 0.86rem;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
-.noteTime {
+.feedTime {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-}
-
-.eventList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.eventRow {
-  display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: var(--space-md);
-  padding: 0.65rem 0.25rem;
-  border-top: 1px dashed var(--color-border);
-  transition: background-color 0.16s ease;
-}
-
-.eventList li:first-child .eventRow {
-  border-top: 0;
-}
-
-.eventRow:hover {
-  background: var(--color-bg-alt);
-}
-
-.eventDate {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-secondary);
-}
-
-.eventTitle {
-  font-weight: 600;
-  font-size: 0.94rem;
-  overflow-wrap: anywhere;
-}
-
-.eventWhere {
-  font-family: var(--font-mono);
-  font-size: 0.64rem;
-  color: var(--color-text-muted);
-  text-align: right;
-  max-width: 12rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .roster {
@@ -384,12 +372,6 @@
   max-width: 46ch;
 }
 
-.emptyBody + .inlineLink,
-.empty .inlineLink {
-  margin-top: var(--space-sm);
-  display: inline-block;
-}
-
 .inlineLink {
   font-family: var(--font-mono);
   font-size: 0.68rem;
@@ -491,10 +473,9 @@
     animation: shimmer 1.6s linear infinite;
   }
 
-  .note,
-  .eventList li {
-    animation: settle 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: calc(var(--note-index, var(--row-index, 0)) * 70ms);
+  .feedItem {
+    animation: settle 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--feed-index, 0) * 60ms);
   }
 }
 
@@ -533,16 +514,7 @@
   .layout,
   .skeletonGrid {
     grid-template-columns: 1fr;
-  }
-
-  .eventRow {
-    grid-template-columns: 7.5rem minmax(0, 1fr);
-  }
-
-  .eventWhere {
-    grid-column: 2;
-    text-align: left;
-    max-width: none;
+    margin-top: var(--space-lg);
   }
 }
 
@@ -550,15 +522,5 @@
   .logo {
     width: 52px;
     height: 52px;
-  }
-
-  .eventRow {
-    grid-template-columns: 1fr;
-    gap: 2px;
-    padding: 0.6rem 0;
-  }
-
-  .eventWhere {
-    grid-column: 1;
   }
 }

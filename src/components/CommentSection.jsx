@@ -28,7 +28,12 @@ function formatTimestamp(iso) {
  * Comment thread for either an event or a club.
  * @param {{ targetType: "event"|"club", targetId: string }} props
  */
-export default function CommentSection({ targetType, targetId }) {
+export default function CommentSection({
+  targetType,
+  targetId,
+  compact = false,
+  showHeading = true,
+}) {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
   const [draft, setDraft] = useState("");
@@ -59,8 +64,8 @@ export default function CommentSection({ targetType, targetId }) {
   }
 
   return (
-    <section className={styles.section}>
-      <h3 className={styles.heading}>Comments</h3>
+    <section className={compact ? `${styles.section} ${styles.compact}` : styles.section}>
+      {showHeading && <h3 className={styles.heading}>{compact ? "Discussion" : "Comments"}</h3>}
 
       {comments.length === 0 ? (
         <p className={styles.empty}>No comments yet — be the first to say something.</p>

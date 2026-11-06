@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useClubs } from "../context/ClubsContext";
 import { useAuth } from "../context/AuthContext";
@@ -6,22 +6,14 @@ import { canManageClub, isClubMember } from "../utils/authStore";
 import { getAllEvents } from "../utils/eventsStore";
 import { getAnnouncements } from "../utils/dashboardStorage";
 import { getClubMembers, leaveClub } from "../utils/membershipStore";
-import { formatEventDate } from "../utils/dateTime";
+import { getComments } from "../utils/commentsStore";
+import { getSignups, saveSignup, deleteSignup } from "../utils/storage";
+import NextClubEvent from "../components/NextClubEvent";
+import ClubAgenda from "../components/ClubAgenda";
+import CommentSection from "../components/CommentSection";
 import styles from "./ClubWorkspace.module.css";
 
-function todayStart() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function eventTimestamp(event) {
-  const time = /^\d{2}:\d{2}$/.test(event.time || "") ? event.time : "00:00";
-  const parsed = new Date(`${event.date}T${time}`);
-  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-}
-
-/** Compact "3h ago" style stamp for announcements. */
+/** Compact "3h ago" stamp for the activity feed. */
 function timeAgo(iso) {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
@@ -45,10 +37,15 @@ function initials(name = "") {
     .toUpperCase();
 }
 
+function eventStart(event) {
+  return new Date(`${event.date}T${event.time || "00:00"}`).getTime();
+}
+
 /**
- * The home screen for someone who belongs to a club. This is what replaces
- * the generic discovery page once you're a member: your club's updates,
- * your next events, and the people you're in it with.
+ * The home screen for someone who belongs to a club: the next event with a
+ * one-tap RSVP, the club agenda (including history), a merged activity feed,
+ * and the club's discussion — all on one page so the workspace is useful on
+ * its own rather than a brochure about the club.
  */
 export default function ClubWorkspace() {
   const { clubId } = useParams();
@@ -62,25 +59,36 @@ export default function ClubWorkspace() {
   const [events, setEvents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [members, setMembers] = useState([]);
+  const [signups, setSignups] = useState([]);
+  const [clubComments, setClubComments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingIds, setPendingIds] = useState(() => new Set());
+  const [statusNote, setStatusNote] = useState("");
   const [leaveError, setLeaveError] = useState("");
   const [leaving, setLeaving] = useState(false);
+
+  const discussionRef = useRef(null);
 
   useEffect(() => {
     if (!clubId) return;
     let cancelled = false;
     setLoading(true);
 
-    // Each panel is independent: a roster failure shouldn't blank the events.
+    // Independent panels: a roster or discussion failure shouldn't blank
+    // the agenda, so failures are tolerated per-panel.
     Promise.allSettled([
       getAllEvents(),
       getAnnouncements(clubId),
       getClubMembers(clubId),
-    ]).then(([eventsResult, announcementsResult, membersResult]) => {
+      getSignups(),
+      getComments("club", clubId),
+    ]).then(([eventsRes, announcementsRes, membersRes, signupsRes, commentsRes]) => {
       if (cancelled) return;
-      if (eventsResult.status === "fulfilled") setEvents(eventsResult.value);
-      if (announcementsResult.status === "fulfilled") setAnnouncements(announcementsResult.value);
-      if (membersResult.status === "fulfilled") setMembers(membersResult.value);
+      if (eventsRes.status === "fulfilled") setEvents(eventsRes.value);
+      if (announcementsRes.status === "fulfilled") setAnnouncements(announcementsRes.value);
+      if (membersRes.status === "fulfilled") setMembers(membersRes.value);
+      if (signupsRes.status === "fulfilled") setSignups(signupsRes.value);
+      if (commentsRes.status === "fulfilled") setClubComments(commentsRes.value);
       setLoading(false);
     });
 
@@ -88,6 +96,73 @@ export default function ClubWorkspace() {
       cancelled = true;
     };
   }, [clubId]);
+
+  const signupByEvent = useMemo(
+    () => new Map(signups.map((signup) => [signup.eventId, signup])),
+    [signups]
+  );
+  const signupFor = useCallback((eventId) => signupByEvent.get(eventId), [signupByEvent]);
+
+  const clubEvents = useMemo(
+    () =>
+      events
+        .filter((event) => event.clubId === clubId)
+        .sort((a, b) => eventStart(a) - eventStart(b)),
+    [events, clubId]
+  );
+
+  const nextEvent = useMemo(
+    () => clubEvents.find((event) => eventStart(event) >= Date.now()) || null,
+    [clubEvents]
+  );
+
+  /**
+   * Optimistic RSVP: flip the button immediately, roll back if the API
+   * refuses. Keeps this page and the agenda reading the same state.
+   */
+  async function toggleRsvp(event) {
+    if (pendingIds.has(event.id)) return;
+    const existing = signupByEvent.get(event.id);
+    setPendingIds((current) => new Set(current).add(event.id));
+
+    if (existing) {
+      setSignups((current) => current.filter((signup) => signup.eventId !== event.id));
+      try {
+        await deleteSignup(existing.id);
+        setStatusNote(`Cancelled your RSVP for ${event.title}.`);
+      } catch (err) {
+        setSignups((current) => [...current, existing]);
+        setStatusNote(err.message);
+      }
+    } else {
+      const placeholder = { id: `pending-${event.id}`, eventId: event.id };
+      setSignups((current) => [...current, placeholder]);
+      try {
+        const saved = await saveSignup({ eventId: event.id });
+        setSignups((current) =>
+          current.map((signup) => (signup.eventId === event.id ? saved : signup))
+        );
+        setStatusNote(`You're going to ${event.title}.`);
+      } catch (err) {
+        setSignups((current) => current.filter((signup) => signup.eventId !== event.id));
+        setStatusNote(err.message);
+      }
+    }
+
+    setPendingIds((current) => {
+      const next = new Set(current);
+      next.delete(event.id);
+      return next;
+    });
+  }
+
+  function focusDiscussion() {
+    const node = discussionRef.current;
+    if (!node) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    node.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    node.querySelector("input")?.focus({ preventScroll: true });
+  }
 
   async function handleLeave() {
     const confirmed = window.confirm(
@@ -100,8 +175,6 @@ export default function ClubWorkspace() {
     try {
       const updatedUser = await leaveClub(clubId);
       applyUser(updatedUser);
-      // "/" resolves to another club's workspace, or the discovery page if
-      // that was their last one.
       navigate("/", { replace: true });
     } catch (err) {
       setLeaveError(err.message);
@@ -137,14 +210,23 @@ export default function ClubWorkspace() {
     return <Navigate to={`/clubs/${club.id}`} replace />;
   }
 
-  const upcoming = events
-    .filter((event) => event.clubId === clubId)
-    .filter((event) => new Date(`${event.date}T00:00`) >= todayStart())
-    .sort((a, b) => eventTimestamp(a) - eventTimestamp(b));
-
-  const latestAnnouncements = [...announcements]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 3);
+  const feed = [
+    ...announcements.map((note) => ({
+      key: `announcement-${note.id}`,
+      kind: "Announcement",
+      text: note.text,
+      at: note.createdAt,
+    })),
+    ...clubComments.map((comment) => ({
+      key: `comment-${comment.id}`,
+      kind: "Discussion",
+      text: comment.text,
+      author: comment.userName,
+      at: comment.createdAt,
+    })),
+  ]
+    .sort((a, b) => new Date(b.at) - new Date(a.at))
+    .slice(0, 6);
 
   return (
     <div className={styles.page}>
@@ -183,162 +265,173 @@ export default function ClubWorkspace() {
         </div>
       </header>
 
+      <p className="visually-hidden" role="status">
+        {statusNote}
+      </p>
+
       {loading ? (
         <SkeletonWorkspace />
       ) : (
-        <div className={styles.layout}>
-          <div className={styles.column}>
-            <section className={styles.section} aria-labelledby="workspace-announcements">
-              <div className={styles.sectionHead}>
-                <h2 id="workspace-announcements" className={styles.sectionTitle}>
-                  Noticeboard
-                </h2>
-                <span className={styles.sectionNote}>
-                  {latestAnnouncements.length
-                    ? `${announcements.length} post${announcements.length === 1 ? "" : "s"}`
-                    : "All quiet"}
-                </span>
-              </div>
-
-              {latestAnnouncements.length === 0 ? (
-                <div className={styles.empty}>
-                  <p className={styles.emptyTitle}>Nothing pinned up yet</p>
-                  <p className={styles.emptyBody}>
-                    {managesThisClub
-                      ? "Post the first update from the club dashboard — meeting changes, deadlines, anything members should see."
-                      : "Club admins haven't posted an update yet. Check back after the next meeting."}
-                  </p>
-                  {managesThisClub && (
-                    <Link to={`/dashboard/${club.id}`} className={styles.inlineLink}>
-                      Post an announcement
-                    </Link>
-                  )}
-                </div>
-              ) : (
-                <ul className={styles.notes}>
-                  {latestAnnouncements.map((note, index) => (
-                    <li
-                      key={note.id}
-                      className={styles.note}
-                      style={{ "--note-index": index }}
-                    >
-                      <p className={styles.noteText}>{note.text}</p>
-                      <time className={styles.noteTime} dateTime={note.createdAt}>
-                        {timeAgo(note.createdAt)}
-                      </time>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className={styles.section} aria-labelledby="workspace-events">
-              <div className={styles.sectionHead}>
-                <h2 id="workspace-events" className={styles.sectionTitle}>
-                  Next up
-                </h2>
-                <Link to="/my-events" className={styles.sectionLink}>
-                  My events
-                </Link>
-              </div>
-
-              {upcoming.length === 0 ? (
-                <div className={styles.empty}>
-                  <p className={styles.emptyTitle}>No events on the calendar</p>
-                  <p className={styles.emptyBody}>
-                    {managesThisClub
-                      ? "Add the next meeting or event from the club dashboard."
-                      : "Nothing scheduled right now. Announcements will show up here."}
-                  </p>
-                </div>
-              ) : (
-                <ul className={styles.eventList}>
-                  {upcoming.slice(0, 4).map((event, index) => (
-                    <li key={event.id} style={{ "--row-index": index }}>
-                      <Link to={`/events/${event.id}`} className={styles.eventRow}>
-                        <time className={styles.eventDate} dateTime={event.date}>
-                          {formatEventDate(event.date)}
-                        </time>
-                        <span className={styles.eventTitle}>{event.title}</span>
-                        <span className={styles.eventWhere}>{event.location}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+        <>
+          <div className={styles.quickActions}>
+            <button type="button" className={styles.quickAction} onClick={focusDiscussion}>
+              Ask the club
+            </button>
+            <Link to="/my-events" className={styles.quickAction}>
+              My events
+            </Link>
+            {managesThisClub ? (
+              <Link to={`/dashboard/${club.id}`} className={styles.quickAction}>
+                Post an update
+              </Link>
+            ) : (
+              <Link to={`/clubs/${club.id}`} className={styles.quickAction}>
+                Club page &amp; comments
+              </Link>
+            )}
           </div>
 
-          <div className={styles.column}>
-            <section className={styles.section} aria-labelledby="workspace-roster">
-              <div className={styles.sectionHead}>
-                <h2 id="workspace-roster" className={styles.sectionTitle}>
-                  Members
-                </h2>
-                <span className={styles.sectionNote}>
-                  {members.length} {members.length === 1 ? "person" : "people"}
-                </span>
-              </div>
+          <NextClubEvent
+            event={nextEvent}
+            clubName={club.name}
+            going={Boolean(nextEvent && signupFor(nextEvent.id))}
+            pending={Boolean(nextEvent && pendingIds.has(nextEvent.id))}
+            onToggle={toggleRsvp}
+          />
 
-              {members.length === 0 ? (
-                <p className={styles.emptyBody}>The roster isn&apos;t available right now.</p>
-              ) : (
-                <ul className={styles.roster}>
-                  {members.slice(0, 8).map((member) => (
-                    <li key={member.id} className={styles.member}>
-                      <span className={styles.avatar} aria-hidden="true">
-                        {initials(member.name)}
-                      </span>
-                      <span className={styles.memberText}>
-                        <span className={styles.memberName}>
-                          {member.name}
-                          {member.id === user.id && (
-                            <span className={styles.youTag}>You</span>
+          <div className={styles.layout}>
+            <div className={styles.column}>
+              <ClubAgenda
+                events={clubEvents}
+                signupFor={signupFor}
+                pendingIds={pendingIds}
+                onToggle={toggleRsvp}
+              />
+
+              <section className={styles.section} aria-labelledby="workspace-feed">
+                <div className={styles.sectionHead}>
+                  <h2 id="workspace-feed" className={styles.sectionTitle}>
+                    Club feed
+                  </h2>
+                  <span className={styles.sectionNote}>
+                    {feed.length ? "Newest first" : "Nothing yet"}
+                  </span>
+                </div>
+
+                {feed.length === 0 ? (
+                  <div className={styles.empty}>
+                    <p className={styles.emptyTitle}>No activity yet</p>
+                    <p className={styles.emptyBody}>
+                      Announcements and discussion will appear here as the club posts them.
+                    </p>
+                  </div>
+                ) : (
+                  <ul className={styles.feed}>
+                    {feed.map((item, index) => (
+                      <li
+                        key={item.key}
+                        className={styles.feedItem}
+                        style={{ "--feed-index": index }}
+                      >
+                        <p className={styles.feedKind}>
+                          {item.kind}
+                          {item.author ? ` · ${item.author}` : ""}
+                        </p>
+                        <p className={styles.feedText}>{item.text}</p>
+                        <time className={styles.feedTime} dateTime={item.at}>
+                          {timeAgo(item.at)}
+                        </time>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+
+            <div className={styles.column}>
+              <section
+                className={styles.section}
+                aria-labelledby="workspace-discussion"
+                ref={discussionRef}
+              >
+                <div className={styles.sectionHead}>
+                  <h2 id="workspace-discussion" className={styles.sectionTitle}>
+                    Club discussion
+                  </h2>
+                </div>
+                <CommentSection targetType="club" targetId={club.id} compact showHeading={false} />
+              </section>
+
+              <section className={styles.section} aria-labelledby="workspace-roster">
+                <div className={styles.sectionHead}>
+                  <h2 id="workspace-roster" className={styles.sectionTitle}>
+                    Members
+                  </h2>
+                  <span className={styles.sectionNote}>
+                    {members.length} {members.length === 1 ? "person" : "people"}
+                  </span>
+                </div>
+
+                {members.length === 0 ? (
+                  <p className={styles.emptyBody}>The roster isn&apos;t available right now.</p>
+                ) : (
+                  <ul className={styles.roster}>
+                    {members.slice(0, 8).map((member) => (
+                      <li key={member.id} className={styles.member}>
+                        <span className={styles.avatar} aria-hidden="true">
+                          {initials(member.name)}
+                        </span>
+                        <span className={styles.memberText}>
+                          <span className={styles.memberName}>
+                            {member.name}
+                            {member.id === user.id && <span className={styles.youTag}>You</span>}
+                          </span>
+                          {member.email && (
+                            <span className={styles.memberEmail}>{member.email}</span>
                           )}
                         </span>
-                        {member.email && <span className={styles.memberEmail}>{member.email}</span>}
-                      </span>
-                      {member.role !== "member" && (
-                        <span className={styles.roleTag}>
-                          {member.role === "tier1" ? "Tier 1" : "Admin"}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
+                        {member.role !== "member" && (
+                          <span className={styles.roleTag}>
+                            {member.role === "tier1" ? "Tier 1" : "Admin"}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-              {members.length > 8 && (
-                <p className={styles.moreMembers}>
-                  and {members.length - 8} more in {club.name}
-                </p>
-              )}
-            </section>
+                {members.length > 8 && (
+                  <p className={styles.moreMembers}>
+                    and {members.length - 8} more in {club.name}
+                  </p>
+                )}
+              </section>
 
-            <section className={styles.section} aria-labelledby="workspace-membership">
-              <h2 id="workspace-membership" className={styles.sectionTitle}>
-                Membership
-              </h2>
-              <p className={styles.emptyBody}>
-                You&apos;re part of this club, so updates and events appear here first.
-              </p>
-              {leaveError && <p className={styles.error}>{leaveError}</p>}
-              <button
-                type="button"
-                className={styles.leaveButton}
-                onClick={handleLeave}
-                disabled={leaving}
-              >
-                {leaving ? "Leaving…" : `Leave ${club.name}`}
-              </button>
-              {managesThisClub && (
-                <p className={styles.leaveHint}>
-                  Leaving keeps your admin role. Ask a tier 1 admin to revoke that.
+              <section className={styles.section} aria-labelledby="workspace-membership">
+                <h2 id="workspace-membership" className={styles.sectionTitle}>
+                  Membership
+                </h2>
+                <p className={styles.emptyBody}>
+                  You&apos;re part of this club, so updates and events appear here first.
                 </p>
-              )}
-            </section>
+                {leaveError && <p className={styles.error}>{leaveError}</p>}
+                <button
+                  type="button"
+                  className={styles.leaveButton}
+                  onClick={handleLeave}
+                  disabled={leaving}
+                >
+                  {leaving ? "Leaving…" : `Leave ${club.name}`}
+                </button>
+                {managesThisClub && (
+                  <p className={styles.leaveHint}>
+                    Leaving keeps your admin role. Ask a tier 1 admin to revoke that.
+                  </p>
+                )}
+              </section>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
