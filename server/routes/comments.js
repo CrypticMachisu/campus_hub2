@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../db.js";
 import { rowToComment } from "../rowMappers.js";
 import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
+import { recordAudit } from "../audit.js";
 
 export const commentsRouter = Router();
 
@@ -222,6 +223,12 @@ commentsRouter.patch("/:id/pin", requireAuth, async (req, res) => {
 
   const pinned = req.body.pinned === false ? 0 : 1;
   await pool.query("UPDATE comments SET pinned = :pinned WHERE comment_id = :id", { pinned, id });
+  await recordAudit(req, {
+    action: pinned ? "comment.pin" : "comment.unpin",
+    targetType: comment.target_type,
+    targetId: comment.target_id,
+    detail: { commentId: id, authorId: comment.user_id, pinned: Boolean(pinned) },
+  });
 
   res.json({ comment: { ...rowToComment({ ...comment, pinned }) } });
 });
@@ -246,5 +253,11 @@ commentsRouter.delete("/:id", requireAuth, async (req, res) => {
   }
 
   await pool.query("DELETE FROM comments WHERE comment_id = :id", { id });
+  await recordAudit(req, {
+    action: "comment.delete",
+    targetType: comment.target_type,
+    targetId: comment.target_id,
+    detail: { commentId: id, authorId: comment.user_id, parentId: comment.parent_id || null },
+  });
   res.status(204).end();
 });

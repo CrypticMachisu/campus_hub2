@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { rowToUser } from "../rowMappers.js";
 import { promoteUserToClubAdmin, demoteUserFromClubAdmin } from "../queries.js";
 import { requireAuth, requireTier1 } from "../middleware/auth.js";
+import { recordAudit } from "../audit.js";
 
 export const usersRouter = Router();
 
@@ -45,6 +46,12 @@ usersRouter.post("/:id/promote", requireAuth, requireTier1, async (req, res) => 
   }
 
   const updatedUser = await promoteUserToClubAdmin(req.params.id, clubId);
+  await recordAudit(req, {
+    action: "user.promote",
+    targetType: "user",
+    targetId: req.params.id,
+    detail: { clubId },
+  });
   res.json({ user: updatedUser });
 });
 
@@ -65,5 +72,11 @@ usersRouter.post("/:id/demote", requireAuth, requireTier1, async (req, res) => {
   }
 
   const user = await demoteUserFromClubAdmin(req.params.id, clubId);
+  await recordAudit(req, {
+    action: "user.demote",
+    targetType: "user",
+    targetId: req.params.id,
+    detail: { clubId },
+  });
   res.json({ user });
 });

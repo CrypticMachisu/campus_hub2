@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../db.js";
 import { requireAuth, requireTier1, canManageClub } from "../middleware/auth.js";
 import { promoteUserToClubAdmin } from "../queries.js";
+import { recordAudit } from "../audit.js";
 
 export const adminRequestsRouter = Router();
 
@@ -80,6 +81,12 @@ adminRequestsRouter.post("/:id/approve", requireAuth, requireTier1, async (req, 
   await pool.query("UPDATE admin_requests SET status = 'approved' WHERE request_id = :id", {
     id: req.params.id,
   });
+  await recordAudit(req, {
+    action: "admin_request.approve",
+    targetType: "club",
+    targetId: request.club_id,
+    detail: { requestId: request.request_id, userId: request.user_id },
+  });
   res.json({ ok: true });
 });
 
@@ -93,5 +100,11 @@ adminRequestsRouter.post("/:id/deny", requireAuth, requireTier1, async (req, res
   );
   if (result.affectedRows === 0)
     return res.status(404).json({ error: "Pending request not found." });
+  await recordAudit(req, {
+    action: "admin_request.deny",
+    targetType: "club",
+    targetId: null,
+    detail: { requestId: req.params.id },
+  });
   res.json({ ok: true });
 });

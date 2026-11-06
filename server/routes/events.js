@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { rowToEvent } from "../rowMappers.js";
 import { findCategoryIdByName } from "../queries.js";
 import { requireAuth, canManageClub } from "../middleware/auth.js";
+import { recordAudit } from "../audit.js";
 
 export const eventsRouter = Router();
 
@@ -148,6 +149,12 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
     `${EVENT_LIST_QUERY} WHERE e.event_id = :id GROUP BY e.event_id`,
     { id }
   );
+  await recordAudit(req, {
+    action: "event.create",
+    targetType: "event",
+    targetId: id,
+    detail: { clubId, title, capacity },
+  });
   res.status(201).json({ event: rowToEvent(rows[0]) });
 });
 
@@ -211,6 +218,12 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
     `${EVENT_LIST_QUERY} WHERE e.event_id = :id GROUP BY e.event_id`,
     { id: eventId }
   );
+  await recordAudit(req, {
+    action: "event.update",
+    targetType: "event",
+    targetId: eventId,
+    detail: { clubId: existing.club_id, title, capacity },
+  });
   res.json({ event: rowToEvent(rows[0]) });
 });
 
@@ -236,5 +249,11 @@ eventsRouter.delete("/:id", requireAuth, async (req, res) => {
   }
 
   await pool.query("DELETE FROM events WHERE event_id = :id", { id: eventId });
+  await recordAudit(req, {
+    action: "event.delete",
+    targetType: "event",
+    targetId: eventId,
+    detail: { clubId: existing.club_id, title: existing.title },
+  });
   res.status(204).end();
 });

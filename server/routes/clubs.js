@@ -8,6 +8,7 @@ import {
   removeClubMember,
 } from "../queries.js";
 import { requireAuth, requireTier1, canManageClub } from "../middleware/auth.js";
+import { recordAudit } from "../audit.js";
 
 export const clubsRouter = Router();
 
@@ -123,6 +124,16 @@ clubsRouter.put("/:clubId", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "The link must start with http:// or https://." });
   }
 
+  const overrides = {
+    clubId,
+    rsvpLabel: cleanOverride(body.rsvpLabel, PLAYBOOK_LIMITS.rsvpLabel),
+    bringNote: cleanOverride(body.bringNote, PLAYBOOK_LIMITS.bringNote),
+    focusTitle: cleanOverride(body.focusTitle, PLAYBOOK_LIMITS.focusTitle),
+    focusBody: cleanOverride(body.focusBody, PLAYBOOK_LIMITS.focusBody),
+    focusItems: focusItems.length > 0 ? focusItems.join("\n") : null,
+    focusLink: focusLink || null,
+  };
+
   await pool.query(
     `UPDATE clubs
      SET rsvp_label = :rsvpLabel,
@@ -132,16 +143,21 @@ clubsRouter.put("/:clubId", requireAuth, async (req, res) => {
          focus_items = :focusItems,
          focus_link = :focusLink
      WHERE club_id = :clubId`,
-    {
-      clubId,
-      rsvpLabel: cleanOverride(body.rsvpLabel, PLAYBOOK_LIMITS.rsvpLabel),
-      bringNote: cleanOverride(body.bringNote, PLAYBOOK_LIMITS.bringNote),
-      focusTitle: cleanOverride(body.focusTitle, PLAYBOOK_LIMITS.focusTitle),
-      focusBody: cleanOverride(body.focusBody, PLAYBOOK_LIMITS.focusBody),
-      focusItems: focusItems.length > 0 ? focusItems.join("\n") : null,
-      focusLink: focusLink || null,
-    }
+    overrides
   );
+  await recordAudit(req, {
+    action: "club.playbook.update",
+    targetType: "club",
+    targetId: clubId,
+    detail: {
+      rsvpLabel: overrides.rsvpLabel,
+      bringNote: overrides.bringNote,
+      focusTitle: overrides.focusTitle,
+      focusBody: overrides.focusBody,
+      focusItems,
+      focusLink: overrides.focusLink,
+    },
+  });
 
   const [rows] = await pool.query(
     `SELECT c.*, cat.name AS category_name, GROUP_CONCAT(DISTINCT ct.tag) AS tags

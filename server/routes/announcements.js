@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../db.js";
 import { rowToAnnouncement } from "../rowMappers.js";
 import { requireAuth, canManageClub } from "../middleware/auth.js";
+import { recordAudit } from "../audit.js";
 
 export const announcementsRouter = Router();
 
@@ -48,6 +49,12 @@ announcementsRouter.post("/", requireAuth, async (req, res) => {
 
   const [rows] = await pool.query("SELECT * FROM announcements WHERE announcement_id = :id", {
     id,
+  });
+  await recordAudit(req, {
+    action: "announcement.create",
+    targetType: "club",
+    targetId: clubId,
+    detail: { announcementId: id },
   });
   res.status(201).json({ announcement: rowToAnnouncement(rows[0]) });
 });
