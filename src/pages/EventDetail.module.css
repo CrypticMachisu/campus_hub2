@@ -1,0 +1,331 @@
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-md) var(--space-xl);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-bottom: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.back:hover {
+  color: var(--color-primary);
+}
+
+/* Poster: big image, type over paper, no centred marketing hero. */
+.poster {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.imageWrap {
+  position: relative;
+  aspect-ratio: 16 / 7;
+  background: var(--color-bg-alt);
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imageFallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 14px, rgba(36, 33, 29, 0.04) 14px 28px),
+    var(--color-bg-alt);
+}
+
+.imageFallback span {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(1.4rem, 4vw, 2.4rem);
+  color: var(--color-text-muted);
+  opacity: 0.55;
+}
+
+.category {
+  position: absolute;
+  left: var(--space-md);
+  bottom: var(--space-md);
+  padding: 4px 10px;
+  background: var(--color-accent);
+  color: var(--color-text);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-card);
+}
+
+.posterBody {
+  padding: var(--space-lg);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-xs);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-secondary);
+}
+
+.clubLink:hover {
+  text-decoration: underline;
+}
+
+.posterBody h1 {
+  margin: 0 0 var(--space-sm);
+  font-size: clamp(1.8rem, 4.5vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.metaLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45em;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.metaDate {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.bringNote {
+  margin: var(--space-md) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-secondary-light);
+  border-left: 3px solid var(--color-secondary);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 0.9rem;
+}
+
+.bringNote span {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-secondary);
+  margin-right: 0.35em;
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-lg);
+  margin-top: var(--space-lg);
+}
+
+/* RSVP card: the thing people came to do, kept in view on desktop. */
+.rsvp {
+  padding: var(--space-md);
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.rsvpEyebrow {
+  margin: 0 0 2px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.rsvpTitle {
+  margin: 0 0 var(--space-sm);
+  font-size: 1.3rem;
+}
+
+.capacity {
+  margin: 0 0 var(--space-xs);
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+
+.capacity strong {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}
+
+.meter {
+  height: 6px;
+  margin-bottom: var(--space-md);
+  background: var(--color-bg-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  background: var(--color-secondary);
+}
+
+.rsvpStatus {
+  margin: 0 0 var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-secondary);
+}
+
+.primaryAction,
+.cancelAction,
+.secondaryAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.primaryAction {
+  color: var(--color-white);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary-dark);
+}
+
+.primaryAction:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.cancelAction {
+  color: var(--color-danger);
+  background: transparent;
+  border: 1px solid var(--color-danger);
+}
+
+.cancelAction:hover:not(:disabled) {
+  background: #fbe9e7;
+}
+
+.secondaryAction {
+  margin-top: var(--space-sm);
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  font-weight: 500;
+}
+
+.secondaryAction:hover {
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
+}
+
+.primaryAction:disabled,
+.cancelAction:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.notice {
+  margin: var(--space-sm) 0 0;
+  font-size: 0.82rem;
+  color: var(--color-secondary);
+}
+
+.actionError {
+  margin: var(--space-sm) 0 0;
+  font-size: 0.82rem;
+  color: var(--color-danger);
+}
+
+.main {
+  min-width: 0;
+}
+
+.section {
+  margin-bottom: var(--space-lg);
+}
+
+.section h2 {
+  font-size: 1.15rem;
+  margin-bottom: var(--space-sm);
+}
+
+.description {
+  margin: 0;
+  white-space: pre-line;
+  color: var(--color-text);
+  max-width: 68ch;
+}
+
+.missing {
+  padding: var(--space-lg);
+  background: var(--color-card-bg);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  max-width: 60ch;
+}
+
+.missingLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  margin-top: var(--space-sm);
+  padding: 0.45rem 0.9rem;
+  color: var(--color-white);
+  background: var(--color-primary);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+
+@media (min-width: 900px) {
+  .layout {
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .rsvp {
+    position: sticky;
+    top: var(--space-md);
+  }
+
+  .posterBody {
+    padding: var(--space-lg) var(--space-xl) var(--space-lg) var(--space-lg);
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding-top: var(--space-md);
+  }
+
+  .imageWrap {
+    aspect-ratio: 4 / 3;
+  }
+
+  .posterBody {
+    padding: var(--space-md);
+  }
+}

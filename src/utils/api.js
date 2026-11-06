@@ -28,18 +28,34 @@ export function clearToken() {
  * field when present) on any non-2xx response.
  */
 export async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
-  const headers = { "Content-Type": "application/json","ngrok-skip-browser-warning": "true", };
+  const headers = { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" };
   if (API_KEY) headers["X-API-Key"] = API_KEY;
   if (auth) {
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  // A dead API should surface as an error state, not a skeleton that never
+  // resolves. 10s is generous for a local/ngrok API but bounded.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    throw new Error(
+      err.name === "AbortError"
+        ? "The server didn't respond in time. Try again."
+        : "Can't reach the server. Check that the API is running."
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (response.status === 204) return null;
 

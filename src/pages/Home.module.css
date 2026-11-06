@@ -80,6 +80,11 @@
   gap: var(--space-lg, 2rem);
 }
 
+/* A failed load replaces the grid, so it needs the full row. */
+.errorFull {
+  grid-column: 1 / -1;
+}
+
 .skeletonGrid {
   grid-column: 1 / -1;
   display: grid;

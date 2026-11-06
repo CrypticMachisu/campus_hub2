@@ -18,6 +18,7 @@ import {
 } from "../utils/adminStore";
 import { canManageClub } from "../utils/authStore";
 import { SkeletonGroup, SkeletonListRow, CardStackSkeleton } from "../components/Skeleton";
+import ErrorState from "../components/ErrorState";
 import styles from "./Dashboard.module.css";
 
 const FALLBACK_IMAGE = "https://placehold.co/600x300";
@@ -52,7 +53,7 @@ const emptyForm = {
 export default function Dashboard() {
   const { clubId } = useParams();
   const navigate = useNavigate();
-  const { clubs, loading: clubsLoading } = useClubs();
+  const { clubs, loading: clubsLoading, error: clubsError, refresh: refreshClubs } = useClubs();
   const { user, loading: authLoading } = useAuth();
   const club = clubs.find((c) => c.id === clubId);
   const authorized = canManageClub(user, clubId);
@@ -87,6 +88,14 @@ export default function Dashboard() {
         <SkeletonGroup label="Loading dashboard…">
           <CardStackSkeleton count={3} />
         </SkeletonGroup>
+      </div>
+    );
+  }
+
+  if (clubsError && clubs.length === 0) {
+    return (
+      <div className={styles.page}>
+        <ErrorState title="The dashboard didn't load" message={clubsError} onRetry={refreshClubs} />
       </div>
     );
   }

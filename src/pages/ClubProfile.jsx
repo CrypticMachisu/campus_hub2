@@ -9,12 +9,13 @@ import { canManageClub, isClubMember } from "../utils/authStore";
 import { joinClub } from "../utils/membershipStore";
 import { requestClubAdmin } from "../utils/adminStore";
 import { SkeletonGroup, ClubProfileSkeleton } from "../components/Skeleton";
+import ErrorState from "../components/ErrorState";
 import AgriClubSpotlight, { AGRI_CLUB_ID } from "../components/AgriClubSpotlight";
 import styles from "./ClubProfile.module.css";
 
 export default function ClubProfile() {
   const { clubId } = useParams();
-  const { clubs, loading: clubsLoading } = useClubs();
+  const { clubs, loading: clubsLoading, error: clubsError, refresh: refreshClubs } = useClubs();
   const club = clubs.find((c) => c.id === clubId);
   const { user } = useAuth();
 
@@ -36,6 +37,14 @@ export default function ClubProfile() {
         <SkeletonGroup label="Loading club…">
           <ClubProfileSkeleton />
         </SkeletonGroup>
+      </div>
+    );
+  }
+
+  if (clubsError && clubs.length === 0) {
+    return (
+      <div className={styles.page}>
+        <ErrorState title="This club didn't load" message={clubsError} onRetry={refreshClubs} />
       </div>
     );
   }

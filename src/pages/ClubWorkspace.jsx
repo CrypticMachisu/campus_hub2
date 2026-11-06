@@ -13,6 +13,7 @@ import NextClubEvent from "../components/NextClubEvent";
 import ClubFocusPanel from "../components/ClubFocusPanel";
 import ClubAgenda from "../components/ClubAgenda";
 import CommentSection from "../components/CommentSection";
+import ErrorState from "../components/ErrorState";
 import styles from "./ClubWorkspace.module.css";
 
 /** Compact "3h ago" stamp for the activity feed. */
@@ -52,7 +53,7 @@ function eventStart(event) {
 export default function ClubWorkspace() {
   const { clubId } = useParams();
   const navigate = useNavigate();
-  const { clubs, loading: clubsLoading } = useClubs();
+  const { clubs, loading: clubsLoading, error: clubsError, refresh: refreshClubs } = useClubs();
   const { user, applyUser } = useAuth();
 
   const club = clubs.find((c) => c.id === clubId);
@@ -224,6 +225,18 @@ export default function ClubWorkspace() {
     return (
       <div className={styles.page} aria-busy="true">
         <SkeletonWorkspace />
+      </div>
+    );
+  }
+
+  if (clubsError && clubs.length === 0) {
+    return (
+      <div className={styles.page}>
+        <ErrorState
+          title="Your workspace didn't load"
+          message={clubsError}
+          onRetry={refreshClubs}
+        />
       </div>
     );
   }

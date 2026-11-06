@@ -7,6 +7,7 @@ import { getAllEvents } from "../utils/eventsStore";
 import ClubCard from "../components/ClubCard";
 import EventCard from "../components/EventCard";
 import { SkeletonGroup, ClubSkeletonCard, EventSkeletonCard } from "../components/Skeleton";
+import ErrorState from "../components/ErrorState";
 import styles from "./Home.module.css";
 
 /**
@@ -28,12 +29,14 @@ function useDebounce(value, delay = 300) {
 }
 
 export default function Home() {
-  const { clubs, loading: clubsLoading } = useClubs();
+  const { clubs, loading: clubsLoading, error: clubsError, refresh: refreshClubs } = useClubs();
   const { user } = useAuth();
   const hasNoClub =
     Boolean(user) && user.role !== "tier1" && clubsForUser(user, clubs).length === 0;
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState("");
+  const [eventsReloadKey, setEventsReloadKey] = useState(0);
 
   const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
@@ -44,9 +47,14 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
+    setEventsLoading(true);
+    setEventsError("");
     getAllEvents()
       .then((result) => {
         if (!cancelled) setEvents(result);
+      })
+      .catch((err) => {
+        if (!cancelled) setEventsError(err.message);
       })
       .finally(() => {
         if (!cancelled) setEventsLoading(false);
@@ -54,7 +62,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [eventsReloadKey]);
 
   // Filter Clubs: Matches category, name, tags, and expanded description parameter
   const filteredClubs = clubs.filter((club) => {
@@ -155,6 +163,10 @@ export default function Home() {
                   <ClubSkeletonCard key={i} />
                 ))}
               </SkeletonGroup>
+            ) : clubsError && clubs.length === 0 ? (
+              <div className={styles.errorFull}>
+                <ErrorState title="Clubs didn't load" message={clubsError} onRetry={refreshClubs} />
+              </div>
             ) : filteredClubs.length > 0 ? (
               filteredClubs.map((club) => <ClubCard key={club.id} club={club} />)
             ) : (
@@ -176,6 +188,14 @@ export default function Home() {
                   <EventSkeletonCard key={i} />
                 ))}
               </SkeletonGroup>
+            ) : eventsError ? (
+              <div className={styles.errorFull}>
+                <ErrorState
+                  title="Events didn't load"
+                  message={eventsError}
+                  onRetry={() => setEventsReloadKey((key) => key + 1)}
+                />
+              </div>
             ) : upcomingEvents.length > 0 ? (
               upcomingEvents.map((event) => <EventCard key={event.id} event={event} />)
             ) : (
