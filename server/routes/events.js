@@ -16,8 +16,27 @@ const EVENT_LIST_QUERY = `
 /**
  * Convert the contract's ISO startTime into the MySQL date/time values
  * used by the existing CampusHub database.
+ *
+ * openapi.yaml's EventInput documents `date` + `time`, while the frontend has
+ * always sent `startTime`. Both are accepted: startTime wins when present, and
+ * a date/time pair is read as East Africa Time (the app's canonical zone), so
+ * either documented or current callers keep working.
  */
-function parseStartTime(startTime) {
+function parseStartTime(startTimeOrBody) {
+  let startTime = startTimeOrBody;
+
+  if (startTimeOrBody && typeof startTimeOrBody === "object") {
+    const { startTime: iso, date, time } = startTimeOrBody;
+    if (typeof iso === "string" && iso.trim()) {
+      startTime = iso;
+    } else if (typeof date === "string" && date.trim()) {
+      const clock = typeof time === "string" && time.trim() ? time.trim().slice(0, 5) : "00:00";
+      startTime = `${date.trim()}T${clock}:00+03:00`;
+    } else {
+      return null;
+    }
+  }
+
   if (typeof startTime !== "string" || !startTime.trim()) return null;
 
   const parsed = new Date(startTime);
@@ -48,7 +67,7 @@ function validateEventFields(body) {
   if (!title) return { error: "Title is required." };
   if (title.length > 150) return { error: "Title is too long." };
 
-  const start = parseStartTime(body.startTime);
+  const start = parseStartTime(body);
   if (!start) return { error: "Invalid startTime." };
 
   const bringNote = typeof body.bringNote === "string" ? body.bringNote.trim().slice(0, 240) : "";
