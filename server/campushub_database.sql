@@ -106,6 +106,27 @@ CREATE TABLE club_admins (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
+-- club_members
+-- Backs `memberOfClubs: [...]` on a user — the actual "I am part of this
+-- club" link, separate from club_admins (you can admin a club you never
+-- joined). Added in migrations/003_add_club_members.sql for existing DBs.
+-- ----------------------------------------------------------------------------
+CREATE TABLE club_members (
+    membership_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id       VARCHAR(30) NOT NULL,
+    club_id       VARCHAR(30) NOT NULL,
+    joined_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_club_members_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_club_members_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    UNIQUE KEY uq_member_club (user_id, club_id),
+    INDEX idx_club_members_club (club_id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
 -- events
 -- Backs the `events` array in mockData.js AND the custom events an admin
 -- creates on the Dashboard (eventsStore.saveCustomEvent) — one table for
@@ -267,6 +288,17 @@ INSERT INTO club_admins (user_id, club_id) VALUES
     ('user-02', 'club-01'),
     ('user-03', 'club-04'),
     ('user-04', 'club-06');
+
+-- Club memberships (which clubs each user is actually part of). Admins are
+-- part of the clubs they run; the remaining rows give plain members a club
+-- so the member workspace has something to show on a fresh install.
+INSERT INTO club_members (user_id, club_id) VALUES
+    ('user-02', 'club-01'),
+    ('user-03', 'club-04'),
+    ('user-04', 'club-06'),
+    ('user-05', 'club-01'),
+    ('user-07', 'club-01'),
+    ('user-08', 'club-02');
 
 -- Events (mockData.js `events`; dates reproduce daysFromNow(n) from today)
 INSERT INTO events (event_id, club_id, title, description, category_id, event_date, event_time, location, image_url) VALUES

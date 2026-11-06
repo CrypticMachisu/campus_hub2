@@ -9,9 +9,12 @@ export const usersRouter = Router();
 /** GET /api/users — tier1 only. Every non-tier1 user, for the promote picker. */
 usersRouter.get("/", requireAuth, requireTier1, async (req, res) => {
         const [rows] = await pool.query(
-            `SELECT u.*, GROUP_CONCAT(ca.club_id) AS admin_club_ids
+            `SELECT u.*,
+              GROUP_CONCAT(DISTINCT ca.club_id) AS admin_club_ids,
+              GROUP_CONCAT(DISTINCT cm.club_id) AS member_club_ids
             FROM users u
             LEFT JOIN club_admins ca ON ca.user_id = u.user_id
+            LEFT JOIN club_members cm ON cm.user_id = u.user_id
             WHERE u.role != 'tier1'
             GROUP BY u.user_id
             ORDER BY u.name`

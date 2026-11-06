@@ -1,8 +1,13 @@
 import { Router } from "express";
 import { pool } from "../db.js";
 import { rowToClub } from "../rowMappers.js";
-import { findCategoryIdByName } from "../queries.js";
-import { requireAuth, requireTier1 } from "../middleware/auth.js";
+import {
+  findCategoryIdByName,
+  findClubMembers,
+  addClubMember,
+  removeClubMember,
+} from "../queries.js";
+import { requireAuth, requireTier1, canManageClub } from "../middleware/auth.js";
 
 export const clubsRouter = Router();
 
@@ -69,4 +74,57 @@ clubsRouter.post("/", requireAuth, requireTier1, async (req, res) => {
     { id }
   );
   res.status(201).json({ club: rowToClub(rows[0]) });
+});
+
+/**
+ * GET /api/clubs/:clubId/members — the club's roster.
+ * Visible to that club's own members and admins only. Email addresses are
+ * only included for admins; everyone else gets name/join date.
+ */
+clubsRouter.get("/:clubId/members", requireAuth, async (req, res) => {
+  const { clubId } = req.params;
+  const isAdmin = canManageClub(req.user, clubId);
+  const isMember = req.user.memberOfClubs.includes(clubId);
+
+  if (!isAdmin && !isMember) {
+    return res.status(403).json({ error: "You're not a member of that club." });
+  }
+
+  const rows = await findClubMembers(clubId);
+  res.json({
+    members: rows.map((row) => ({
+      id: row.user_id,
+      name: row.name,
+      role: row.role,
+      joinedAt: row.joined_at,
+      ...(isAdmin ? { email: row.email } : {}),
+    })),
+  });
+});
+
+/**
+ * POST /api/clubs/:clubId/members — join a club as the current user.
+ * Idempotent: joining one you're already in just returns the user again.
+ * Returns the refreshed user so the client can flip views immediately.
+ */
+clubsRouter.post("/:clubId/members", requireAuth, async (req, res) => {
+  const { clubId } = req.params;
+
+  const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
+    clubId,
+  });
+  if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
+
+  const user = await addClubMember(req.user.id, clubId);
+  res.status(201).json({ user });
+});
+
+/**
+ * DELETE /api/clubs/:clubId/members/me — leave a club.
+ * Club admins keep their admin link, so they still get the club view until
+ * a tier 1 admin revokes that separately; this only drops membership.
+ */
+clubsRouter.delete("/:clubId/members/me", requireAuth, async (req, res) => {
+  const user = await removeClubMember(req.user.id, req.params.clubId);
+  res.json({ user });
 });

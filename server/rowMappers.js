@@ -6,15 +6,24 @@
 // see the comment on each function for the query shape it assumes.
 // The queries that produce these rows live in routes/*.js.
 
-/** Expects: users.* + admin_club_ids (comma-separated club_id list from a club_admins join, or NULL). */
+/**
+ * Expects: users.* + admin_club_ids and member_club_ids (comma-separated
+ * club_id lists from club_admins / club_members joins, or NULL).
+ */
 export function rowToUser(row) {
   return {
     id: row.user_id,
     name: row.name,
     email: row.email,
     role: row.role,
-    adminForClubs: row.admin_club_ids ? row.admin_club_ids.split(",") : [],
+    adminForClubs: splitIds(row.admin_club_ids),
+    memberOfClubs: splitIds(row.member_club_ids),
   };
+}
+
+/** "club-01,club-02" -> ["club-01", "club-02"]; NULL/empty -> []. */
+function splitIds(value) {
+  return value ? String(value).split(",").filter(Boolean) : [];
 }
 
 /** Expects: clubs.* + category_name (from categories join) + tags (comma-separated from a club_tags join, or NULL). */

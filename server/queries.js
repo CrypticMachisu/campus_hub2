@@ -8,9 +8,12 @@ import { rowToUser } from "./rowMappers.js";
  */
 export async function findUserById(userId) {
   const [rows] = await pool.query(
-    `SELECT u.*, GROUP_CONCAT(ca.club_id) AS admin_club_ids
+    `SELECT u.*,
+       GROUP_CONCAT(DISTINCT ca.club_id) AS admin_club_ids,
+       GROUP_CONCAT(DISTINCT cm.club_id) AS member_club_ids
      FROM users u
      LEFT JOIN club_admins ca ON ca.user_id = u.user_id
+     LEFT JOIN club_members cm ON cm.user_id = u.user_id
      WHERE u.user_id = :userId
      GROUP BY u.user_id`,
     { userId }
@@ -64,9 +67,12 @@ export async function demoteUserFromClubAdmin(userId, clubId) {
 /** Same as findUserById, but by email (case-insensitive) — used by login. Returns the raw row (includes password_hash), not the mapped shape. */
 export async function findUserRowByEmail(email) {
   const [rows] = await pool.query(
-    `SELECT u.*, GROUP_CONCAT(ca.club_id) AS admin_club_ids
+    `SELECT u.*,
+       GROUP_CONCAT(DISTINCT ca.club_id) AS admin_club_ids,
+       GROUP_CONCAT(DISTINCT cm.club_id) AS member_club_ids
      FROM users u
      LEFT JOIN club_admins ca ON ca.user_id = u.user_id
+     LEFT JOIN club_members cm ON cm.user_id = u.user_id
      WHERE LOWER(u.email) = LOWER(:email)
      GROUP BY u.user_id`,
     { email }
@@ -81,4 +87,35 @@ export async function findCategoryIdByName(name) {
     { name }
   );
   return rows[0]?.category_id ?? null;
+}
+
+/** Adds a member<->club link. Idempotent — joining twice is a no-op, not an error. */
+export async function addClubMember(userId, clubId) {
+  await pool.query(
+    `INSERT IGNORE INTO club_members (user_id, club_id) VALUES (:userId, :clubId)`,
+    { userId, clubId }
+  );
+  return findUserById(userId);
+}
+
+/** Removes a member<->club link. Also a no-op if they weren't a member. */
+export async function removeClubMember(userId, clubId) {
+  await pool.query(
+    `DELETE FROM club_members WHERE user_id = :userId AND club_id = :clubId`,
+    { userId, clubId }
+  );
+  return findUserById(userId);
+}
+
+/** Roster for one club, oldest join first. Includes email only for admins (see route). */
+export async function findClubMembers(clubId) {
+  const [rows] = await pool.query(
+    `SELECT u.user_id, u.name, u.email, u.role, cm.joined_at
+     FROM club_members cm
+     JOIN users u ON u.user_id = cm.user_id
+     WHERE cm.club_id = :clubId
+     ORDER BY cm.joined_at`,
+    { clubId }
+  );
+  return rows;
 }
