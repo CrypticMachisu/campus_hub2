@@ -13,6 +13,17 @@ language.
 Scope is unchanged: no producer-data feature, no consumer-contract changes, no new runtime
 dependencies.
 
+## Decisions locked in the interview
+
+- **Browser origins** — `CORS_ORIGINS` in `server/.env`; the Netlify origin is a value,
+  not source. Implemented and verified in `e2cc0f7`.
+- **Images** — download the Unsplash assets locally and replace the nine
+  iStock/StockCake/Vecteezy previews with local poster SVGs; self-host the three font
+  families as well.
+- **Demo seed** — may delete the two route-test artifacts (`custom-1793959839359` and
+  `comment-1793959839666`) and set `event-01` capacity to 4, in addition to inserting and
+  refreshing `demo-*` content.
+
 ---
 
 ## 1. Favicon, touch icon, browser chrome
