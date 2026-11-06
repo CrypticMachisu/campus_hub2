@@ -10,6 +10,7 @@ export const CATEGORIES = [
   "Sports & Fitness",
   "Technology",
   "Community Service",
+  "Agriculture",
   "Social",
 ];
 

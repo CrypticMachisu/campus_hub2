@@ -1,1 +1,8 @@
-{"name":"Chess Society","category":"Social","description":"Casual and ranked chess nights.","meetingTime":"Wednesdays, 6:00 PM","meetingLocation":"Student Union, Room 102","tags":["chess","games"]}
+{
+  "name": "Chess Society",
+  "category": "Social",
+  "description": "Casual and ranked chess nights.",
+  "meetingTime": "Wednesdays, 6:00 PM",
+  "meetingLocation": "Student Union, Room 102",
+  "tags": ["chess", "games"]
+}

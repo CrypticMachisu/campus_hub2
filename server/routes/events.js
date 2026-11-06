@@ -20,7 +20,6 @@ function parseStartTime(startTime) {
   if (typeof startTime !== "string" || !startTime.trim()) return null;
 
   const parsed = new Date(startTime);
-
   if (Number.isNaN(parsed.getTime())) return null;
 
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -34,9 +33,7 @@ function parseStartTime(startTime) {
     hourCycle: "h23",
   }).formatToParts(parsed);
 
-  const values = Object.fromEntries(
-    parts.map(({ type, value }) => [type, value])
-  );
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
 
   return {
     date: `${values.year}-${values.month}-${values.day}`,
@@ -44,15 +41,22 @@ function parseStartTime(startTime) {
   };
 }
 
+/** Shared title/startTime/category validation for create + update. Returns the first error string, or null. */
+function validateEventFields(body) {
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  if (!title) return { error: "Title is required." };
+  if (title.length > 150) return { error: "Title is too long." };
+
+  const start = parseStartTime(body.startTime);
+  if (!start) return { error: "Invalid startTime." };
+
+  return { title, start };
+}
+
 /** GET /api/events — list all events. */
 eventsRouter.get("/", async (req, res) => {
-  const [rows] = await pool.query(
-    `${EVENT_LIST_QUERY} ORDER BY e.event_date, e.event_time`
-  );
-
-  res.json({
-    events: rows.map(rowToEvent),
-  });
+  const [rows] = await pool.query(`${EVENT_LIST_QUERY} ORDER BY e.event_date, e.event_time`);
+  res.json({ events: rows.map(rowToEvent) });
 });
 
 /**
@@ -60,54 +64,29 @@ eventsRouter.get("/", async (req, res) => {
  * Requires the caller to manage the target club.
  */
 eventsRouter.post("/", requireAuth, async (req, res) => {
-  const {
+  const { clubId, description, location, category, imageUrl } = req.body;
+  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+
+  // Validate the club exists BEFORE the FK-constrained insert — tier1 can
+  // "manage" any id, so a bad clubId used to explode at the DB level (and
+  // crash the server back when async rejections were unhandled).
+  const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
     clubId,
-    title,
-    description,
-    startTime,
-    location,
-    category,
-    imageUrl,
-  } = req.body;
+  });
+  if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
 
   if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({
-      error: "You don't have admin access to that club.",
-    });
+    return res.status(403).json({ error: "You don't have admin access to that club." });
   }
 
-  const trimmedTitle = typeof title === "string" ? title.trim() : "";
-
-  if (!trimmedTitle) {
-    return res.status(400).json({
-      error: "Title is required.",
-    });
-  }
-
-  if (trimmedTitle.length > 150) {
-    return res.status(400).json({
-      error: "Title is too long.",
-    });
-  }
-
-  const start = parseStartTime(startTime);
-
-  if (!start) {
-    return res.status(400).json({
-      error: "Invalid startTime.",
-    });
-  }
+  const validation = validateEventFields(req.body);
+  if (validation.error) return res.status(400).json({ error: validation.error });
+  const { title, start } = validation;
 
   const categoryId = await findCategoryIdByName(category);
-
-  if (!categoryId) {
-    return res.status(400).json({
-      error: `Unknown category: ${category}`,
-    });
-  }
+  if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
 
   const id = `custom-${Date.now()}`;
-
   await pool.query(
     `INSERT INTO events
       (event_id, club_id, title, description, category_id,
@@ -118,9 +97,8 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
     {
       id,
       clubId,
-      title: trimmedTitle,
-      description:
-        typeof description === "string" ? description.trim() : "",
+      title,
+      description: typeof description === "string" ? description.trim() : "",
       categoryId,
       date: start.date,
       time: start.time,
@@ -129,14 +107,8 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
     }
   );
 
-  const [rows] = await pool.query(
-    `${EVENT_LIST_QUERY} WHERE e.event_id = :id`,
-    { id }
-  );
-
-  return res.status(201).json({
-    event: rowToEvent(rows[0]),
-  });
+  const [rows] = await pool.query(`${EVENT_LIST_QUERY} WHERE e.event_id = :id`, { id });
+  res.status(201).json({ event: rowToEvent(rows[0]) });
 });
 
 /**
@@ -145,71 +117,29 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
 eventsRouter.put("/:id", requireAuth, async (req, res) => {
   const eventId = req.params.id;
 
-  const [existingRows] = await pool.query(
-    "SELECT * FROM events WHERE event_id = :id",
-    { id: eventId }
-  );
-
+  const [existingRows] = await pool.query("SELECT * FROM events WHERE event_id = :id", {
+    id: eventId,
+  });
   const existing = existingRows[0];
-
-  if (!existing) {
-    return res.status(404).json({
-      error: "Event not found.",
-    });
-  }
+  if (!existing) return res.status(404).json({ error: "Event not found." });
 
   // Seed events are read-only.
   if (!eventId.startsWith("custom-")) {
-    return res.status(403).json({
-      error: "Seed events are read-only.",
-    });
+    return res.status(403).json({ error: "Seed events are read-only." });
   }
 
   if (!canManageClub(req.user, existing.club_id)) {
-    return res.status(403).json({
-      error: "You don't have admin access to that club.",
-    });
+    return res.status(403).json({ error: "You don't have admin access to that club." });
   }
 
-  const {
-    title,
-    description,
-    category,
-    startTime,
-    location,
-    imageUrl,
-  } = req.body;
+  const { description, category, location, imageUrl } = req.body;
 
-  const trimmedTitle =
-    typeof title === "string" ? title.trim() : "";
-
-  if (!trimmedTitle) {
-    return res.status(400).json({
-      error: "Title is required.",
-    });
-  }
-
-  if (trimmedTitle.length > 150) {
-    return res.status(400).json({
-      error: "Title is too long.",
-    });
-  }
-
-  const start = parseStartTime(startTime);
-
-  if (!start) {
-    return res.status(400).json({
-      error: "Invalid startTime.",
-    });
-  }
+  const validation = validateEventFields(req.body);
+  if (validation.error) return res.status(400).json({ error: validation.error });
+  const { title, start } = validation;
 
   const categoryId = await findCategoryIdByName(category);
-
-  if (!categoryId) {
-    return res.status(400).json({
-      error: `Unknown category: ${category}`,
-    });
-  }
+  if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
 
   await pool.query(
     `UPDATE events
@@ -223,26 +153,18 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
      WHERE event_id = :id`,
     {
       id: eventId,
-      title: trimmedTitle,
-      description:
-        typeof description === "string" ? description : "",
+      title,
+      description: typeof description === "string" ? description.trim() : "",
       categoryId,
       date: start.date,
       time: start.time,
-      location:
-        typeof location === "string" ? location : "",
+      location: typeof location === "string" ? location.trim() : "",
       imageUrl: imageUrl || null,
     }
   );
 
-  const [rows] = await pool.query(
-    `${EVENT_LIST_QUERY} WHERE e.event_id = :id`,
-    { id: eventId }
-  );
-
-  return res.json({
-    event: rowToEvent(rows[0]),
-  });
+  const [rows] = await pool.query(`${EVENT_LIST_QUERY} WHERE e.event_id = :id`, { id: eventId });
+  res.json({ event: rowToEvent(rows[0]) });
 });
 
 /**
@@ -251,36 +173,21 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
 eventsRouter.delete("/:id", requireAuth, async (req, res) => {
   const eventId = req.params.id;
 
-  const [existingRows] = await pool.query(
-    "SELECT * FROM events WHERE event_id = :id",
-    { id: eventId }
-  );
-
+  const [existingRows] = await pool.query("SELECT * FROM events WHERE event_id = :id", {
+    id: eventId,
+  });
   const existing = existingRows[0];
-
-  if (!existing) {
-    return res.status(404).json({
-      error: "Event not found.",
-    });
-  }
+  if (!existing) return res.status(404).json({ error: "Event not found." });
 
   // Seed events are read-only.
   if (!eventId.startsWith("custom-")) {
-    return res.status(403).json({
-      error: "Seed events are read-only.",
-    });
+    return res.status(403).json({ error: "Seed events are read-only." });
   }
 
   if (!canManageClub(req.user, existing.club_id)) {
-    return res.status(403).json({
-      error: "You don't have admin access to that club.",
-    });
+    return res.status(403).json({ error: "You don't have admin access to that club." });
   }
 
-  await pool.query(
-    "DELETE FROM events WHERE event_id = :id",
-    { id: eventId }
-  );
-
-  return res.status(204).end();
+  await pool.query("DELETE FROM events WHERE event_id = :id", { id: eventId });
+  res.status(204).end();
 });

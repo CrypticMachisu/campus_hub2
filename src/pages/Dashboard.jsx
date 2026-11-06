@@ -1,14 +1,10 @@
 // src/pages/Dashboard.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { CATEGORIES, createClub } from "../utils/clubsStore";
 import { useClubs } from "../context/ClubsContext";
 import { useAuth } from "../context/AuthContext";
-import {
-  getAllEvents,
-  saveCustomEvent,
-  deleteCustomEvent,
-} from "../utils/eventsStore";
+import { getAllEvents, saveCustomEvent, deleteCustomEvent } from "../utils/eventsStore";
 import { getSignupsByEvent } from "../utils/storage";
 import { getAnnouncements, saveAnnouncement } from "../utils/dashboardStorage";
 import { formatDateTime } from "../utils/dateTime";
@@ -21,15 +17,14 @@ import {
   denyAdminRequest,
 } from "../utils/adminStore";
 import { canManageClub } from "../utils/authStore";
+import { SkeletonGroup, SkeletonListRow, CardStackSkeleton } from "../components/Skeleton";
 import styles from "./Dashboard.module.css";
-
 
 const FALLBACK_IMAGE = "https://placehold.co/600x300";
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
-
 
 // Peer review (shared contract): sort by date + time combined, not date
 // alone, so same-day events order correctly. Ideally this lives in a shared
@@ -87,7 +82,9 @@ export default function Dashboard() {
   if (clubsLoading || authLoading) {
     return (
       <div className={styles.page}>
-        <p className={styles.notFound}>Loading…</p>
+        <SkeletonGroup label="Loading dashboard…">
+          <CardStackSkeleton count={3} />
+        </SkeletonGroup>
       </div>
     );
   }
@@ -116,9 +113,7 @@ export default function Dashboard() {
                 with an account that manages this club.
               </>
             )}
-            {user && (
-              <> This is expected if you&apos;re not an admin for this club.</>
-            )}
+            {user && <> This is expected if you&apos;re not an admin for this club.</>}
           </p>
         </div>
       </div>
@@ -134,9 +129,7 @@ export default function Dashboard() {
   // (nice-to-have from the original spec — not strictly required, since
   // picking an unmanaged club just bounces to "not authorized" anyway).
   const switchableClubs =
-    user?.role === "tier1"
-      ? clubs
-      : clubs.filter((c) => user?.adminForClubs?.includes(c.id));
+    user?.role === "tier1" ? clubs : clubs.filter((c) => user?.adminForClubs?.includes(c.id));
 
   const selectedEvent = clubEvents.find((e) => e.id === selectedEventId) || null;
 
@@ -272,7 +265,13 @@ export default function Dashboard() {
         <h2>Events</h2>
 
         <ul className={styles.eventList}>
-          {eventsLoading && <li className={styles.emptyState}>Loading events…</li>}
+          {eventsLoading && (
+            <>
+              <SkeletonListRow />
+              <SkeletonListRow />
+              <SkeletonListRow />
+            </>
+          )}
           {!eventsLoading && clubEvents.length === 0 && (
             <li className={styles.emptyState}>No events yet for this club.</li>
           )}
@@ -406,9 +405,7 @@ export default function Dashboard() {
       <section className={styles.section}>
         <h2>Sign-ups</h2>
         {!selectedEvent && (
-          <p className={styles.emptyState}>
-            Select an event above to see who&apos;s signed up.
-          </p>
+          <p className={styles.emptyState}>Select an event above to see who&apos;s signed up.</p>
         )}
         {selectedEvent && (
           <>
@@ -521,7 +518,11 @@ function SignupsTable({ eventId }) {
     return <p className={styles.emptyState}>Couldn&apos;t load sign-ups.</p>;
   }
   if (signups === null) {
-    return <p className={styles.emptyState}>Loading sign-ups…</p>;
+    return (
+      <SkeletonGroup label="Loading sign-ups…">
+        <CardStackSkeleton count={2} />
+      </SkeletonGroup>
+    );
   }
   if (signups.length === 0) {
     return <p className={styles.emptyState}>Nobody has signed up yet.</p>;
@@ -529,23 +530,23 @@ function SignupsTable({ eventId }) {
 
   return (
     <table className={styles.signupsTable}>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Signed up</th>
-      </tr>
-    </thead>
-    <tbody>
-      {signups.map((s) => (
-        <tr key={s.id}>
-          <td>{s.name}</td>
-          <td>{s.email}</td>
-          <td>{formatDateTime(s.createdAt)}</td>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Signed up</th>
         </tr>
-      ))}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {signups.map((s) => (
+          <tr key={s.id}>
+            <td>{s.name}</td>
+            <td>{s.email}</td>
+            <td>{formatDateTime(s.createdAt)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -558,19 +559,16 @@ function AdminManagementSection({ clubId }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
-  async function refresh() {
-    const [allRequests, allUsers] = await Promise.all([
-      getPendingAdminRequests(),
-      getAllUsers(),
-    ]);
+  const refresh = useCallback(async () => {
+    const [allRequests, allUsers] = await Promise.all([getPendingAdminRequests(), getAllUsers()]);
     setRequests(allRequests.filter((r) => r.clubId === clubId));
     setUsers(allUsers);
-  }
+  }, [clubId]);
 
   useEffect(() => {
     setLoading(true);
     refresh().finally(() => setLoading(false));
-  }, [clubId]);
+  }, [refresh]);
 
   const currentAdmins = users.filter((u) => u.adminForClubs.includes(clubId));
   const promotableUsers = users.filter((u) => !u.adminForClubs.includes(clubId));
@@ -610,7 +608,11 @@ function AdminManagementSection({ clubId }) {
       {message && <div className={styles.toast}>{message}</div>}
 
       <h3>Current admins for this club</h3>
-      {loading && <p className={styles.emptyState}>Loading…</p>}
+      {loading && (
+        <SkeletonGroup label="Loading admin panel…">
+          <CardStackSkeleton count={2} />
+        </SkeletonGroup>
+      )}
       {!loading && currentAdmins.length === 0 && (
         <p className={styles.emptyState}>No tier 2 admins for this club yet.</p>
       )}
@@ -621,7 +623,11 @@ function AdminManagementSection({ clubId }) {
               {u.name} <span className={styles.eventMeta}>({u.email})</span>
             </span>
             <span className={styles.rowActions}>
-              <button type="button" className={styles.dangerButton} onClick={() => handleRevoke(u.id)}>
+              <button
+                type="button"
+                className={styles.dangerButton}
+                onClick={() => handleRevoke(u.id)}
+              >
                 Revoke
               </button>
             </span>
@@ -643,7 +649,11 @@ function AdminManagementSection({ clubId }) {
               <button type="button" onClick={() => handleApprove(r.id)}>
                 Approve
               </button>
-              <button type="button" className={styles.dangerButton} onClick={() => handleDeny(r.id)}>
+              <button
+                type="button"
+                className={styles.dangerButton}
+                onClick={() => handleDeny(r.id)}
+              >
                 Deny
               </button>
             </span>

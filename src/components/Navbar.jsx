@@ -1,8 +1,8 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useClubs } from "../context/ClubsContext";
-import { canManageClub } from "../utils/authStore";
+import { canManageClub, getRememberedLoginPath } from "../utils/authStore";
 import { getPendingAdminRequests } from "../utils/adminStore";
 import styles from "./Navbar.module.css";
 
@@ -26,8 +26,15 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const { clubs } = useClubs();
   const location = useLocation();
+  const navigate = useNavigate();
   const dashboardClubId = firstManageableClubId(user, clubs);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
+
+  // Admins who signed in through the ordinary consumer flow (the login
+  // page's "user path") get an explicit button to jump to the dashboard
+  // — the Dashboard link in the nav doubles as their route, but this
+  // makes the affordance obvious without re-running the admin login.
+  const loggedViaUserPath = Boolean(user) && getRememberedLoginPath(user.email) === "user";
 
   // Tier1 only. Re-checks on every navigation (rather than polling) so the
   // badge stays fresh after approving/denying a request on the Dashboard.
@@ -74,6 +81,20 @@ export default function Navbar() {
           )}
           {user ? (
             <span className={styles.authGroup}>
+              {dashboardClubId && loggedViaUserPath && (
+                <button
+                  type="button"
+                  className={styles.dashboardButton}
+                  onClick={() => navigate(`/dashboard/${dashboardClubId}`)}
+                >
+                  Go to dashboard
+                  {pendingRequestCount > 0 && (
+                    <span className={`${styles.badge} ${styles.buttonBadge}`}>
+                      {pendingRequestCount}
+                    </span>
+                  )}
+                </button>
+              )}
               <span className={styles.userInfo}>
                 {user.name} ({ROLE_LABELS[user.role]})
               </span>

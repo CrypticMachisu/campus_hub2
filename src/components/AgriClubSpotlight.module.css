@@ -1,0 +1,74 @@
+.spotlight {
+  margin: var(--space-lg, 2rem) 0;
+  padding: var(--space-lg, 2rem);
+  background: var(--color-secondary-light, #e3ede9);
+  border: 1px dashed var(--color-secondary, #2f6e64);
+  border-radius: var(--radius-lg, 10px);
+}
+.pitch h2 {
+  margin-top: 0;
+}
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm, 0.5rem);
+  margin: var(--space-md, 1rem) 0;
+}
+.primary,
+.secondary {
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius, 6px);
+  font-family: var(--font-mono, monospace);
+  text-decoration: none;
+}
+.primary {
+  background: var(--color-primary, #c1432e);
+  color: var(--color-white, #fff);
+}
+.primary:hover {
+  background: var(--color-primary-dark, #8f2e1d);
+}
+.secondary {
+  border: 1px solid var(--color-secondary, #2f6e64);
+  color: var(--color-secondary, #2f6e64);
+}
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg, 2rem);
+  list-style: none;
+  padding: 0;
+  margin: var(--space-md, 1rem) 0;
+  font-family: var(--font-mono, monospace);
+}
+.stats strong {
+  font-size: 1.6rem;
+  color: var(--color-primary, #c1432e);
+}
+.grid {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-md, 1rem);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-md, 1rem);
+}
+.card {
+  padding: var(--space-md, 1rem);
+  background: var(--color-card-bg, #fbf6e9);
+  border: 1px solid var(--color-border, #d8cba9);
+  border-radius: var(--radius, 6px);
+}
+.card h4 {
+  margin: 0 0 0.25rem;
+}
+.card p {
+  margin: 0.15rem 0;
+}
+.meta {
+  color: var(--color-text-muted, #6b6457);
+  font-size: 0.9rem;
+}
+.error {
+  color: var(--color-danger, #b3261e);
+}

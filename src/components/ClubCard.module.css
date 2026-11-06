@@ -8,7 +8,9 @@
   padding: var(--space-md);
   box-shadow: var(--shadow-card);
   transform: rotate(-0.6deg);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .card:nth-child(even) {

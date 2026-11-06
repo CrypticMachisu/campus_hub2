@@ -55,7 +55,10 @@ clubsRouter.post("/", requireAuth, requireTier1, async (req, res) => {
 
   const tagList = Array.isArray(tags)
     ? tags
-    : (tags || "").split(",").map((t) => t.trim()).filter(Boolean);
+    : (tags || "")
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
 
   for (const tag of tagList) {
     await pool.query(`INSERT IGNORE INTO club_tags (club_id, tag) VALUES (:id, :tag)`, {
@@ -75,7 +78,6 @@ clubsRouter.post("/", requireAuth, requireTier1, async (req, res) => {
   );
   res.status(201).json({ club: rowToClub(rows[0]) });
 });
-
 /**
  * GET /api/clubs/:clubId/members — the club's roster.
  * Visible to that club's own members and admins only. Email addresses are

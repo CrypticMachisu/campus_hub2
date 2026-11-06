@@ -1,0 +1,133 @@
+/* Skeleton loaders — shimmer built from the corkboard theme tokens.
+   The global prefers-reduced-motion rule in theme.css freezes the
+   shimmer animation, leaving a calm static block. */
+
+.block {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  background: var(--color-bg-alt);
+  overflow: hidden;
+}
+
+/* Soft light sweeping across the placeholder block. */
+.block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-card-bg) 75%, transparent),
+    transparent
+  );
+  animation: sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Frames mirroring the real cards ------------------------------------ */
+
+.cardFrame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-card);
+}
+
+/* ClubCard's tighter open-card look (no tilt on placeholders). */
+.clubCard .stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* EventCard sits thumb-and-text side by side. */
+.eventCard {
+  flex-direction: row;
+  gap: var(--space-md);
+  border-style: solid;
+}
+
+.eventCard .stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.partnerCard {
+  background: var(--color-white);
+  min-height: 92px;
+}
+
+/* --- Dashboard list rows ------------------------------------------------- */
+
+.listRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  list-style: none;
+}
+
+/* --- Page-level compositions -------------------------------------------- */
+
+.clubProfile,
+.eventDetail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.profileHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.profileHeader .stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.profileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block::after {
+    display: none;
+  }
+}

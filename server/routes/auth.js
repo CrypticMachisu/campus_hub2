@@ -8,7 +8,6 @@ import { rowToUser } from "../rowMappers.js";
 import { requireAuth } from "../middleware/auth.js";
 import { isValidEmail } from "../validation.js";
 
-
 export const authRouter = Router();
 
 function signToken(user) {

@@ -5,6 +5,7 @@ import { getAllEvents } from "../utils/eventsStore";
 import { useAuth } from "../context/AuthContext";
 import { saveSignup, isSignedUp } from "../utils/storage";
 import CommentSection from "../components/CommentSection";
+import { SkeletonGroup, EventDetailSkeleton } from "../components/Skeleton";
 
 export default function EventDetail() {
   const { eventId } = useParams();
@@ -49,8 +50,10 @@ export default function EventDetail() {
 
   if (eventLoading) {
     return (
-      <div className="container" style={{ paddingTop: "2rem" }}>
-        <p>Loading event…</p>
+      <div className="container" style={{ paddingTop: "2rem", maxWidth: "800px" }}>
+        <SkeletonGroup label="Loading event…">
+          <EventDetailSkeleton />
+        </SkeletonGroup>
       </div>
     );
   }
@@ -102,9 +105,15 @@ export default function EventDetail() {
 
       <hr />
 
-      <p><strong>Date:</strong> {event.date}</p>
-      <p><strong>Time:</strong> {event.time}</p>
-      <p><strong>Location:</strong> {event.location}</p>
+      <p>
+        <strong>Date:</strong> {event.date}
+      </p>
+      <p>
+        <strong>Time:</strong> {event.time}
+      </p>
+      <p>
+        <strong>Location:</strong> {event.location}
+      </p>
 
       <br />
 
@@ -123,11 +132,7 @@ export default function EventDetail() {
         </button>
       )}
 
-      {message && (
-        <p style={{ marginTop: "1rem", color: "green" }}>
-          {message}
-        </p>
-      )}
+      {message && <p style={{ marginTop: "1rem", color: "green" }}>{message}</p>}
 
       <hr style={{ marginTop: "2rem" }} />
       <CommentSection targetType="event" targetId={event.id} />

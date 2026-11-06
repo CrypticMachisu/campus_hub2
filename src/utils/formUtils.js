@@ -1,5 +1,5 @@
 // Shared form helper.
-// 
+//
 /**
  * Returns a shallow copy of an object with every string value trimmed.
  * Non-string values pass through unchanged.

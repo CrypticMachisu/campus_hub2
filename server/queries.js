@@ -29,14 +29,13 @@ export async function findUserById(userId) {
  * if they're just being added to another club. Returns the updated user.
  */
 export async function promoteUserToClubAdmin(userId, clubId) {
-  await pool.query(
-    `INSERT IGNORE INTO club_admins (user_id, club_id) VALUES (:userId, :clubId)`,
-    { userId, clubId }
-  );
-  await pool.query(
-    `UPDATE users SET role = 'tier2' WHERE user_id = :userId AND role = 'member'`,
-    { userId }
-  );
+  await pool.query(`INSERT IGNORE INTO club_admins (user_id, club_id) VALUES (:userId, :clubId)`, {
+    userId,
+    clubId,
+  });
+  await pool.query(`UPDATE users SET role = 'tier2' WHERE user_id = :userId AND role = 'member'`, {
+    userId,
+  });
   return findUserById(userId);
 }
 
@@ -56,9 +55,12 @@ export async function demoteUserFromClubAdmin(userId, clubId) {
     { userId }
   );
   if (rows[0].remaining === 0) {
-    await pool.query(`UPDATE users SET role = 'member' WHERE user_id = :userId AND role = 'tier2'`, {
-      userId,
-    });
+    await pool.query(
+      `UPDATE users SET role = 'member' WHERE user_id = :userId AND role = 'tier2'`,
+      {
+        userId,
+      }
+    );
   }
 
   return findUserById(userId);
@@ -82,28 +84,27 @@ export async function findUserRowByEmail(email) {
 
 /** Look up a category's id by its name (e.g. "Technology"). Returns null if not found. */
 export async function findCategoryIdByName(name) {
-  const [rows] = await pool.query(
-    "SELECT category_id FROM categories WHERE name = :name",
-    { name }
-  );
+  const [rows] = await pool.query("SELECT category_id FROM categories WHERE name = :name", {
+    name,
+  });
   return rows[0]?.category_id ?? null;
 }
 
 /** Adds a member<->club link. Idempotent — joining twice is a no-op, not an error. */
 export async function addClubMember(userId, clubId) {
-  await pool.query(
-    `INSERT IGNORE INTO club_members (user_id, club_id) VALUES (:userId, :clubId)`,
-    { userId, clubId }
-  );
+  await pool.query(`INSERT IGNORE INTO club_members (user_id, club_id) VALUES (:userId, :clubId)`, {
+    userId,
+    clubId,
+  });
   return findUserById(userId);
 }
 
 /** Removes a member<->club link. Also a no-op if they weren't a member. */
 export async function removeClubMember(userId, clubId) {
-  await pool.query(
-    `DELETE FROM club_members WHERE user_id = :userId AND club_id = :clubId`,
-    { userId, clubId }
-  );
+  await pool.query(`DELETE FROM club_members WHERE user_id = :userId AND club_id = :clubId`, {
+    userId,
+    clubId,
+  });
   return findUserById(userId);
 }
 

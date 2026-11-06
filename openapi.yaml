@@ -3,11 +3,14 @@ info:
   title: CampusHub API
   version: 2.0.0
   description: >
-    REST API for the CampusHub clubs-and-events app. Clubs and events can be
-    read without signing in. Creating or changing data requires a bearer token
-    from POST /auth/login. All responses are JSON, except that unknown URLs
-    return Express's default HTML 404 page.
-
+    REST API for the CampusHub clubs-and-events app. Every request from a
+    consumer must carry an API key in the `X-API-Key` header (one key per
+    consumer, handed out privately); GET /health is the one exception.
+    Reading clubs and events needs no further sign-in; creating or changing
+    data additionally requires a bearer token from POST /auth/login. Each key
+    may make 100 requests per 60 seconds; exceeding it returns 429 with a
+    Retry-After header. All responses are JSON, including the 404 for
+    unknown URLs.
 
 servers:
   - url: http://localhost:5000/api
@@ -22,6 +25,12 @@ tags:
     description: Campus clubs.
   - name: Events
     description: Events hosted by clubs.
+  - name: Admin
+    description: Tier1-only operational dashboard.
+
+# Default for every operation: a valid X-API-Key is required (Week 9).
+security:
+  - apiKeyAuth: []
 
 paths:
   /health:
@@ -31,7 +40,7 @@ paths:
       summary: Check that the API is running
       security: []
       responses:
-        '200':
+        "200":
           description: The API is up.
           content:
             application/json:
@@ -51,23 +60,24 @@ paths:
       description: >
         Demo accounts all use the password set by `npm run set-passwords`
         (default `campushub123`). The token is a JWT valid for 7 days.
-      security: []
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
             example:
               email: amara.okafor@campus.edu
               password: campushub123
       responses:
-        '200':
+        "200":
           description: Signed in.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: "#/components/schemas/LoginResponse"
               example:
                 token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
                 user:
@@ -76,22 +86,24 @@ paths:
                   email: amara.okafor@campus.edu
                   role: tier1
                   adminForClubs: []
-        '400':
+        "400":
           description: Email or password missing.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               example:
                 error: Email and password are required.
-        '401':
+        "401":
           description: Wrong email or password.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               example:
                 error: Invalid email or password.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /auth/register:
     post:
@@ -99,24 +111,25 @@ paths:
       operationId: register
       summary: Create a member account
       description: Creates a user with the `member` role and signs them in.
-      security: []
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: "#/components/schemas/RegisterRequest"
             example:
               name: Test Student
               email: test.student@campus.edu
               password: longenough123
       responses:
-        '201':
+        "201":
           description: Account created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: "#/components/schemas/LoginResponse"
               example:
                 token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
                 user:
@@ -125,12 +138,12 @@ paths:
                   email: test.student@campus.edu
                   role: member
                   adminForClubs: []
-        '400':
+        "400":
           description: Invalid input.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 missingFields:
                   value:
@@ -141,14 +154,18 @@ paths:
                 shortPassword:
                   value:
                     error: Password must be at least 8 characters.
-        '409':
+        "409":
           description: The email is already registered.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               example:
                 error: That email is already registered.
+        "401":
+          $ref: "#/components/responses/ApiKeyUnauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /auth/forgot-password:
     post:
@@ -158,7 +175,8 @@ paths:
       description: >
         Always returns the same response whether or not the email is registered.
         No email is sent; the reset link is printed to the server console.
-      security: []
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -173,20 +191,20 @@ paths:
             example:
               email: amara.okafor@campus.edu
       responses:
-        '200':
+        "200":
           description: Request accepted.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Ok'
+                $ref: "#/components/schemas/Ok"
               example:
                 ok: true
-        '400':
+        "400":
           description: Email missing or invalid.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 missingEmail:
                   value:
@@ -194,6 +212,10 @@ paths:
                 invalidEmail:
                   value:
                     error: Enter a valid email address.
+        "401":
+          $ref: "#/components/responses/ApiKeyUnauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /auth/reset-password:
     post:
@@ -201,7 +223,8 @@ paths:
       operationId: resetPassword
       summary: Set a new password with a reset token
       description: The token comes from the reset link printed to the server console and is valid for 1 hour.
-      security: []
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -216,20 +239,20 @@ paths:
                   type: string
                   minLength: 8
       responses:
-        '200':
+        "200":
           description: Password changed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Ok'
+                $ref: "#/components/schemas/Ok"
               example:
                 ok: true
-        '400':
+        "400":
           description: Bad token or password.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 missingToken:
                   value:
@@ -240,6 +263,10 @@ paths:
                 badToken:
                   value:
                     error: That reset link is invalid or has expired.
+        "401":
+          $ref: "#/components/responses/ApiKeyUnauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /auth/me:
     get:
@@ -247,9 +274,10 @@ paths:
       operationId: getCurrentUser
       summary: Get the signed-in user
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       responses:
-        '200':
+        "200":
           description: The user the token belongs to.
           content:
             application/json:
@@ -257,7 +285,7 @@ paths:
                 type: object
                 properties:
                   user:
-                    $ref: '#/components/schemas/User'
+                    $ref: "#/components/schemas/User"
               example:
                 user:
                   id: user-01
@@ -265,8 +293,10 @@ paths:
                   email: amara.okafor@campus.edu
                   role: tier1
                   adminForClubs: []
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /clubs:
     get:
@@ -274,9 +304,10 @@ paths:
       operationId: listClubs
       summary: List all clubs
       description: Clubs are returned in alphabetical order by name.
-      security: []
+      security:
+        - apiKeyAuth: []
       responses:
-        '200':
+        "200":
           description: All clubs.
           content:
             application/json:
@@ -286,7 +317,7 @@ paths:
                   clubs:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Club'
+                      $ref: "#/components/schemas/Club"
               example:
                 clubs:
                   - id: club-04
@@ -297,19 +328,24 @@ paths:
                     meetingTime: Thursdays, 7:00 PM
                     meetingLocation: Engineering Building, Lab 108
                     tags: [coding, hackathon, workshops]
+        "401":
+          $ref: "#/components/responses/ApiKeyUnauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     post:
       tags: [Clubs]
       operationId: createClub
       summary: Create a club
       description: Only tier1 users can create clubs.
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ClubInput'
+              $ref: "#/components/schemas/ClubInput"
             example:
               name: Chess Society
               category: Social
@@ -318,7 +354,7 @@ paths:
               meetingLocation: Student Union, Room 102
               tags: [chess, games]
       responses:
-        '201':
+        "201":
           description: Club created.
           content:
             application/json:
@@ -326,30 +362,32 @@ paths:
                 type: object
                 properties:
                   club:
-                    $ref: '#/components/schemas/Club'
-        '400':
+                    $ref: "#/components/schemas/Club"
+        "400":
           description: Missing club name or unknown category.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 missingName:
                   value:
                     error: Club name is required.
                 unknownCategory:
                   value:
-                    error: 'Unknown category: Cooking'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
+                    error: "Unknown category: Cooking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
           description: Signed in, but not a tier1 user.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               example:
                 error: Tier 1 admin access required.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /events:
     get:
@@ -357,9 +395,10 @@ paths:
       operationId: listEvents
       summary: List all events
       description: Events are returned in date and time order.
-      security: []
+      security:
+        - apiKeyAuth: []
       responses:
-        '200':
+        "200":
           description: All events.
           content:
             application/json:
@@ -369,7 +408,7 @@ paths:
                   events:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Event'
+                      $ref: "#/components/schemas/Event"
               example:
                 events:
                   - id: event-05
@@ -377,11 +416,15 @@ paths:
                     title: River Trail 5K
                     description: A social 5K along the river trail, coffee after at the Rec Center.
                     category: Sports & Fitness
-                    date: '2026-10-12'
-                    time: '06:30'
+                    date: "2026-10-12"
+                    time: "06:30"
                     location: Rec Center steps
                     imageUrl: https://images.unsplash.com/photo-1745790289741-12a211a8325d?w=600
                     isSeed: true
+        "401":
+          $ref: "#/components/responses/ApiKeyUnauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     post:
       tags: [Events]
       operationId: createEvent
@@ -391,23 +434,24 @@ paths:
         an ID starting with `custom-`. The returned `date` can be one day earlier
         than the date sent when the server runs in a time zone ahead of UTC.
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EventInput'
+              $ref: "#/components/schemas/EventInput"
             example:
               clubId: club-01
               title: README Test Event
               description: Testing
               category: Academic
-              date: '2026-11-01'
-              time: '18:00'
+              date: "2026-11-01"
+              time: "18:00"
               location: Room 1
       responses:
-        '201':
+        "201":
           description: Event created.
           content:
             application/json:
@@ -415,7 +459,7 @@ paths:
                 type: object
                 properties:
                   event:
-                    $ref: '#/components/schemas/Event'
+                    $ref: "#/components/schemas/Event"
               example:
                 event:
                   id: custom-1791803508229
@@ -423,28 +467,30 @@ paths:
                   title: README Test Event
                   description: Testing
                   category: Academic
-                  date: '2026-10-31'
-                  time: '18:00'
+                  date: "2026-10-31"
+                  time: "18:00"
                   location: Room 1
                   imageUrl: null
                   isSeed: false
-        '400':
+        "400":
           description: Missing title or unknown category.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 missingTitle:
                   value:
                     error: Title is required.
                 unknownCategory:
                   value:
-                    error: 'Unknown category: Cooking'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/NoClubAccess'
+                    error: "Unknown category: Cooking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/NoClubAccess"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /events/{id}:
     parameters:
@@ -464,22 +510,23 @@ paths:
         can be changed; built-in `event-` events are read-only. The caller must
         manage the event's club. The club of an event cannot be changed.
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EventInput'
+              $ref: "#/components/schemas/EventInput"
             example:
               title: README Test Event (updated)
               description: Testing
               category: Academic
-              date: '2026-11-01'
-              time: '19:00'
+              date: "2026-11-01"
+              time: "19:00"
               location: Room 2
       responses:
-        '200':
+        "200":
           description: Event updated.
           content:
             application/json:
@@ -487,26 +534,28 @@ paths:
                 type: object
                 properties:
                   event:
-                    $ref: '#/components/schemas/Event'
-        '400':
+                    $ref: "#/components/schemas/Event"
+        "400":
           description: Missing title or unknown category.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 missingTitle:
                   value:
                     error: Title is required.
                 unknownCategory:
                   value:
-                    error: 'Unknown category: Cooking'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/EventForbidden'
-        '404':
-          $ref: '#/components/responses/EventNotFound'
+                    error: "Unknown category: Cooking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/EventForbidden"
+        "404":
+          $ref: "#/components/responses/EventNotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     delete:
       tags: [Events]
       operationId: deleteEvent
@@ -515,31 +564,127 @@ paths:
         Only events whose ID starts with `custom-` can be deleted. The caller
         must manage the event's club. Signups for the event are deleted with it.
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
+          bearerAuth: []
       responses:
-        '204':
+        "204":
           description: Event deleted. The response body is empty.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/EventForbidden'
-        '404':
-          $ref: '#/components/responses/EventNotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/EventForbidden"
+        "404":
+          $ref: "#/components/responses/EventNotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /admin:
+    get:
+      tags: [Admin]
+      operationId: getAdminDashboard
+      summary: Per-key rate-limit status and last-IP tracking
+      description: >
+        Tier1-only operational view of the live rate limiter. One row per
+        consumer that has sent traffic this process, plus every configured
+        key that has not been used yet. Each key appears only as its
+        fingerprint (a hashed keyId and a masked tail) — the raw key is
+        never included. Rows with `active: false` count requests from the
+        consumer's previous window; counters roll forward only on that
+        consumer's next request. `byIp: true` rows are keyless requests,
+        tracked by their IP instead. Calling this endpoint counts against
+        its own caller's rate window.
+      security:
+        - apiKeyAuth: []
+          bearerAuth: []
+      responses:
+        "200":
+          description: Current limiter status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDashboard"
+              example:
+                windowMs: 60000
+                max: 100
+                consumers:
+                  - keyId: 4f1a2b3c4d5e
+                    maskedKey: pro…d41f
+                    byIp: false
+                    active: true
+                    count: 13
+                    max: 100
+                    remaining: 87
+                    limited: false
+                    resetAt: "2026-10-26T10:15:00.000Z"
+                    secondsUntilReset: 40
+                    lastIp: "::ffff:127.0.0.1"
+                    lastSeenAt: "2026-10-26T10:14:02.000Z"
+                  - keyId: 8c9d0e1f2a3b
+                    maskedKey: ring…77aa
+                    byIp: false
+                    active: false
+                    count: 3
+                    max: 100
+                    remaining: 97
+                    limited: false
+                    resetAt: "2026-10-26T10:10:00.000Z"
+                    secondsUntilReset: 0
+                    lastIp: "203.0.113.24"
+                    lastSeenAt: "2026-10-26T10:09:50.000Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminForbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
 components:
   securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: One private key per consumer, handed out by direct message. Every endpoint requires it except GET /health.
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
 
   responses:
-    Unauthorized:
-      description: Missing or invalid token.
+    ApiKeyUnauthorized:
+      description: Missing or invalid API key.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Missing or invalid API key.
+    TooManyRequests:
+      description: The key exceeded 100 requests in 60 seconds.
+      headers:
+        Retry-After:
+          description: Seconds to wait before sending another request with this key.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: string
+              retryAfter:
+                type: integer
+          example:
+            error: Too many requests.
+            retryAfter: 42
+    Unauthorized:
+      description: Missing or invalid API key, or missing/invalid bearer token on a protected endpoint.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
           example:
             error: Not authenticated.
     NoClubAccess:
@@ -547,7 +692,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
           example:
             error: "You don't have admin access to that club."
     EventForbidden:
@@ -555,7 +700,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
           examples:
             seedEvent:
               value:
@@ -568,9 +713,17 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
           example:
             error: Event not found.
+    AdminForbidden:
+      description: The bearer token is valid but its account is not a tier1 admin.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Tier 1 admin access required.
 
   schemas:
     Error:
@@ -615,9 +768,71 @@ components:
       properties:
         token:
           type: string
-          description: 'JWT to send as the header `Authorization: Bearer <token>`.'
+          description: "JWT to send as the header `Authorization: Bearer <token>`."
         user:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
+
+    AdminDashboard:
+      type: object
+      properties:
+        windowMs:
+          type: integer
+          description: Rate-limit window length in milliseconds.
+          example: 60000
+        max:
+          type: integer
+          description: Requests allowed per consumer per window.
+          example: 100
+        consumers:
+          type: array
+          items:
+            $ref: "#/components/schemas/RateLimitStatus"
+
+    RateLimitStatus:
+      type: object
+      properties:
+        keyId:
+          type: string
+          nullable: true
+          description: First 12 hex chars of the SHA-256 of the key. Null for keyless (IP-tracked) consumers.
+          example: 8c9d0e1f2a3b
+        maskedKey:
+          type: string
+          nullable: true
+          description: "Key tail display like `pro…d41f`. Never the full key. Null for IP consumers and unused keys are masked the same way."
+          example: pro…d41f
+        byIp:
+          type: boolean
+          description: True when the request carried no API key and was tracked by IP.
+        active:
+          type: boolean
+          description: True while the consumer's current window is still open.
+        count:
+          type: integer
+          description: Requests counted in the current (or, for inactive rows, last) window.
+        max:
+          type: integer
+        remaining:
+          type: integer
+        limited:
+          type: boolean
+          description: True while the consumer is over the limit and receiving 429s.
+        resetAt:
+          type: string
+          format: date-time
+          nullable: true
+        secondsUntilReset:
+          type: integer
+          description: 0 when the window has already passed; it rolls over on the consumer's next request.
+        lastIp:
+          type: string
+          nullable: true
+          description: Last IP the consumer was seen from. Null until they have made a request.
+          example: "203.0.113.24"
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
 
     User:
       type: object
@@ -708,7 +923,7 @@ components:
         time:
           type: string
           description: 24-hour time, HH:MM.
-          example: '18:00'
+          example: "18:00"
         location:
           type: string
         imageUrl:
@@ -737,7 +952,7 @@ components:
           format: date
         time:
           type: string
-          example: '18:00'
+          example: "18:00"
         location:
           type: string
         imageUrl:

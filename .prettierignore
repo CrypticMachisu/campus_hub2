@@ -1,0 +1,5 @@
+# Never format generated / vendored output.
+dist/
+node_modules/
+docs/index.html
+package-lock.json
