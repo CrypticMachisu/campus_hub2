@@ -37,6 +37,21 @@ export function rowToClub(row) {
     meetingTime: row.meeting_time,
     meetingLocation: row.meeting_location,
     tags: row.tags ? row.tags.split(",") : [],
+    // Empty strings mean "no override" — the frontend then falls back to the
+    // category's playbook, so the old shape still renders the same defaults.
+    playbookOverrides: {
+      rsvpLabel: row.rsvp_label || "",
+      bringNote: row.bring_note || "",
+      focusTitle: row.focus_title || "",
+      focusBody: row.focus_body || "",
+      focusItems: row.focus_items
+        ? String(row.focus_items)
+            .split("\n")
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : [],
+      focusLink: row.focus_link || "",
+    },
   };
 }
 

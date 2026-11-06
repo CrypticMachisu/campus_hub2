@@ -78,6 +78,83 @@ clubsRouter.post("/", requireAuth, requireTier1, async (req, res) => {
   );
   res.status(201).json({ club: rowToClub(rows[0]) });
 });
+
+const PLAYBOOK_LIMITS = {
+  rsvpLabel: 40,
+  bringNote: 240,
+  focusTitle: 120,
+  focusBody: 500,
+  focusLink: 300,
+};
+
+/** Trim + cap an override string. Anything non-string becomes "" (= no override). */
+function cleanOverride(value, max) {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+/**
+ * PUT /api/clubs/:clubId — set a club's playbook overrides (admins only).
+ * Every field is optional: sending an empty string clears the override and
+ * the member workspace falls back to the category default.
+ */
+clubsRouter.put("/:clubId", requireAuth, async (req, res) => {
+  const { clubId } = req.params;
+
+  const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
+    clubId,
+  });
+  if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
+  if (!canManageClub(req.user, clubId)) {
+    return res.status(403).json({ error: "You don't have admin access to that club." });
+  }
+
+  const body = req.body || {};
+  const rawItems = Array.isArray(body.focusItems)
+    ? body.focusItems
+    : String(body.focusItems || "").split("\n");
+  const focusItems = rawItems
+    .map((item) => String(item).trim())
+    .filter(Boolean)
+    .slice(0, 5)
+    .map((item) => item.slice(0, 120));
+
+  const focusLink = cleanOverride(body.focusLink, PLAYBOOK_LIMITS.focusLink);
+  if (focusLink && !/^https?:\/\//i.test(focusLink)) {
+    return res.status(400).json({ error: "The link must start with http:// or https://." });
+  }
+
+  await pool.query(
+    `UPDATE clubs
+     SET rsvp_label = :rsvpLabel,
+         bring_note = :bringNote,
+         focus_title = :focusTitle,
+         focus_body = :focusBody,
+         focus_items = :focusItems,
+         focus_link = :focusLink
+     WHERE club_id = :clubId`,
+    {
+      clubId,
+      rsvpLabel: cleanOverride(body.rsvpLabel, PLAYBOOK_LIMITS.rsvpLabel),
+      bringNote: cleanOverride(body.bringNote, PLAYBOOK_LIMITS.bringNote),
+      focusTitle: cleanOverride(body.focusTitle, PLAYBOOK_LIMITS.focusTitle),
+      focusBody: cleanOverride(body.focusBody, PLAYBOOK_LIMITS.focusBody),
+      focusItems: focusItems.length > 0 ? focusItems.join("\n") : null,
+      focusLink: focusLink || null,
+    }
+  );
+
+  const [rows] = await pool.query(
+    `SELECT c.*, cat.name AS category_name, GROUP_CONCAT(DISTINCT ct.tag) AS tags
+    FROM clubs c
+    JOIN categories cat ON cat.category_id = c.category_id
+    LEFT JOIN club_tags ct ON ct.club_id = c.club_id
+    WHERE c.club_id = :clubId
+    GROUP BY c.club_id`,
+    { clubId }
+  );
+  res.json({ club: rowToClub(rows[0]) });
+});
+
 /**
  * GET /api/clubs/:clubId/members — the club's roster.
  * Visible to that club's own members and admins only. Email addresses are

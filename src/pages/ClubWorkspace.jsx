@@ -8,7 +8,9 @@ import { getAnnouncements } from "../utils/dashboardStorage";
 import { getClubMembers, leaveClub } from "../utils/membershipStore";
 import { getComments } from "../utils/commentsStore";
 import { getSignups, saveSignup, deleteSignup } from "../utils/storage";
+import { getClubPlaybook } from "../utils/clubPlaybook";
 import NextClubEvent from "../components/NextClubEvent";
+import ClubFocusPanel from "../components/ClubFocusPanel";
 import ClubAgenda from "../components/ClubAgenda";
 import CommentSection from "../components/CommentSection";
 import styles from "./ClubWorkspace.module.css";
@@ -210,6 +212,10 @@ export default function ClubWorkspace() {
     return <Navigate to={`/clubs/${club.id}`} replace />;
   }
 
+  // Category default + this club's admin overrides. Drives the hero's RSVP
+  // verb, its "what to bring" line, and the focus panel below.
+  const playbook = getClubPlaybook(club);
+
   const feed = [
     ...announcements.map((note) => ({
       key: `announcement-${note.id}`,
@@ -297,10 +303,13 @@ export default function ClubWorkspace() {
             going={Boolean(nextEvent && signupFor(nextEvent.id))}
             pending={Boolean(nextEvent && pendingIds.has(nextEvent.id))}
             onToggle={toggleRsvp}
+            playbook={playbook}
           />
 
           <div className={styles.layout}>
             <div className={styles.column}>
+              <ClubFocusPanel playbook={playbook} clubName={club.name} />
+
               <ClubAgenda
                 events={clubEvents}
                 signupFor={signupFor}

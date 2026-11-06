@@ -28,3 +28,12 @@ export async function createClub(fields) {
   const { club } = await apiFetch("/clubs", { method: "POST", body: fields });
   return club;
 }
+
+/**
+ * Update a club's playbook overrides (admin only). Empty strings clear an
+ * override, so the members fall back to the category default.
+ */
+export async function updateClub(clubId, fields) {
+  const { club } = await apiFetch(`/clubs/${clubId}`, { method: "PUT", body: fields });
+  return club;
+}

@@ -90,6 +90,18 @@
   color: var(--color-text-muted);
 }
 
+/* "What to bring" — the club's own words, so the runner reads
+   "meet five minutes early" and the debater reads "bring your case notes". */
+.bringNote {
+  margin: 0 0 var(--space-md);
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-accent);
+  max-width: 44ch;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
 .goingFlag {
   display: inline-flex;
   align-items: center;

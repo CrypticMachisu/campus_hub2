@@ -1,7 +1,7 @@
 // src/pages/Dashboard.jsx
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { CATEGORIES, createClub } from "../utils/clubsStore";
+import { CATEGORIES, createClub, updateClub } from "../utils/clubsStore";
 import { useClubs } from "../context/ClubsContext";
 import { useAuth } from "../context/AuthContext";
 import { getAllEvents, saveCustomEvent, deleteCustomEvent } from "../utils/eventsStore";
@@ -444,7 +444,10 @@ export default function Dashboard() {
         </ul>
       </section>
 
-      {/* 5. Stats ----------------------------------------------------------- */}
+      {/* 5. Playbook — the club-specific bits members see ------------------- */}
+      <ClubFocusSection club={club} />
+
+      {/* 6. Stats ----------------------------------------------------------- */}
       <section className={styles.section}>
         <h2>Stats</h2>
         <table className={styles.statsTable}>
@@ -677,6 +680,153 @@ function AdminManagementSection({ clubId }) {
         <div className={styles.formActions}>
           <button type="submit" className={styles.primaryButton} disabled={!selectedUserId}>
             Promote to Tier 2 Admin
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function toPlaybookForm(overrides = {}) {
+  return {
+    rsvpLabel: overrides.rsvpLabel || "",
+    bringNote: overrides.bringNote || "",
+    focusTitle: overrides.focusTitle || "",
+    focusBody: overrides.focusBody || "",
+    focusItems: (overrides.focusItems || []).join("\n"),
+    focusLink: overrides.focusLink || "",
+  };
+}
+
+// Admins tune the member workspace here: the RSVP verb, what to bring, and the
+// club's focus panel. Blank fields fall back to the category default, so a club
+// that never opens this form still reads correctly.
+function ClubFocusSection({ club }) {
+  const { refresh } = useClubs();
+  const [form, setForm] = useState(() => toPlaybookForm(club.playbookOverrides));
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    setForm(toPlaybookForm(club.playbookOverrides));
+    setMessage("");
+  }, [club.id, club.playbookOverrides]);
+
+  function handleChange(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setMessage("");
+    try {
+      await updateClub(club.id, {
+        ...form,
+        focusItems: form.focusItems
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      });
+      await refresh();
+      setMessage("Saved — this is what members now see in their workspace.");
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleClear(e) {
+    e.preventDefault();
+    setForm(toPlaybookForm());
+    setMessage("Cleared — save to fall back to the category defaults.");
+  }
+
+  return (
+    <section className={styles.section}>
+      <h2>Member workspace</h2>
+      <p className={styles.emptyState}>
+        These fields change how the workspace reads for {club.name} members. Leave one blank to use
+        the default for the {club.category} category.
+      </p>
+
+      {message && <div className={styles.toast}>{message}</div>}
+
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <label>
+          RSVP button label
+          <input
+            type="text"
+            value={form.rsvpLabel}
+            placeholder="I'm going"
+            maxLength={40}
+            onChange={(e) => handleChange("rsvpLabel", e.target.value)}
+          />
+        </label>
+
+        <label>
+          What to bring <span className={styles.optional}>(one line, shown on the next event)</span>
+          <input
+            type="text"
+            value={form.bringNote}
+            placeholder="Bring your case notes — prep starts 10 minutes before the round."
+            maxLength={240}
+            onChange={(e) => handleChange("bringNote", e.target.value)}
+          />
+        </label>
+
+        <label>
+          Focus panel title
+          <input
+            type="text"
+            value={form.focusTitle}
+            placeholder="Motion & case prep"
+            maxLength={120}
+            onChange={(e) => handleChange("focusTitle", e.target.value)}
+          />
+        </label>
+
+        <label>
+          Focus panel text
+          <textarea
+            value={form.focusBody}
+            rows={3}
+            maxLength={500}
+            placeholder="Every session opens with a motion. Come with one argument for it and one against it."
+            onChange={(e) => handleChange("focusBody", e.target.value)}
+          />
+        </label>
+
+        <label>
+          Focus checklist <span className={styles.optional}>(one per line, up to 5)</span>
+          <textarea
+            value={form.focusItems}
+            rows={3}
+            placeholder={
+              "Read the brief posted in the feed\nPick your speaking role before you arrive"
+            }
+            onChange={(e) => handleChange("focusItems", e.target.value)}
+          />
+        </label>
+
+        <label>
+          Focus link <span className={styles.optional}>(optional, opens in a new tab)</span>
+          <input
+            type="url"
+            value={form.focusLink}
+            placeholder="https://…"
+            maxLength={300}
+            onChange={(e) => handleChange("focusLink", e.target.value)}
+          />
+        </label>
+
+        <div className={styles.formActions}>
+          <button type="submit" className={styles.primaryButton} disabled={saving}>
+            {saving ? "Saving…" : "Save workspace settings"}
+          </button>
+          <button type="button" onClick={handleClear}>
+            Clear all
           </button>
         </div>
       </form>

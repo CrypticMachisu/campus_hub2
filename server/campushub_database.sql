@@ -62,6 +62,14 @@ CREATE TABLE clubs (
     logo_url         VARCHAR(500),
     meeting_time     VARCHAR(100),                 -- free text as in mockData, e.g. 'Tuesdays, 6:00 PM'
     meeting_location VARCHAR(150),
+    -- Playbook overrides (migrations/005_club_playbook.sql). NULL = use the
+    -- category default from src/utils/clubPlaybook.js; set by a club admin.
+    rsvp_label       VARCHAR(40),
+    bring_note       VARCHAR(240),
+    focus_title      VARCHAR(120),
+    focus_body       VARCHAR(500),
+    focus_items      TEXT,                         -- newline-separated checklist
+    focus_link       VARCHAR(300),
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_clubs_category
         FOREIGN KEY (category_id) REFERENCES categories(category_id)

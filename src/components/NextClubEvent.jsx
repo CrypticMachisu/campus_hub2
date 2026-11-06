@@ -30,7 +30,11 @@ function dateParts(date) {
  * RSVP is the primary action and is optimistic — the parent owns the state
  * so the agenda and this card always agree.
  */
-export default function NextClubEvent({ event, clubName, going, pending, onToggle }) {
+export default function NextClubEvent({ event, clubName, going, pending, onToggle, playbook }) {
+  const rsvpLabel = playbook?.rsvpLabel || "I'm going";
+  const cancelLabel = playbook?.cancelLabel || "Can't make it";
+  const bringNote = playbook?.bringNote || "";
+
   if (!event) {
     return (
       <section className={styles.card} aria-label="Next event">
@@ -72,6 +76,8 @@ export default function NextClubEvent({ event, clubName, going, pending, onToggl
           {event.location ? ` · ${event.location}` : ""}
         </p>
 
+        {bringNote && <p className={styles.bringNote}>{bringNote}</p>}
+
         {going && (
           <p className={styles.goingFlag}>
             <span className={styles.goingDot} aria-hidden="true" />
@@ -87,7 +93,7 @@ export default function NextClubEvent({ event, clubName, going, pending, onToggl
             disabled={pending}
             aria-pressed={going}
           >
-            {pending ? "Saving…" : going ? "Can't make it" : "I'm going"}
+            {pending ? "Saving…" : going ? cancelLabel : rsvpLabel}
           </button>
 
           <button
