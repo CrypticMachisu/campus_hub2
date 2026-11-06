@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Short Film Screening Night poster">
+  <rect width="800" height="600" fill="#fbf6e9"/>
+  <rect x="24" y="24" width="752" height="552" fill="none" stroke="#d8cba9" stroke-width="3" stroke-dasharray="10 8"/>
+  <circle cx="400" cy="24" r="7" fill="#c1432e"/>
+  <text x="64" y="100" font-family="ui-monospace, monospace" font-size="17" letter-spacing="3" fill="#2f6e64">CLUB-02 · ARTS &amp; CULTURE</text>
+  <text x="64" y="184" font-family="'Space Grotesk', sans-serif" font-size="56" font-weight="700" fill="#24211d">Short Film</text>
+  <text x="64" y="248" font-family="'Space Grotesk', sans-serif" font-size="56" font-weight="700" fill="#24211d">Screening Night</text>
+  <g fill="#2f6e64">
+    <rect x="520" y="320" width="220" height="150" rx="10"/>
+    <g fill="#fbf6e9">
+      <rect x="540" y="340" width="30" height="24"/>
+      <rect x="580" y="340" width="30" height="24"/>
+      <rect x="620" y="340" width="30" height="24"/>
+      <rect x="660" y="340" width="30" height="24"/>
+      <rect x="700" y="340" width="20" height="24"/>
+      <rect x="540" y="426" width="30" height="24"/>
+      <rect x="580" y="426" width="30" height="24"/>
+      <rect x="620" y="426" width="30" height="24"/>
+      <rect x="660" y="426" width="30" height="24"/>
+      <rect x="700" y="426" width="20" height="24"/>
+    </g>
+  </g>
+  <line x1="64" y1="500" x2="736" y2="500" stroke="#d8cba9" stroke-width="2" stroke-dasharray="6 6"/>
+  <text x="64" y="538" font-family="ui-monospace, monospace" font-size="20" fill="#6b6457">20 NOV · 20:00 · AUDITORIUM</text>
+</svg>

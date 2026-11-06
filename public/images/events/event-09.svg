@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Saturday Tutoring Session poster">
+  <rect width="800" height="600" fill="#fbf6e9"/>
+  <rect x="24" y="24" width="752" height="552" fill="none" stroke="#d8cba9" stroke-width="3" stroke-dasharray="10 8"/>
+  <circle cx="400" cy="24" r="7" fill="#c1432e"/>
+  <text x="64" y="100" font-family="ui-monospace, monospace" font-size="17" letter-spacing="3" fill="#2f6e64">CLUB-05 · COMMUNITY SERVICE</text>
+  <text x="64" y="184" font-family="'Space Grotesk', sans-serif" font-size="56" font-weight="700" fill="#24211d">Saturday</text>
+  <text x="64" y="248" font-family="'Space Grotesk', sans-serif" font-size="56" font-weight="700" fill="#24211d">Tutoring Session</text>
+  <g fill="none" stroke="#2f6e64" stroke-width="6" stroke-linejoin="round">
+    <path d="M520 330h70c22 0 32 12 32 32v128h-70c-22 0-32-12-32-32z"/>
+    <path d="M720 330h-70c-22 0-32 12-32 32v128h70c22 0 32-12 32-32z"/>
+  </g>
+  <line x1="64" y1="500" x2="736" y2="500" stroke="#d8cba9" stroke-width="2" stroke-dasharray="6 6"/>
+  <text x="64" y="538" font-family="ui-monospace, monospace" font-size="20" fill="#6b6457">09 NOV · 10:00 · LIBRARY ANNEX</text>
+</svg>

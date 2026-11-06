@@ -108,6 +108,7 @@ cd server
 npm install
 cp .env.example .env          # Windows: copy .env.example .env
 npm run set-passwords         # gives all 8 demo users the password below
+npm run seed:demo             # optional: announcements, discussion, and a full event with a waitlist
 npm start
 ```
 

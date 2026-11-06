@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="School Supply Drive poster">
+  <rect width="800" height="600" fill="#fbf6e9"/>
+  <rect x="24" y="24" width="752" height="552" fill="none" stroke="#d8cba9" stroke-width="3" stroke-dasharray="10 8"/>
+  <circle cx="400" cy="24" r="7" fill="#c1432e"/>
+  <text x="64" y="100" font-family="ui-monospace, monospace" font-size="17" letter-spacing="3" fill="#8f2e1d">CLUB-05 · COMMUNITY SERVICE</text>
+  <text x="64" y="184" font-family="'Space Grotesk', sans-serif" font-size="56" font-weight="700" fill="#24211d">School Supply</text>
+  <text x="64" y="248" font-family="'Space Grotesk', sans-serif" font-size="56" font-weight="700" fill="#24211d">Drive</text>
+  <g stroke="#8f2e1d" stroke-width="4">
+    <rect x="540" y="340" width="160" height="120" rx="4" fill="#f5c344"/>
+    <path d="M540 340h160M620 340v-44" fill="none"/>
+    <rect x="600" y="296" width="40" height="32" rx="3" fill="#c1432e"/>
+  </g>
+  <line x1="64" y1="500" x2="736" y2="500" stroke="#d8cba9" stroke-width="2" stroke-dasharray="6 6"/>
+  <text x="64" y="538" font-family="ui-monospace, monospace" font-size="20" fill="#6b6457">17 NOV · 11:00 · MAIN GATE</text>
+</svg>

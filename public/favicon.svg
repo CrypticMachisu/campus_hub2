@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CampusHub">
+  <rect width="64" height="64" rx="12" fill="#f3ecd9"/>
+  <rect x="14" y="16" width="36" height="32" rx="2" fill="#fbf6e9" stroke="#c1432e" stroke-width="3" stroke-dasharray="5 4"/>
+  <circle cx="32" cy="16" r="5" fill="#c1432e"/>
+  <path d="M24 28h16M24 34h16M24 40h10" stroke="#24211d" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

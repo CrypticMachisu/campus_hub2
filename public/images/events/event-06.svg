@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Interval Training Session poster">
+  <rect width="800" height="600" fill="#fbf6e9"/>
+  <rect x="24" y="24" width="752" height="552" fill="none" stroke="#d8cba9" stroke-width="3" stroke-dasharray="10 8"/>
+  <circle cx="400" cy="24" r="7" fill="#c1432e"/>
+  <text x="64" y="100" font-family="ui-monospace, monospace" font-size="17" letter-spacing="3" fill="#8f2e1d">CLUB-03 · SPORTS &amp; FITNESS</text>
+  <text x="64" y="184" font-family="'Space Grotesk', sans-serif" font-size="56" font-weight="700" fill="#24211d">Interval</text>
+  <text x="64" y="248" font-family="'Space Grotesk', sans-serif" font-size="56" font-weight="700" fill="#24211d">Training Session</text>
+  <g fill="none" stroke="#c1432e" stroke-width="6" stroke-linecap="round">
+    <path d="M520 480c80-120 200-120 260 0"/>
+    <path d="M540 480c70-95 170-95 220 0"/>
+    <path d="M560 480c55-70 130-70 170 0"/>
+  </g>
+  <line x1="64" y1="500" x2="736" y2="500" stroke="#d8cba9" stroke-width="2" stroke-dasharray="6 6"/>
+  <text x="64" y="538" font-family="ui-monospace, monospace" font-size="20" fill="#6b6457">14 NOV · 06:30 · MAIN TRACK</text>
+</svg>
