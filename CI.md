@@ -64,7 +64,7 @@ developer would do locally:
 ### What CI does not do
 
 - **It does not deploy anything.** There is no deploy step, and it does not
-  touch Netlify, XAMPP, your laptop, or any shared database.
+  touch XAMPP, your laptop, or any shared database.
 - **It does not migrate a real database.** All schema work happens inside the
   disposable MySQL container and disappears with it.
 - **It does not run the frontend Jest tests.** The repo has Jest configured but

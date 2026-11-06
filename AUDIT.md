@@ -171,8 +171,8 @@ The generic Navbar also has no skip link (the member shell has one).
 ### 13. No social preview
 
 There is no `description`, `og:*`, `twitter:*` or `theme-color`, and no favicon to fall
-back on. If anyone shares the Netlify link in WhatsApp or Teams before the presentation,
-it renders as a bare URL.
+back on. If the deployed URL is shared in WhatsApp or Teams before the presentation, it
+renders as a bare URL.
 
 - **Fix:** description, `og:title`, `og:description`, `og:image` (a static 1200×630 made
   from the corkboard palette), `theme-color`. **S**
@@ -305,3 +305,5 @@ AgroConnect panels if the partner API is unreachable that day.
 Items 1, 2, 5, 6, 8, 9, 11 and 12 are frontend or seed-data only and touch no endpoint.
 Items 4, 7 and 10 are frontend-only additions; item 10 reads an internal endpoint that
 already exists.
+
+The implementation plan for the P1 items is in [P1_PLAN.md](P1_PLAN.md).
