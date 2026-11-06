@@ -75,21 +75,31 @@ cd campus_hub2
 ```bash
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS campushub"
 mysql -u root campushub < server/campushub_database.sql
-mysql -u root campushub < server/migrations/001_add_password_auth.sql
-mysql -u root campushub < server/migrations/002_add_password_reset.sql
+cd server && npm install && npm run migrate:baseline
 ```
 
-Windows PowerShell does not support `<`, so run the first line as written and the other three like this:
+**`server/campushub_database.sql` begins with `DROP DATABASE IF EXISTS campushub`** — loading it wipes and recreates the database. Never load it into a shared or scratch database name expecting a copy.
+
+The schema file already contains every migration, so a fresh install **baselines** them (records them as applied) rather than running them again. Windows PowerShell does not support `<`, so load the schema like this and then baseline:
 
 ```powershell
 cmd /c "C:\xampp\mysql\bin\mysql.exe -u root campushub < server\campushub_database.sql"
-cmd /c "C:\xampp\mysql\bin\mysql.exe -u root campushub < server\migrations\001_add_password_auth.sql"
-cmd /c "C:\xampp\mysql\bin\mysql.exe -u root campushub < server\migrations\002_add_password_reset.sql"
+cd server; npm run migrate:baseline
 ```
 
-(Alternative: in phpMyAdmin, select `campushub`, open the **Import** tab and import the three files in the order shown.)
+(Alternative: in phpMyAdmin, select `campushub`, open the **Import** tab and import `server/campushub_database.sql`, then `cd server && npm run migrate:baseline`.)
 
 If your MySQL root user has a password, add `-p` to the commands and set `DB_PASSWORD` in step 3.
+
+**Pulling new code onto an existing database?** Run the migration runner instead of piping files by hand:
+
+```bash
+cd server
+npm run migrate:status     # what is applied, what is pending
+npm run migrate            # apply the pending ones, in order, and record each
+```
+
+Migrations are tracked in a `schema_migrations` table, so running `npm run migrate` twice is a no-op. Never pipe a migration file by hand on a database the runner already manages — it will try to add a column that already exists.
 
 **3. Configure and start the server.**
 

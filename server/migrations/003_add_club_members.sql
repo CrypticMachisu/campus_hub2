@@ -9,7 +9,6 @@
 -- Deliberately separate from club_admins: being a member and being a club
 -- admin are independent (you can admin a club you never joined).
 
-USE campushub;
 
 CREATE TABLE IF NOT EXISTS club_members (
     membership_id INT AUTO_INCREMENT PRIMARY KEY,

@@ -9,7 +9,6 @@
 --   mysql -u root campushub < server/migrations/001_add_password_auth.sql
 -- or paste it into phpMyAdmin's SQL tab with `campushub` selected.
 
-USE campushub;
 
 ALTER TABLE users
   ADD COLUMN password_hash VARCHAR(255) NOT NULL DEFAULT '' AFTER email;

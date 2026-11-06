@@ -12,7 +12,6 @@
 --
 -- Not idempotent — re-running errors on the duplicate column, harmlessly.
 
-USE campushub;
 
 ALTER TABLE comments
     ADD COLUMN parent_id VARCHAR(30) NULL,

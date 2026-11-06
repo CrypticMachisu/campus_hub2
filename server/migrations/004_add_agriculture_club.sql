@@ -7,7 +7,6 @@
 -- Safe to run twice (INSERT IGNORE). Edit the meeting time/location to
 -- whatever the club really uses.
 
-USE campushub;
 
 INSERT IGNORE INTO categories (name) VALUES ('Agriculture');
 

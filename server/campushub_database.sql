@@ -37,16 +37,21 @@ CREATE TABLE categories (
 
 -- ----------------------------------------------------------------------------
 -- users
--- Backs mockUsers.js + authStore.signup(). No password column: the app's
--- "login" is account selection with no credential check (see authStore.js
--- login()/getCurrentUser()). Add a password_hash column later if the app
--- ever adds real authentication.
+-- Backs mockUsers.js + authStore.signup() and the real password auth added by
+-- migrations 001/002 (see authStore.js login()/getCurrentUser()). Seed hashes
+-- are filled in by `npm run set-passwords`; empty hashes mean nobody can log in
+-- until that has run.
 -- ----------------------------------------------------------------------------
 CREATE TABLE users (
     user_id       VARCHAR(30)  PRIMARY KEY,      -- e.g. 'user-01', or 'user-<timestamp>' from signup()
     name          VARCHAR(100) NOT NULL,
     email         VARCHAR(150) NOT NULL UNIQUE,
     role          ENUM('tier1', 'tier2', 'member') NOT NULL DEFAULT 'member',
+    -- Password auth (migrations 001 + 002). Empty hash = can't log in until
+    -- `npm run set-passwords` has run.
+    password_hash       VARCHAR(255) NOT NULL DEFAULT '',
+    reset_token_hash    VARCHAR(64)  NULL,
+    reset_token_expires DATETIME     NULL,
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -445,3 +450,33 @@ INSERT INTO events (event_id, club_id, title, description, category_id, event_da
 -- SELECT user_name_snapshot, comment_text, created_at
 -- FROM comments WHERE target_type = 'club' AND target_id = 'club-01'
 -- ORDER BY created_at ASC;
+
+-- ----------------------------------------------------------------------------
+-- Seed parity with migration 004
+-- The base file is the "fresh install" path and is now baselined rather than
+-- migrated, so it has to carry this data itself or a new clone would differ
+-- from an upgraded database.
+-- ----------------------------------------------------------------------------
+INSERT IGNORE INTO categories (name) VALUES ('Agriculture');
+
+INSERT IGNORE INTO clubs
+    (club_id, name, category_id, description, logo_url, meeting_time, meeting_location)
+VALUES
+    ('club-07', 'Agri-Business & Farming Club',
+        (SELECT category_id FROM categories WHERE name = 'Agriculture'),
+        'For students curious about farming, food systems and agri-business. We connect campus to real growers through AgroConnect, a marketplace where Kenyan farmers list produce and buyers discover them.',
+        '/images/agri-club.svg',
+        'Thursdays, 5:00 PM', 'Science Block, Room 105');
+
+INSERT IGNORE INTO club_tags (club_id, tag) VALUES
+    ('club-07', 'agriculture'), ('club-07', 'farming'),
+    ('club-07', 'sustainability'), ('club-07', 'agribusiness');
+
+INSERT IGNORE INTO events
+    (event_id, club_id, title, description, category_id, event_date, event_time, location, image_url)
+VALUES
+    ('event-13', 'club-07', 'Agri Club Open Day: Meet the Growers',
+        'Come see who is growing and selling on AgroConnect, learn how the club works with farmers, and sign up as a member.',
+        (SELECT category_id FROM categories WHERE name = 'Agriculture'),
+        CURDATE() + INTERVAL 7 DAY, '17:00', 'Science Block, Room 105',
+        '/images/club-fair.svg');

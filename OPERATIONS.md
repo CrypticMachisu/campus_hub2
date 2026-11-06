@@ -46,14 +46,25 @@ From the repo root:
 ```bash
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS campushub"
 mysql -u root campushub < server/campushub_database.sql
-mysql -u root campushub < server/migrations/001_add_password_auth.sql
-mysql -u root campushub < server/migrations/002_add_password_reset.sql
 
 cd server && npm install
+npm run migrate:baseline   # fresh install: the schema already contains every migration
 npm run set-passwords      # gives all 8 demo users SEED_PASSWORD
 ```
 
-(On Windows PowerShell, wrap the redirecting lines in `cmd /c` as README.md shows.)
+`server/campushub_database.sql` starts with `DROP DATABASE IF EXISTS campushub`: it wipes and recreates the database, so load it only where losing the data is acceptable.
+
+(On Windows PowerShell, wrap the redirecting line in `cmd /c` as README.md shows.)
+
+**Updating an existing database** (after pulling code that adds a migration):
+
+```bash
+cd server
+npm run migrate:status     # applied vs pending
+npm run migrate            # applies pending files in order, recording each
+```
+
+Applied migrations are recorded in `schema_migrations`; re-running `npm run migrate` is a no-op. Baseline is only for a database with no migration history — it refuses to run once that table has rows.
 
 ### 4. Start the API
 

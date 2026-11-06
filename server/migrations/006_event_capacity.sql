@@ -10,7 +10,6 @@
 --
 -- Not idempotent — re-running errors on the duplicate column, harmlessly.
 
-USE campushub;
 
 ALTER TABLE events
     ADD COLUMN bring_note VARCHAR(240) NULL,

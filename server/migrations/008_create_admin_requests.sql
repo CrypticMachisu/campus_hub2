@@ -8,7 +8,6 @@
 --   mysql -u root campushub < server/migrations/003_create_admin_requests.sql
 -- or paste it into phpMyAdmin's SQL tab with `campushub` selected.
 
-USE campushub;
 
 CREATE TABLE IF NOT EXISTS admin_requests (
     request_id INT AUTO_INCREMENT PRIMARY KEY,

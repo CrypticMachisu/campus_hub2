@@ -12,7 +12,6 @@
 -- Not idempotent (MySQL has no ADD COLUMN IF NOT EXISTS) — running it twice
 -- errors on the first duplicate column, which is harmless.
 
-USE campushub;
 
 ALTER TABLE clubs
     ADD COLUMN rsvp_label  VARCHAR(40)  NULL,

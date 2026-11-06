@@ -77,21 +77,31 @@ fresh clone. From the **repo root**:
 # Git Bash / macOS / Linux
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS campushub"
 mysql -u root campushub < server/campushub_database.sql
-mysql -u root campushub < server/migrations/001_add_password_auth.sql
-mysql -u root campushub < server/migrations/002_add_password_reset.sql
+cd server && npm install && npm run migrate:baseline
 ```
+
+**Warning:** `server/campushub_database.sql` begins with `DROP DATABASE IF EXISTS campushub`, so loading it wipes and recreates the database — never load it into a database you want to keep.
+
+The schema file already contains everything the migrations add, so a fresh install records them as applied (`migrate:baseline`) instead of running them.
 
 **Windows alternative (PowerShell has no `<`):**
 
 ```powershell
 cmd /c "C:\xampp\mysql\bin\mysql.exe -u root -e ""CREATE DATABASE IF NOT EXISTS campushub"""
 cmd /c "C:\xampp\mysql\bin\mysql.exe -u root campushub < server\campushub_database.sql"
-cmd /c "C:\xampp\mysql\bin\mysql.exe -u root campushub < server\migrations\001_add_password_auth.sql"
-cmd /c "C:\xampp\mysql\bin\mysql.exe -u root campushub < server\migrations\002_add_password_reset.sql"
+cd server; npm install; npm run migrate:baseline
 ```
 
 **Alternative without a terminal:** open http://localhost/phpmyadmin , create database
-`campushub`, then use its **Import** tab on the three `.sql` files in the order shown.
+`campushub`, import `server/campushub_database.sql` with its **Import** tab, then run
+`cd server && npm run migrate:baseline`.
+
+**Already have a database from an earlier clone?** Don't re-import. From `server/`:
+
+```bash
+npm run migrate:status   # shows applied and pending migrations
+npm run migrate          # applies the pending ones in order, recording each
+```
 
 > If your MySQL root has a password, add `-p` to every mysql command and put the same
 > password into `server/.env` as `DB_PASSWORD`.
