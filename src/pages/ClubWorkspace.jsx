@@ -259,13 +259,17 @@ export default function ClubWorkspace() {
       text: note.text,
       at: note.createdAt,
     })),
-    ...clubComments.map((comment) => ({
-      key: `comment-${comment.id}`,
-      kind: "Discussion",
-      text: comment.text,
-      author: comment.userName,
-      at: comment.createdAt,
-    })),
+    // Replies stay in the thread they belong to; the feed shows top-level
+    // posts only, otherwise every answer would look like a new announcement.
+    ...clubComments
+      .filter((comment) => !comment.parentId)
+      .map((comment) => ({
+        key: `comment-${comment.id}`,
+        kind: "Discussion",
+        text: comment.text,
+        author: comment.userName,
+        at: comment.createdAt,
+      })),
   ]
     .sort((a, b) => new Date(b.at) - new Date(a.at))
     .slice(0, 6);

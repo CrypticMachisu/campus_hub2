@@ -202,11 +202,37 @@ CREATE TABLE comments (
     user_id         VARCHAR(30) NOT NULL,
     user_name_snapshot VARCHAR(100) NOT NULL,       -- mirrors the snapshot pattern used for signups
     comment_text    TEXT NOT NULL,
+    -- Added in migrations/007_comment_threads.sql for existing DBs.
+    parent_id       VARCHAR(30),                   -- one level of replies only; NULL = top-level
+    pinned          TINYINT(1) NOT NULL DEFAULT 0, -- admins can pin the answer everyone needs
     created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_comments_user
         FOREIGN KEY (user_id) REFERENCES users(user_id)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    INDEX idx_comments_target (target_type, target_id, created_at)  -- supports getComments() oldest-first lookup
+    CONSTRAINT fk_comments_parent
+        FOREIGN KEY (parent_id) REFERENCES comments(comment_id)
+        ON DELETE CASCADE,
+    INDEX idx_comments_target (target_type, target_id, created_at),  -- supports getComments() oldest-first lookup
+    INDEX idx_comments_parent (parent_id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- comment_reactions
+-- One row per (comment, user, emoji). Backs the reaction buttons in discussions;
+-- added in migrations/007_comment_threads.sql.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS comment_reactions (
+    comment_id VARCHAR(30) NOT NULL,
+    user_id    VARCHAR(30) NOT NULL,
+    emoji      VARCHAR(16) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (comment_id, user_id, emoji),
+    CONSTRAINT fk_reactions_comment
+        FOREIGN KEY (comment_id) REFERENCES comments(comment_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_reactions_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------

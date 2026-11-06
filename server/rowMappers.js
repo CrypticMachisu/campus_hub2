@@ -103,7 +103,7 @@ export function rowToSignup(row) {
   };
 }
 
-/** Expects: comments.* as-is. */
+/** Expects: comments.* as-is (parent_id/pinned come from migration 007). */
 export function rowToComment(row) {
   return {
     id: row.comment_id,
@@ -112,6 +112,8 @@ export function rowToComment(row) {
     userId: row.user_id,
     userName: row.user_name_snapshot,
     text: row.comment_text,
+    parentId: row.parent_id || null,
+    pinned: Boolean(row.pinned),
     createdAt: row.created_at,
   };
 }
