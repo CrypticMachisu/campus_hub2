@@ -117,6 +117,14 @@ export default function ClubAgenda({ events, signupFor, pendingIds, onToggle }) 
               const isUpcoming = startOf(event) >= Date.now();
               const pending = pendingIds.has(event.id);
               const threadOpen = openThreadId === event.id;
+              const taken = event.signupCount ?? 0;
+              const full = event.capacity !== null && taken >= event.capacity;
+
+              // Past capacity the action becomes a waitlist join, not a refusal.
+              let rsvpText = "RSVP";
+              if (pending) rsvpText = "Saving…";
+              else if (signup) rsvpText = signup.waitlisted ? "Waitlisted" : "Going";
+              else if (full) rsvpText = "Waitlist";
 
               return (
                 <li key={event.id} className={styles.item}>
@@ -130,6 +138,9 @@ export default function ClubAgenda({ events, signupFor, pendingIds, onToggle }) 
                       <span className={styles.eventMeta}>
                         {event.time}
                         {event.location ? ` · ${event.location}` : ""}
+                        {event.capacity
+                          ? ` · ${Math.min(taken, event.capacity)}/${event.capacity} spots`
+                          : ""}
                       </span>
                     </span>
 
@@ -142,7 +153,7 @@ export default function ClubAgenda({ events, signupFor, pendingIds, onToggle }) 
                           disabled={pending}
                           aria-pressed={Boolean(signup)}
                         >
-                          {pending ? "Saving…" : signup ? "Going" : "RSVP"}
+                          {rsvpText}
                         </button>
                       ) : (
                         <span className={styles.pastStatus}>

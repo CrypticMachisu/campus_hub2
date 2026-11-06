@@ -7,9 +7,10 @@ import { requireAuth, canManageClub } from "../middleware/auth.js";
 export const eventsRouter = Router();
 
 const EVENT_LIST_QUERY = `
-  SELECT e.*, cat.name AS category_name
+  SELECT e.*, cat.name AS category_name, COUNT(s.signup_id) AS signup_count
   FROM events e
   JOIN categories cat ON cat.category_id = e.category_id
+  LEFT JOIN event_signups s ON s.event_id = e.event_id
 `;
 
 /**
@@ -41,7 +42,7 @@ function parseStartTime(startTime) {
   };
 }
 
-/** Shared title/startTime/category validation for create + update. Returns the first error string, or null. */
+/** Shared title/startTime/category/bringNote/capacity validation. Returns the first error string, or the cleaned fields. */
 function validateEventFields(body) {
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title) return { error: "Title is required." };
@@ -50,12 +51,27 @@ function validateEventFields(body) {
   const start = parseStartTime(body.startTime);
   if (!start) return { error: "Invalid startTime." };
 
-  return { title, start };
+  const bringNote = typeof body.bringNote === "string" ? body.bringNote.trim().slice(0, 240) : "";
+
+  // Empty/absent capacity = unlimited. Anything else must be a positive whole
+  // number, so a typo can't silently cap an event at "0" or "12abc".
+  let capacity = null;
+  if (body.capacity !== undefined && body.capacity !== null && body.capacity !== "") {
+    const parsed = Number(body.capacity);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
+      return { error: "capacity must be a whole number between 1 and 10000." };
+    }
+    capacity = parsed;
+  }
+
+  return { title, start, bringNote, capacity };
 }
 
 /** GET /api/events — list all events. */
 eventsRouter.get("/", async (req, res) => {
-  const [rows] = await pool.query(`${EVENT_LIST_QUERY} ORDER BY e.event_date, e.event_time`);
+  const [rows] = await pool.query(
+    `${EVENT_LIST_QUERY} GROUP BY e.event_id ORDER BY e.event_date, e.event_time`
+  );
   res.json({ events: rows.map(rowToEvent) });
 });
 
@@ -81,7 +97,7 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
 
   const validation = validateEventFields(req.body);
   if (validation.error) return res.status(400).json({ error: validation.error });
-  const { title, start } = validation;
+  const { title, start, bringNote, capacity } = validation;
 
   const categoryId = await findCategoryIdByName(category);
   if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
@@ -90,10 +106,10 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
   await pool.query(
     `INSERT INTO events
       (event_id, club_id, title, description, category_id,
-       event_date, event_time, location, image_url)
+       event_date, event_time, location, image_url, bring_note, capacity)
      VALUES
       (:id, :clubId, :title, :description, :categoryId,
-       :date, :time, :location, :imageUrl)`,
+       :date, :time, :location, :imageUrl, :bringNote, :capacity)`,
     {
       id,
       clubId,
@@ -104,10 +120,15 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
       time: start.time,
       location: typeof location === "string" ? location.trim() : "",
       imageUrl: imageUrl || null,
+      bringNote: bringNote || null,
+      capacity,
     }
   );
 
-  const [rows] = await pool.query(`${EVENT_LIST_QUERY} WHERE e.event_id = :id`, { id });
+  const [rows] = await pool.query(
+    `${EVENT_LIST_QUERY} WHERE e.event_id = :id GROUP BY e.event_id`,
+    { id }
+  );
   res.status(201).json({ event: rowToEvent(rows[0]) });
 });
 
@@ -136,7 +157,7 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
 
   const validation = validateEventFields(req.body);
   if (validation.error) return res.status(400).json({ error: validation.error });
-  const { title, start } = validation;
+  const { title, start, bringNote, capacity } = validation;
 
   const categoryId = await findCategoryIdByName(category);
   if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
@@ -149,7 +170,9 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
          event_date = :date,
          event_time = :time,
          location = :location,
-         image_url = :imageUrl
+         image_url = :imageUrl,
+         bring_note = :bringNote,
+         capacity = :capacity
      WHERE event_id = :id`,
     {
       id: eventId,
@@ -160,10 +183,15 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
       time: start.time,
       location: typeof location === "string" ? location.trim() : "",
       imageUrl: imageUrl || null,
+      bringNote: bringNote || null,
+      capacity,
     }
   );
 
-  const [rows] = await pool.query(`${EVENT_LIST_QUERY} WHERE e.event_id = :id`, { id: eventId });
+  const [rows] = await pool.query(
+    `${EVENT_LIST_QUERY} WHERE e.event_id = :id GROUP BY e.event_id`,
+    { id: eventId }
+  );
   res.json({ event: rowToEvent(rows[0]) });
 });
 

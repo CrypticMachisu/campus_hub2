@@ -121,6 +121,39 @@
   background: var(--color-secondary);
 }
 
+/* Capacity tally: quiet until the event is full, then it earns emphasis. */
+.capacity {
+  margin: 0 0 var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.capacityFull {
+  color: var(--color-primary-dark);
+}
+
+.waitlistFlag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-primary-dark);
+}
+
+.waitlistDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

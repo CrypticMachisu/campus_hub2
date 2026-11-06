@@ -45,6 +45,8 @@ const emptyForm = {
   location: "",
   category: CATEGORIES[0],
   imageUrl: "",
+  bringNote: "",
+  capacity: "",
 };
 
 export default function Dashboard() {
@@ -144,6 +146,8 @@ export default function Dashboard() {
       location: event.location,
       category: event.category,
       imageUrl: event.imageUrl || "",
+      bringNote: event.bringNote || "",
+      capacity: event.capacity ?? "",
     });
     setSaveMessage("");
   }
@@ -172,6 +176,19 @@ export default function Dashboard() {
 
     if (!title) return; // trimmed-empty title is not a valid event
 
+    // Blank capacity means unlimited; anything else must be a real number of
+    // seats, so a stray "12abc" can't cap an event at zero.
+    let capacity = null;
+    if (form.capacity !== "" && form.capacity !== null) {
+      capacity = Number(form.capacity);
+      if (!Number.isInteger(capacity) || capacity < 1) {
+        setSaveMessage(
+          "Capacity must be a whole number of at least 1 — leave it blank for unlimited."
+        );
+        return;
+      }
+    }
+
     try {
       await saveCustomEvent({
         id: form.id, // null for create, existing id for edit
@@ -183,6 +200,8 @@ export default function Dashboard() {
         location,
         category: form.category,
         imageUrl: imageUrl || FALLBACK_IMAGE,
+        bringNote: form.bringNote.trim(),
+        capacity,
       });
 
       await refreshEvents();
@@ -363,6 +382,29 @@ export default function Dashboard() {
               onChange={(e) => handleFormChange("location", e.target.value)}
             />
           </label>
+
+          <div className={styles.formRow}>
+            <label>
+              What to bring <span className={styles.optional}>(optional)</span>
+              <input
+                type="text"
+                value={form.bringNote}
+                maxLength={240}
+                placeholder="Bring a laptop and charger"
+                onChange={(e) => handleFormChange("bringNote", e.target.value)}
+              />
+            </label>
+            <label>
+              Capacity <span className={styles.optional}>(blank = unlimited)</span>
+              <input
+                type="number"
+                min="1"
+                value={form.capacity}
+                placeholder="e.g. 14"
+                onChange={(e) => handleFormChange("capacity", e.target.value)}
+              />
+            </label>
+          </div>
 
           <label>
             Category

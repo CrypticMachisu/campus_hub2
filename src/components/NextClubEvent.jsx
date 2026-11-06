@@ -30,10 +30,17 @@ function dateParts(date) {
  * RSVP is the primary action and is optimistic — the parent owns the state
  * so the agenda and this card always agree.
  */
-export default function NextClubEvent({ event, clubName, going, pending, onToggle, playbook }) {
+export default function NextClubEvent({
+  event,
+  clubName,
+  going,
+  waitlisted = false,
+  pending,
+  onToggle,
+  playbook,
+}) {
   const rsvpLabel = playbook?.rsvpLabel || "I'm going";
   const cancelLabel = playbook?.cancelLabel || "Can't make it";
-  const bringNote = playbook?.bringNote || "";
 
   if (!event) {
     return (
@@ -50,6 +57,17 @@ export default function NextClubEvent({ event, clubName, going, pending, onToggl
   }
 
   const { day, month } = dateParts(event.date);
+
+  // The event's own note wins over the club playbook's; either beats silence.
+  const bringNote = event.bringNote || playbook?.bringNote || "";
+  const taken = event.signupCount ?? 0;
+  const capacity = event.capacity ?? null;
+  const full = capacity !== null && taken >= capacity;
+
+  let buttonLabel = rsvpLabel;
+  if (pending) buttonLabel = "Saving…";
+  else if (going) buttonLabel = waitlisted ? "Leave waitlist" : cancelLabel;
+  else if (full) buttonLabel = "Join waitlist";
 
   return (
     <section className={styles.card} aria-labelledby="next-event-title">
@@ -78,10 +96,19 @@ export default function NextClubEvent({ event, clubName, going, pending, onToggl
 
         {bringNote && <p className={styles.bringNote}>{bringNote}</p>}
 
+        {capacity !== null && (
+          <p className={full ? `${styles.capacity} ${styles.capacityFull}` : styles.capacity}>
+            {Math.min(taken, capacity)} of {capacity} spots taken{full ? " · full" : ""}
+          </p>
+        )}
+
         {going && (
-          <p className={styles.goingFlag}>
-            <span className={styles.goingDot} aria-hidden="true" />
-            You&apos;re going
+          <p className={waitlisted ? styles.waitlistFlag : styles.goingFlag}>
+            <span
+              className={waitlisted ? styles.waitlistDot : styles.goingDot}
+              aria-hidden="true"
+            />
+            {waitlisted ? "You're on the waitlist" : "You're going"}
           </p>
         )}
 
@@ -93,7 +120,7 @@ export default function NextClubEvent({ event, clubName, going, pending, onToggl
             disabled={pending}
             aria-pressed={going}
           >
-            {pending ? "Saving…" : going ? cancelLabel : rsvpLabel}
+            {buttonLabel}
           </button>
 
           <button

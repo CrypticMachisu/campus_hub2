@@ -151,6 +151,9 @@ CREATE TABLE events (
     event_time    TIME NOT NULL,                  -- mockData `time` (HH:MM)
     location      VARCHAR(150),
     image_url     VARCHAR(500),
+    -- Added in migrations/006_event_capacity.sql for existing DBs.
+    bring_note    VARCHAR(240),                   -- per-event "what to bring", overrides the club playbook
+    capacity      INT,                            -- NULL = unlimited; RSVPs past it are waitlisted in order
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_events_club
         FOREIGN KEY (club_id) REFERENCES clubs(club_id)

@@ -5,12 +5,38 @@ import { requireAuth, canManageClub } from "../middleware/auth.js";
 
 export const signupsRouter = Router();
 
-/** GET /api/signups/mine — the logged-in user's own signups. */
+/**
+ * GET /api/signups/mine — the logged-in user's own signups.
+ *
+ * Each one carries its position among that event's signups (earliest first)
+ * and whether the event's capacity means they're waiting rather than going.
+ * Counting here (instead of on the client) keeps the "waitlisted" answer
+ * honest without exposing the whole roster.
+ */
 signupsRouter.get("/mine", requireAuth, async (req, res) => {
-  const [rows] = await pool.query("SELECT * FROM event_signups WHERE user_id = :userId", {
-    userId: req.user.id,
+  const [rows] = await pool.query(
+    `SELECT s.*, e.capacity AS event_capacity,
+       (SELECT COUNT(*) FROM event_signups o
+         WHERE o.event_id = s.event_id
+           AND (o.created_at < s.created_at
+                OR (o.created_at = s.created_at AND o.signup_id < s.signup_id))) AS ahead_count
+     FROM event_signups s
+     JOIN events e ON e.event_id = s.event_id
+     WHERE s.user_id = :userId
+     ORDER BY s.created_at`,
+    { userId: req.user.id }
+  );
+
+  res.json({
+    signups: rows.map((row) => {
+      const position = Number(row.ahead_count) + 1;
+      return {
+        ...rowToSignup(row),
+        position,
+        waitlisted: row.event_capacity != null && position > Number(row.event_capacity),
+      };
+    }),
   });
-  res.json({ signups: rows.map(rowToSignup) });
 });
 
 /**

@@ -117,10 +117,23 @@ export default function ClubWorkspace() {
     () => clubEvents.find((event) => eventStart(event) >= Date.now()) || null,
     [clubEvents]
   );
+  const nextSignup = nextEvent
+    ? signupByEvent.get(nextEvent.id)
+    : null; /** Keep an event's tally in step with the optimistic signup list. */
+  function bumpSignupCount(eventId, delta) {
+    setEvents((current) =>
+      current.map((event) =>
+        event.id === eventId
+          ? { ...event, signupCount: Math.max(0, (event.signupCount ?? 0) + delta) }
+          : event
+      )
+    );
+  }
 
   /**
-   * Optimistic RSVP: flip the button immediately, roll back if the API
-   * refuses. Keeps this page and the agenda reading the same state.
+   * Optimistic RSVP: flip the button and the tally immediately, roll both back
+   * if the API refuses. Keeps the hero and the agenda reading the same state,
+   * including whether a signup landed on the waitlist.
    */
   async function toggleRsvp(event) {
     if (pendingIds.has(event.id)) return;
@@ -129,24 +142,47 @@ export default function ClubWorkspace() {
 
     if (existing) {
       setSignups((current) => current.filter((signup) => signup.eventId !== event.id));
+      bumpSignupCount(event.id, -1);
       try {
         await deleteSignup(existing.id);
-        setStatusNote(`Cancelled your RSVP for ${event.title}.`);
+        setStatusNote(
+          existing.waitlisted
+            ? `You've left the waitlist for ${event.title}.`
+            : `Cancelled your RSVP for ${event.title}.`
+        );
       } catch (err) {
         setSignups((current) => [...current, existing]);
+        bumpSignupCount(event.id, 1);
         setStatusNote(err.message);
       }
     } else {
-      const placeholder = { id: `pending-${event.id}`, eventId: event.id };
+      // The server waitlists signups past capacity in arrival order; mirror it
+      // so the button doesn't flip again once the POST comes back.
+      const willWaitlist = event.capacity != null && (event.signupCount ?? 0) + 1 > event.capacity;
+      const placeholder = {
+        id: `pending-${event.id}`,
+        eventId: event.id,
+        waitlisted: willWaitlist,
+      };
       setSignups((current) => [...current, placeholder]);
+      bumpSignupCount(event.id, 1);
       try {
         const saved = await saveSignup({ eventId: event.id });
         setSignups((current) =>
-          current.map((signup) => (signup.eventId === event.id ? saved : signup))
+          current.map((signup) =>
+            signup.eventId === event.id
+              ? { ...saved, waitlisted: signup.waitlisted, position: signup.position }
+              : signup
+          )
         );
-        setStatusNote(`You're going to ${event.title}.`);
+        setStatusNote(
+          willWaitlist
+            ? `You're on the waitlist for ${event.title}.`
+            : `You're going to ${event.title}.`
+        );
       } catch (err) {
         setSignups((current) => current.filter((signup) => signup.eventId !== event.id));
+        bumpSignupCount(event.id, -1);
         setStatusNote(err.message);
       }
     }
@@ -300,7 +336,8 @@ export default function ClubWorkspace() {
           <NextClubEvent
             event={nextEvent}
             clubName={club.name}
-            going={Boolean(nextEvent && signupFor(nextEvent.id))}
+            going={Boolean(nextSignup)}
+            waitlisted={Boolean(nextSignup?.waitlisted)}
             pending={Boolean(nextEvent && pendingIds.has(nextEvent.id))}
             onToggle={toggleRsvp}
             playbook={playbook}

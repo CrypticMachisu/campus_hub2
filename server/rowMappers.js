@@ -76,6 +76,11 @@ export function rowToEvent(row) {
     time: formatTime(row.event_time),
     location: row.location,
     imageUrl: row.image_url,
+    bringNote: row.bring_note || "",
+    // NULL/absent capacity means "no limit" — keep the frontend check simple.
+    capacity: row.capacity == null ? null : Number(row.capacity),
+    // Present whenever the query joins event_signups (all /api/events reads do).
+    signupCount: row.signup_count == null ? 0 : Number(row.signup_count),
     isSeed: !row.event_id.startsWith("custom-"),
   };
 }
