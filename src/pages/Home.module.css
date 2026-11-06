@@ -9,6 +9,29 @@
   text-align: center;
 }
 
+.noClubBanner {
+  margin: 0 0 var(--space-lg, 2rem);
+  padding: var(--space-md, 1rem) var(--space-lg, 1.25rem);
+  background: var(--color-bg-alt, #eae0c7);
+  border: 1px dashed var(--color-border, #d8cba9);
+  border-left: 3px solid var(--color-accent, #f5c344);
+  border-radius: 0 var(--radius, 6px) var(--radius, 6px) 0;
+}
+
+.bannerTitle {
+  margin: 0 0 0.2rem;
+  font-family: var(--font-heading, sans-serif);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.bannerBody {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--color-text-muted, #6b6457);
+  max-width: 60ch;
+}
+
 .controls {
   display: flex;
   flex-direction: column;

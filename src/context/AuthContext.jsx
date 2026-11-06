@@ -58,8 +58,17 @@ export function AuthProvider({ children }) {
     return result;
   }
 
+  /**
+   * Replace the cached user with the one the server just returned.
+   * Used after joining/leaving a club so the app re-routes between the
+   * member workspace and the no-club discovery view immediately.
+   */
+  function applyUser(nextUser) {
+    if (nextUser) setUser(nextUser);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, signup }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, signup, refresh, applyUser }}>
       {children}
     </AuthContext.Provider>
   );

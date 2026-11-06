@@ -1,0 +1,30 @@
+/* App-level loading state shown while the session and club list resolve. */
+
+.splash {
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  gap: var(--space-sm);
+  text-align: center;
+}
+
+.splashBrand {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.splashAccent {
+  color: var(--color-primary);
+}
+
+.splashNote {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

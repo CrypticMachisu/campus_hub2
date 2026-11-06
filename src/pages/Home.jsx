@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { CATEGORIES } from "../utils/clubsStore";
 import { useClubs } from "../context/ClubsContext";
+import { useAuth } from "../context/AuthContext";
+import { clubsForUser } from "../utils/authStore";
 import { getAllEvents } from "../utils/eventsStore";
 import ClubCard from "../components/ClubCard";
 import EventCard from "../components/EventCard";
@@ -26,6 +28,11 @@ function useDebounce(value, delay = 300) {
 
 export default function Home() {
   const { clubs, loading: clubsLoading } = useClubs();
+  const { user } = useAuth();
+  const hasNoClub =
+    Boolean(user) &&
+    user.role !== "tier1" &&
+    clubsForUser(user, clubs).length === 0;
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
 
@@ -84,6 +91,16 @@ export default function Home() {
         <h1>CampusHub Discovery</h1>
         <p>Find your community and upcoming campus events</p>
       </header>
+
+      {hasNoClub && (
+        <div className={styles.noClubBanner}>
+          <p className={styles.bannerTitle}>You&apos;re not in a club yet</p>
+          <p className={styles.bannerBody}>
+            Open any club below and join it — CampusHub will then show that club&apos;s
+            workspace instead of this feed.
+          </p>
+        </div>
+      )}
 
       {/* Inputs and Control Center */}
       <section className={styles.controls}>

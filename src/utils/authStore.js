@@ -80,6 +80,24 @@ export function canManageClub(user, clubId) {
   return false;
 }
 
+/** Whether the user has actually joined this club (separate from admin rights). */
+export function isClubMember(user, clubId) {
+  return Boolean(user?.memberOfClubs?.includes(clubId));
+}
+
+/**
+ * Clubs that belong to this user's world: ones they joined plus ones they
+ * admin. Tier 1 admins are excluded on purpose — they keep the platform-wide
+ * view rather than being dropped into a single club's workspace.
+ */
+export function clubsForUser(user, clubs) {
+  if (!user || user.role === "tier1") return [];
+  return clubs.filter(
+    (club) =>
+      user.memberOfClubs?.includes(club.id) || user.adminForClubs?.includes(club.id)
+  );
+}
+
 /** Requests a password reset email/link for the given address. */
 export async function requestPasswordReset(email) {
   await apiFetch("/auth/forgot-password", { method: "POST", body: { email }, auth: false });

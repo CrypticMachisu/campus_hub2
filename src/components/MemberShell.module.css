@@ -1,0 +1,397 @@
+/*
+  Member workspace chrome.
+  Desktop: corkboard sidebar with club "pinned" to the top of the list.
+  Mobile: the same club list flips into a sticky bottom bar — a thumb-reachable
+  switcher, with the page header carrying the current-club context.
+*/
+
+.shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.skipLink {
+  position: absolute;
+  left: -9999px;
+  top: var(--space-sm);
+  z-index: 100;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius);
+  padding: var(--space-sm) var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.skipLink:focus {
+  left: var(--space-md);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-md) var(--space-md);
+  background: var(--color-card-bg);
+  border-right: 1px dashed var(--color-border);
+  overflow-y: auto;
+}
+
+.brand {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.brandAccent {
+  color: var(--color-primary);
+}
+
+.tagline {
+  margin: -1.1rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.navLabel {
+  margin: 0 0 var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.clubList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.clubLink {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 48px;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clubLink:hover {
+  background: var(--color-bg-alt);
+  transform: translateX(2px);
+}
+
+.clubLinkActive {
+  background: var(--color-bg-alt);
+  border-color: var(--color-border);
+}
+
+/* The pin: a red dot punched through the active club's card. */
+.clubLinkActive::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 3px rgba(193, 67, 46, 0.14);
+}
+
+.monogram {
+  flex: 0 0 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: hsl(var(--chip-hue, 30) 32% 28%);
+  background: hsl(var(--chip-hue, 30) 44% 90%);
+  border: 1px solid hsl(var(--chip-hue, 30) 24% 76%);
+  border-radius: 4px;
+  transform: rotate(-2deg);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clubLink:hover .monogram,
+.clubLinkActive .monogram {
+  transform: rotate(0deg);
+}
+
+.clubText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.clubName {
+  font-size: 0.86rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clubMeta {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.utilityNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--space-md);
+  border-top: 1px dashed var(--color-border);
+}
+
+.utilityLink {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--radius);
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.utilityLink:hover {
+  background: var(--color-bg-alt);
+  color: var(--color-text);
+}
+
+.utilityLinkActive {
+  color: var(--color-primary-dark);
+  background: var(--color-bg-alt);
+}
+
+.account {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding-top: var(--space-md);
+  border-top: 1px dashed var(--color-border);
+  min-width: 0;
+}
+
+.accountName {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.accountEmail {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--color-text-muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logout {
+  margin-top: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-primary-dark);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+}
+
+.logout:hover {
+  background: var(--color-bg-alt);
+}
+
+.mainArea {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1rem, 4vw, 3rem);
+}
+
+.mobileHeader {
+  display: none;
+}
+
+.bottomBar {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .mobileHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-card-bg);
+    border-bottom: 1px dashed var(--color-border);
+  }
+
+  .mobileHeader .brand {
+    font-size: 1.05rem;
+  }
+
+  .mobileContext {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobileHeader .logout {
+    margin-top: 0;
+  }
+
+  .main {
+    padding: var(--space-md) var(--space-md) 6.5rem;
+  }
+
+  .bottomBar {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-sm);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
+    background: var(--color-card-bg);
+    border-top: 1px dashed var(--color-border);
+    box-shadow: 0 -6px 18px rgba(36, 33, 29, 0.06);
+  }
+
+  .bottomClubs {
+    flex: 1;
+    display: flex;
+    gap: 0.15rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .bottomClubs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .bottomClub {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 62px;
+    padding: 0.25rem 0.15rem;
+    border-radius: var(--radius);
+  }
+
+  .bottomClub .monogram {
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    font-size: 0.64rem;
+  }
+
+  .bottomClubActive .monogram {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .bottomClubName {
+    font-family: var(--font-mono);
+    font-size: 0.52rem;
+    letter-spacing: 0.02em;
+    color: var(--color-text-muted);
+    max-width: 62px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bottomClubActive .bottomClubName {
+    color: var(--color-primary-dark);
+  }
+
+  .bottomDiscover {
+    min-height: 44px;
+    padding: 0 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-bg-alt);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text);
+  }
+
+  .bottomDiscover:active {
+    transform: scale(0.97);
+  }
+}

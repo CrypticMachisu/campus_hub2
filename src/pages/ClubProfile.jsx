@@ -5,7 +5,8 @@ import { getAllEvents } from "../utils/eventsStore";
 import EventCard from "../components/EventCard";
 import CommentSection from "../components/CommentSection";
 import { useAuth } from "../context/AuthContext";
-import { canManageClub } from "../utils/authStore";
+import { canManageClub, isClubMember } from "../utils/authStore";
+import { joinClub } from "../utils/membershipStore";
 import { requestClubAdmin } from "../utils/adminStore";
 import styles from "./ClubProfile.module.css";
 
@@ -14,7 +15,7 @@ export default function ClubProfile() {
   const { clubs, loading: clubsLoading } = useClubs();
   const club = clubs.find((c) => c.id === clubId);
   const { user } = useAuth();
-  
+
 
   const [events, setEvents] = useState([]);
 
@@ -77,6 +78,8 @@ export default function ClubProfile() {
         </div>
         </header>
 
+        {user && user.role !== "tier1" && <MembershipBar club={club} />}
+
         {user && club && !canManageClub(user, club.id) && (
           <AdminRequestButton clubId={club.id} />
         )}
@@ -106,6 +109,58 @@ export default function ClubProfile() {
         <h2>Club Discussion</h2>
         <CommentSection targetType="club" targetId={club.id} />
       </section>
+    </div>
+  );
+}
+
+/**
+ * Join/"you're in" strip on the public club page.
+ * Joining is what moves a user from the generic discovery UI into the
+ * member workspace, so the confirmation links there directly.
+ */
+function MembershipBar({ club }) {
+  const { user, applyUser } = useAuth();
+  const [status, setStatus] = useState("idle"); // idle | joining | error
+  const [error, setError] = useState("");
+
+  if (isClubMember(user, club.id)) {
+    return (
+      <p className={styles.memberNote}>
+        You&apos;re a member of this club.{" "}
+        <Link to={`/workspace/${club.id}`} className={styles.memberLink}>
+          Open your club workspace
+        </Link>
+      </p>
+    );
+  }
+
+  async function handleJoin() {
+    setStatus("joining");
+    setError("");
+    try {
+      const updatedUser = await joinClub(club.id);
+      applyUser(updatedUser);
+      setStatus("idle");
+    } catch (err) {
+      setError(err.message);
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className={styles.membershipBar}>
+      <button
+        type="button"
+        className={styles.joinButton}
+        onClick={handleJoin}
+        disabled={status === "joining"}
+      >
+        {status === "joining" ? "Joining…" : `Join ${club.name}`}
+      </button>
+      <p className={styles.joinHint}>
+        Joining swaps this discovery feed for your club workspace.
+      </p>
+      {status === "error" && <p className={styles.error}>{error}</p>}
     </div>
   );
 }
