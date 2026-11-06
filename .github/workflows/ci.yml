@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push makes an in-flight run pointless; cancel it instead of paying
+# for both.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd server && npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  api-tests:
+    name: Server tests (MySQL + API)
+    runs-on: ubuntu-latest
+    # The rate-limit suite deliberately waits out a 60s window, and the route
+    # suite waits once more after it. Fifteen minutes leaves room for a runner
+    # hiccup without hanging the queue.
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          # The job connects to the container over the published port, so it
+          # arrives as the docker gateway, not localhost. Without this, root
+          # only exists as 'root'@'localhost' and every connection is refused.
+          MYSQL_ROOT_HOST: "%"
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: campushub
+      # Values used only inside this job. They are not secrets because they
+      # protect nothing outside the disposable runner.
+      JWT_SECRET: ci-only-jwt-secret
+      API_KEYS: ci-only-api-key
+      SEED_PASSWORD: campushub123
+      PORT: "5000"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd server && npm ci
+
+      # The schema file drops and recreates `campushub` itself, which is
+      # exactly what we want in a throwaway MySQL service container.
+      - name: Load schema and demo data
+        run: mysql -h 127.0.0.1 -P 3306 -u root -proot < server/campushub_database.sql
+
+      - name: Baseline migrations and set demo passwords
+        run: |
+          cd server
+          npm run migrate:baseline
+          npm run set-passwords
+
+      - name: Start the API
+        run: |
+          cd server
+          nohup node server.js > "$RUNNER_TEMP/api.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5000/api/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not start within 30s"
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+
+      # Sequential on purpose: the security suite intentionally exhausts the
+      # key's rate window, and the route suite would spend a minute recovering
+      # if the two files ran concurrently.
+      - name: Run server tests
+        run: |
+          cd server
+          node --test --test-concurrency=1 \
+            tests/api-security.test.mjs \
+            tests/migrate.test.mjs \
+            tests/signups-comments.test.mjs
+
+      - name: Show API log on failure
+        if: failure()
+        run: cat "$RUNNER_TEMP/api.log"
