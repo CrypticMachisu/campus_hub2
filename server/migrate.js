@@ -19,7 +19,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import mysql from "mysql2/promise";
 
-const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "migrations");
+// MIGRATIONS_DIR exists so tests can point the runner at fixture folders — a
+// probe migration then never has to touch the real migrations/ directory.
+const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR
+  ? path.resolve(process.env.MIGRATIONS_DIR)
+  : path.join(path.dirname(fileURLToPath(import.meta.url)), "migrations");
 const args = new Set(process.argv.slice(2));
 const statusOnly = args.has("--status");
 const baseline = args.has("--baseline");
