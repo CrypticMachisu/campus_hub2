@@ -36,6 +36,9 @@ One-time: `cp .env.example .env` (then edit). The values matter:
 - `RATE_LIMIT_WINDOW_MS` / `RATE_LIMIT_MAX` — defaults 60000 / 100.
 - `PORT` — normally `5000`; see the PORT=0 trap below.
 - `PUBLIC_URL` — the current ngrok base URL (used for the startup log only).
+- `CORS_ORIGINS` — comma-separated browser origins allowed to call the API
+  (default `http://localhost:5173,http://127.0.0.1:5173`). Add the deployed
+  frontend's origin here; server-to-server callers are unaffected.
 
 Never commit `.env`, never paste a key into chat or screenshots; share keys by direct message.
 

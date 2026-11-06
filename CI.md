@@ -208,6 +208,7 @@ DB_PASSWORD=
 DB_NAME=campushub
 JWT_SECRET=<any long random string>
 API_KEYS=<one or more comma-separated keys>
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 SEED_PASSWORD=campushub123
 ```
 

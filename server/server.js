@@ -28,7 +28,29 @@ const app = express();
 // (401, 429) are logged too. One JSON line per request — see monitoring.js.
 app.use(monitor);
 
-app.use(cors());
+// Browser origins allowed to call the API. Server-to-server callers (our
+// partner, curl, the test suites) send no Origin header and are unaffected.
+// Set CORS_ORIGINS as a comma-separated list; "*" allows any browser origin.
+//
+// This replaces two earlier middlewares — an unconditional cors() plus a
+// second one pinned to a single deployment URL. Together they sent duplicate
+// ACAO headers for that one origin and allowed every other origin anyway.
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
+  })
+);
 app.use(express.json());
 
 // Week 9 (Part B) — the only endpoint left without an API key. It
@@ -79,7 +101,6 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.use(cors({ origin: "https://effortless-shortbread-2ec7ef.netlify.app" }));
 assertDbConnection()
   .then(() => {
     app.listen(PORT, () => {

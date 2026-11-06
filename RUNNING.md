@@ -128,6 +128,10 @@ Then fill in `server/.env`:
 | `PARTNER_URL`     | `https://farmers-agroconnect.onrender.com/api` — leave as is                                                                                     |
 | `PARTNER_API_KEY` | Only if Team 6 issued you one; the app also runs without it                                                                                      |
 
+`CORS_ORIGINS` is the comma-separated list of browser origins allowed to call the
+API. Add your deployed frontend's origin there; server-to-server callers send no
+`Origin` header and are unaffected.
+
 **4b. Start the server** (from the repo root):
 
 ```bash

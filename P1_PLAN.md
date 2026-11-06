@@ -482,12 +482,11 @@ Suggested commit messages are one line each, for example
 
 ## Open decisions
 
-1. **Deployment origin.** The only Netlify reference in the codebase is the CORS allowlist
-   in `server/server.js:82` (`https://effortless-shortbread-2ec7ef.netlify.app`). If that
-   site is the live frontend, keep it; if it is dead, removing it narrows CORS to localhost.
-   Either way, decide before writing `og:url`/`og:image`, and set `VITE_SITE_URL` to the
-   real host. `public/_redirects` is also hosting-specific (SPA fallback); harmless to keep,
-   but it does nothing outside a host that reads it.
+1. **Deployment origin (resolved).** The CORS allowlist now comes from `CORS_ORIGINS`
+   (`server/.env`), defaulting to localhost; the Netlify origin is configured as a value,
+   not hardcoded. Still decide the canonical public URL before writing `og:url`/`og:image`
+   and set `VITE_SITE_URL` to it. `public/_redirects` is hosting-specific (SPA fallback);
+   harmless to keep, but it does nothing outside a host that reads it.
 2. **Dialog implementation.** Native `<dialog>` (less code, built-in focus containment and
    Escape) versus a custom `div` + focus trap. Recommendation: native.
 3. **Activity placement.** Global `/admin/activity` (recommended, matches the global audit
