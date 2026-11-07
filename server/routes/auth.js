@@ -135,8 +135,8 @@ authRouter.post("/reset-password", async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10);
   await pool.query(
     `UPDATE users
-     SET password_hash = :passwordHash, reset_token_hash = NULL, reset_token_expires = NULL
-     WHERE user_id = :userId`,
+    SET password_hash = :passwordHash, reset_token_hash = NULL, reset_token_expires = NULL
+    WHERE user_id = :userId`,
     { passwordHash, userId: row.user_id }
   );
 
