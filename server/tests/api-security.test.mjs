@@ -47,6 +47,13 @@ test("GET /health stays open without an API key (the one justified exception)", 
   assert.equal(body.ok, true);
 });
 
+test("An unknown API path returns a JSON 404 instead of an auth error", async () => {
+  const res = await fetch(`${BASE_URL}/this-route-does-not-exist`);
+  assert.equal(res.status, 404);
+  const body = await res.json();
+  assert.match(body.error, /not found/i);
+});
+
 test("A request with no API key gets 401", async () => {
   const res = await apiGet("/clubs");
   assert.equal(res.status, 401);
