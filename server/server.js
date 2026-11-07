@@ -96,6 +96,12 @@ app.use((req, res) => {
 // Centralized error handler so a thrown/rejected error in any route
 // returns clean JSON instead of an HTML stack trace or a hung request.
 app.use((err, req, res, next) => {
+  // Malformed request bodies are a client error, not a server failure.
+  // Express marks JSON parser failures with this type.
+  if (err.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "Invalid JSON body." });
+  }
+
   console.error(err);
   res.status(500).json({ error: "Something went wrong on the server." });
 });
