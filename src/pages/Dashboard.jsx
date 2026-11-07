@@ -473,6 +473,7 @@ export default function Dashboard() {
           <textarea
             value={announcementText}
             onChange={(e) => setAnnouncementText(e.target.value)}
+            aria-label="Announcement text"
             placeholder="Post an update to club members…"
             rows={2}
           />

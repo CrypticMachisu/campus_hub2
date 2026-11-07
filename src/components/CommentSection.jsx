@@ -257,6 +257,7 @@ export default function CommentSection({
             <input
               type="text"
               className={styles.input}
+              aria-label={`Reply to ${comment.userName}`}
               placeholder={`Reply to ${comment.userName}…`}
               value={replyDraft}
               onChange={(e) => setReplyDraft(e.target.value)}
@@ -289,6 +290,7 @@ export default function CommentSection({
           <input
             type="text"
             className={styles.input}
+            aria-label="Add a comment"
             placeholder="Add a comment…"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

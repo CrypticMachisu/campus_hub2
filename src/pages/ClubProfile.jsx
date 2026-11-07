@@ -20,16 +20,25 @@ export default function ClubProfile() {
   const { user } = useAuth();
 
   const [events, setEvents] = useState([]);
+  const [eventsError, setEventsError] = useState("");
+  const [eventsReloadKey, setEventsReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    getAllEvents().then((result) => {
-      if (!cancelled) setEvents(result);
-    });
+    setEventsError("");
+    getAllEvents()
+      .then((result) => {
+        if (!cancelled) setEvents(result);
+      })
+      .catch((error) => {
+        // The club header can still render when events fail, so handle this
+        // here rather than leaving the promise rejection unhandled.
+        if (!cancelled) setEventsError(error.message);
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [eventsReloadKey]);
 
   if (clubsLoading) {
     return (
@@ -109,7 +118,13 @@ export default function ClubProfile() {
 
       <section id="events" className={styles.eventsSection}>
         <h2>Upcoming Events</h2>
-        {clubEvents.length > 0 ? (
+        {eventsError ? (
+          <ErrorState
+            title="Events didn't load"
+            message={eventsError}
+            onRetry={() => setEventsReloadKey((key) => key + 1)}
+          />
+        ) : clubEvents.length > 0 ? (
           <div className={styles.eventsGrid}>
             {clubEvents.map((event) => (
               <EventCard key={event.id} event={event} />

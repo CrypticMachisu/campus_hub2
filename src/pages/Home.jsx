@@ -113,6 +113,7 @@ export default function Home() {
       <section className={styles.controls}>
         <input
           type="text"
+          aria-label="Search clubs and events"
           placeholder="Search by name, description, or tags..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -155,6 +156,7 @@ export default function Home() {
 
       {/* Main Layout Content Grids */}
       <main className={styles.content}>
+        <h2 className="visually-hidden">{viewMode === "clubs" ? "Clubs" : "Events"}</h2>
         {viewMode === "clubs" ? (
           <div className={styles.grid}>
             {clubsLoading ? (
