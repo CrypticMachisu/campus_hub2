@@ -578,3 +578,9 @@ npm run dev
 ```
 
 Opens at `http://localhost:5173` and talks to the API at `http://localhost:5000/api` (set by `VITE_API_URL` in the root `.env.example`). The API must already be running.
+
+### Browser smoke test
+
+With both servers running and Chrome installed, `npm run smoke` drives a headless browser through the critical flows: logging in, RSVPing and cancelling, joining and leaving a full event's waitlist, and recovering from blocked API calls on My Events and Event Detail. It uses the seeded tier 1 admin (no existing RSVPs) and removes everything it creates, including after a failure.
+
+The test needs Node 22+ and Chrome. Set `CHROME_PATH` if Chrome is not in a standard location, or override `SMOKE_BASE_URL`, `SMOKE_EMAIL`, `SMOKE_PASSWORD`, `SMOKE_RSVP_EVENT_ID`, and `SMOKE_FULL_EVENT_ID` for a different setup.
