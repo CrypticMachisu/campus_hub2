@@ -247,275 +247,283 @@ export default function Dashboard() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <p className={styles.eyebrow}>Club Admin</p>
-        <h1>{club.name} Dashboard</h1>
-        <p className={styles.subtitle}>
-          Logged in as {user.name} ({user.role === "tier1" ? "Tier 1" : "Tier 2"})
-        </p>
-      </header>
-
-      {/* 1. Club switcher ------------------------------------------------- */}
-      {switchableClubs.length > 1 && (
-        <section className={styles.section}>
-          <label className={styles.switcherLabel} htmlFor="club-switcher">
-            Switch club
-          </label>
-          <select
-            id="club-switcher"
-            className={styles.switcher}
-            value={clubId}
-            onChange={(e) => {
-              window.location.href = `/dashboard/${e.target.value}`;
-            }}
-          >
-            {switchableClubs.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </section>
-      )}
-
-      {/* Create a new club (tier1 only) ------------------------------------ */}
-      {user.role === "tier1" && (
-        <CreateClubSection onCreated={(newClub) => navigate(`/dashboard/${newClub.id}`)} />
-      )}
-
-      {/* Admin management (tier1 only) ------------------------------------ */}
-      {user.role === "tier1" && <AdminManagementSection clubId={clubId} />}
-
-      {saveMessage && <div className={styles.toast}>{saveMessage}</div>}
-
-      {/* 2. Events + create/edit form -------------------------------------- */}
-      <section className={styles.section}>
-        <h2>Events</h2>
-
-        <ul className={styles.eventList}>
-          {eventsLoading && (
-            <>
-              <SkeletonListRow />
-              <SkeletonListRow />
-              <SkeletonListRow />
-            </>
-          )}
-          {!eventsLoading && clubEvents.length === 0 && (
-            <li className={styles.emptyState}>No events yet for this club.</li>
-          )}
-          {clubEvents.map((event) => {
-            const isCustom = !event.isSeed;
-            return (
-              <li key={event.id} className={styles.eventRow}>
-                <button
-                  type="button"
-                  className={styles.eventRowMain}
-                  onClick={() => setSelectedEventId(event.id)}
-                >
-                  <span className={styles.eventTitle}>{event.title}</span>
-                  <span className={styles.eventMeta}>
-                    {event.date} · {event.time}
-                  </span>
-                </button>
-                {isCustom ? (
-                  <span className={styles.rowActions}>
-                    <button type="button" onClick={() => startEdit(event)}>
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.dangerButton}
-                      onClick={() => handleDeleteEvent(event.id)}
-                    >
-                      Delete
-                    </button>
-                  </span>
-                ) : (
-                  <span className={styles.readOnlyBadge}>Seed event · read-only</span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-
-        <form className={styles.form} onSubmit={handleSubmitEvent}>
-          <h3>{form.id ? "Edit event" : "Create new event"}</h3>
-
-          <label>
-            Title
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => handleFormChange("title", e.target.value)}
-              required
-            />
-          </label>
-
-          <label>
-            Description
-            <textarea
-              value={form.description}
-              onChange={(e) => handleFormChange("description", e.target.value)}
-              rows={3}
-            />
-          </label>
-
-          <div className={styles.formRow}>
-            <label>
-              Date
-              {/* Peer review: min = today, default = today */}
-              <input
-                type="date"
-                value={form.date}
-                min={todayISO()}
-                onChange={(e) => handleFormChange("date", e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Time
-              <input
-                type="time"
-                value={form.time}
-                onChange={(e) => handleFormChange("time", e.target.value)}
-                required
-              />
-            </label>
+      <div className={styles.desk}>
+        <header className={styles.header}>
+          <div className={styles.headerText}>
+            <p className={styles.eyebrow}>Club Admin</p>
+            <h1>{club.name} Dashboard</h1>
+            <p className={styles.subtitle}>
+              Logged in as {user.name} ({user.role === "tier1" ? "Tier 1" : "Tier 2"})
+            </p>
           </div>
-
-          <label>
-            Location
-            <input
-              type="text"
-              value={form.location}
-              onChange={(e) => handleFormChange("location", e.target.value)}
-            />
-          </label>
-
-          <div className={styles.formRow}>
-            <label>
-              What to bring <span className={styles.optional}>(optional)</span>
-              <input
-                type="text"
-                value={form.bringNote}
-                maxLength={240}
-                placeholder="Bring a laptop and charger"
-                onChange={(e) => handleFormChange("bringNote", e.target.value)}
-              />
-            </label>
-            <label>
-              Capacity <span className={styles.optional}>(blank = unlimited)</span>
-              <input
-                type="number"
-                min="1"
-                value={form.capacity}
-                placeholder="e.g. 14"
-                onChange={(e) => handleFormChange("capacity", e.target.value)}
-              />
-            </label>
+          <div className={styles.headerStamp} aria-hidden="true">
+            <span>Club admin</span>
+            <strong>Desk copy</strong>
           </div>
+        </header>
 
-          <label>
-            Category
+        {/* 1. Club switcher ------------------------------------------------- */}
+        {switchableClubs.length > 1 && (
+          <div className={styles.deskBar}>
+            <label className={styles.switcherLabel} htmlFor="club-switcher">
+              Switch club
+            </label>
             <select
-              value={form.category}
-              onChange={(e) => handleFormChange("category", e.target.value)}
+              id="club-switcher"
+              className={styles.switcher}
+              value={clubId}
+              onChange={(e) => {
+                window.location.href = `/dashboard/${e.target.value}`;
+              }}
             >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
+              {switchableClubs.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
-          </label>
-
-          <label>
-            Image URL <span className={styles.optional}>(optional)</span>
-            <input
-              type="url"
-              value={form.imageUrl}
-              placeholder={FALLBACK_IMAGE}
-              onChange={(e) => handleFormChange("imageUrl", e.target.value)}
-            />
-          </label>
-
-          <div className={styles.formActions}>
-            <button type="submit" className={styles.primaryButton}>
-              {form.id ? "Save changes" : "Create event"}
-            </button>
-            {form.id && (
-              <button type="button" onClick={cancelEdit}>
-                Cancel
-              </button>
-            )}
           </div>
-        </form>
-      </section>
-
-      {/* 3. Sign-ups -------------------------------------------------------- */}
-      <section className={styles.section}>
-        <h2>Sign-ups</h2>
-        {!selectedEvent && (
-          <p className={styles.emptyState}>Select an event above to see who&apos;s signed up.</p>
         )}
-        {selectedEvent && (
-          <>
-            <h3>{selectedEvent.title}</h3>
-            <SignupsTable eventId={selectedEvent.id} />
-          </>
-        )}
-      </section>
 
-      {/* 4. Announcements ----------------------------------------------- */}
-      <section className={styles.section}>
-        <h2>Announcements</h2>
-        <form className={styles.announcementForm} onSubmit={handlePostAnnouncement}>
-          <textarea
-            value={announcementText}
-            onChange={(e) => setAnnouncementText(e.target.value)}
-            aria-label="Announcement text"
-            placeholder="Post an update to club members…"
-            rows={2}
-          />
-          <button type="submit" className={styles.primaryButton}>
-            Post
-          </button>
-        </form>
-        <ul className={styles.announcementList}>
-          {announcements.length === 0 && (
-            <li className={styles.emptyState}>No announcements yet.</li>
+        {/* Create a new club (tier1 only) ------------------------------------ */}
+        {user.role === "tier1" && (
+          <CreateClubSection onCreated={(newClub) => navigate(`/dashboard/${newClub.id}`)} />
+        )}
+
+        {/* Admin management (tier1 only) ------------------------------------ */}
+        {user.role === "tier1" && <AdminManagementSection clubId={clubId} />}
+
+        {saveMessage && <div className={styles.toast}>{saveMessage}</div>}
+
+        {/* 2. Events + create/edit form -------------------------------------- */}
+        <section className={`${styles.section} ${styles.eventsSection}`}>
+          <h2>Events</h2>
+
+          <ul className={styles.eventList}>
+            {eventsLoading && (
+              <>
+                <SkeletonListRow />
+                <SkeletonListRow />
+                <SkeletonListRow />
+              </>
+            )}
+            {!eventsLoading && clubEvents.length === 0 && (
+              <li className={styles.emptyState}>No events yet for this club.</li>
+            )}
+            {clubEvents.map((event) => {
+              const isCustom = !event.isSeed;
+              return (
+                <li key={event.id} className={styles.eventRow}>
+                  <button
+                    type="button"
+                    className={styles.eventRowMain}
+                    onClick={() => setSelectedEventId(event.id)}
+                  >
+                    <span className={styles.eventTitle}>{event.title}</span>
+                    <span className={styles.eventMeta}>
+                      {event.date} · {event.time}
+                    </span>
+                  </button>
+                  {isCustom ? (
+                    <span className={styles.rowActions}>
+                      <button type="button" onClick={() => startEdit(event)}>
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        onClick={() => handleDeleteEvent(event.id)}
+                      >
+                        Delete
+                      </button>
+                    </span>
+                  ) : (
+                    <span className={styles.readOnlyBadge}>Seed event · read-only</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <form className={styles.form} onSubmit={handleSubmitEvent}>
+            <h3>{form.id ? "Edit event" : "Create new event"}</h3>
+
+            <label>
+              Title
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => handleFormChange("title", e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              Description
+              <textarea
+                value={form.description}
+                onChange={(e) => handleFormChange("description", e.target.value)}
+                rows={3}
+              />
+            </label>
+
+            <div className={styles.formRow}>
+              <label>
+                Date
+                {/* Peer review: min = today, default = today */}
+                <input
+                  type="date"
+                  value={form.date}
+                  min={todayISO()}
+                  onChange={(e) => handleFormChange("date", e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                Time
+                <input
+                  type="time"
+                  value={form.time}
+                  onChange={(e) => handleFormChange("time", e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+
+            <label>
+              Location
+              <input
+                type="text"
+                value={form.location}
+                onChange={(e) => handleFormChange("location", e.target.value)}
+              />
+            </label>
+
+            <div className={styles.formRow}>
+              <label>
+                What to bring <span className={styles.optional}>(optional)</span>
+                <input
+                  type="text"
+                  value={form.bringNote}
+                  maxLength={240}
+                  placeholder="Bring a laptop and charger"
+                  onChange={(e) => handleFormChange("bringNote", e.target.value)}
+                />
+              </label>
+              <label>
+                Capacity <span className={styles.optional}>(blank = unlimited)</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={form.capacity}
+                  placeholder="e.g. 14"
+                  onChange={(e) => handleFormChange("capacity", e.target.value)}
+                />
+              </label>
+            </div>
+
+            <label>
+              Category
+              <select
+                value={form.category}
+                onChange={(e) => handleFormChange("category", e.target.value)}
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Image URL <span className={styles.optional}>(optional)</span>
+              <input
+                type="url"
+                value={form.imageUrl}
+                placeholder={FALLBACK_IMAGE}
+                onChange={(e) => handleFormChange("imageUrl", e.target.value)}
+              />
+            </label>
+
+            <div className={styles.formActions}>
+              <button type="submit" className={styles.primaryButton}>
+                {form.id ? "Save changes" : "Create event"}
+              </button>
+              {form.id && (
+                <button type="button" onClick={cancelEdit}>
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+        </section>
+
+        {/* 3. Sign-ups -------------------------------------------------------- */}
+        <section className={`${styles.section} ${styles.signupsSection}`}>
+          <h2>Sign-ups</h2>
+          {!selectedEvent && (
+            <p className={styles.emptyState}>Select an event above to see who&apos;s signed up.</p>
           )}
-          {[...announcements]
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .map((a) => (
-              <li key={a.id} className={styles.announcementItem}>
-                <p>{a.text}</p>
-                <time>{new Date(a.createdAt).toLocaleString()}</time>
-              </li>
-            ))}
-        </ul>
-      </section>
+          {selectedEvent && (
+            <>
+              <h3>{selectedEvent.title}</h3>
+              <SignupsTable eventId={selectedEvent.id} />
+            </>
+          )}
+        </section>
 
-      {/* 5. Playbook — the club-specific bits members see ------------------- */}
-      <ClubFocusSection club={club} />
+        {/* 4. Announcements ----------------------------------------------- */}
+        <section className={`${styles.section} ${styles.announcementsSection}`}>
+          <h2>Announcements</h2>
+          <form className={styles.announcementForm} onSubmit={handlePostAnnouncement}>
+            <textarea
+              value={announcementText}
+              onChange={(e) => setAnnouncementText(e.target.value)}
+              aria-label="Announcement text"
+              placeholder="Post an update to club members…"
+              rows={2}
+            />
+            <button type="submit" className={styles.primaryButton}>
+              Post
+            </button>
+          </form>
+          <ul className={styles.announcementList}>
+            {announcements.length === 0 && (
+              <li className={styles.emptyState}>No announcements yet.</li>
+            )}
+            {[...announcements]
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map((a) => (
+                <li key={a.id} className={styles.announcementItem}>
+                  <p>{a.text}</p>
+                  <time>{new Date(a.createdAt).toLocaleString()}</time>
+                </li>
+              ))}
+          </ul>
+        </section>
 
-      {/* 6. Stats ----------------------------------------------------------- */}
-      <section className={styles.section}>
-        <h2>Stats</h2>
-        <table className={styles.statsTable}>
-          <thead>
-            <tr>
-              <th>Event</th>
-              <th>Sign-ups</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clubEvents.map((event) => (
-              <StatsRow key={event.id} event={event} />
-            ))}
-          </tbody>
-        </table>
-      </section>
+        {/* 5. Playbook — the club-specific bits members see ------------------- */}
+        <ClubFocusSection club={club} className={styles.focusSection} />
+
+        {/* 6. Stats ----------------------------------------------------------- */}
+        <section className={`${styles.section} ${styles.statsSection}`}>
+          <h2>Stats</h2>
+          <table className={styles.statsTable}>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Sign-ups</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clubEvents.map((event) => (
+                <StatsRow key={event.id} event={event} />
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </div>
     </div>
   );
 }
@@ -753,7 +761,7 @@ function toPlaybookForm(overrides = {}) {
 // Admins tune the member workspace here: the RSVP verb, what to bring, and the
 // club's focus panel. Blank fields fall back to the category default, so a club
 // that never opens this form still reads correctly.
-function ClubFocusSection({ club }) {
+function ClubFocusSection({ club, className = "" }) {
   const { refresh } = useClubs();
   const [form, setForm] = useState(() => toPlaybookForm(club.playbookOverrides));
   const [saving, setSaving] = useState(false);
@@ -796,7 +804,7 @@ function ClubFocusSection({ club }) {
   }
 
   return (
-    <section className={styles.section}>
+    <section className={`${styles.section} ${className}`}>
       <h2>Member workspace</h2>
       <p className={styles.emptyState}>
         These fields change how the workspace reads for {club.name} members. Leave one blank to use
