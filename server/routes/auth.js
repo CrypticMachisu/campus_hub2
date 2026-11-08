@@ -1,4 +1,3 @@
-import { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -7,8 +6,9 @@ import { findUserById, findUserRowByEmail } from "../queries.js";
 import { rowToUser } from "../rowMappers.js";
 import { requireAuth } from "../middleware/auth.js";
 import { isValidEmail } from "../validation.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 
-export const authRouter = Router();
+export const authRouter = createApiRouter();
 
 function signToken(user) {
   return jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: "7d" });

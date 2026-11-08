@@ -1,11 +1,11 @@
-import { Router } from "express";
 import { pool } from "../db.js";
 import { rowToEvent } from "../rowMappers.js";
 import { findCategoryIdByName } from "../queries.js";
 import { requireAuth, canManageClub } from "../middleware/auth.js";
 import { recordAudit } from "../audit.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 
-export const eventsRouter = Router();
+export const eventsRouter = createApiRouter();
 
 const EVENT_LIST_QUERY = `
   SELECT e.*, cat.name AS category_name, COUNT(s.signup_id) AS signup_count

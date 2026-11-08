@@ -1,4 +1,3 @@
-import { Router } from "express";
 import { pool } from "../db.js";
 import { rowToClub } from "../rowMappers.js";
 import {
@@ -9,8 +8,9 @@ import {
 } from "../queries.js";
 import { requireAuth, requireTier1, canManageClub } from "../middleware/auth.js";
 import { recordAudit } from "../audit.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 
-export const clubsRouter = Router();
+export const clubsRouter = createApiRouter();
 
 /** GET /api/clubs — all clubs, with category name and tags joined in. */
 clubsRouter.get("/", async (req, res) => {

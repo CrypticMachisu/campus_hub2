@@ -1,10 +1,10 @@
-import { Router } from "express";
 import { pool } from "../db.js";
 import { rowToComment } from "../rowMappers.js";
 import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
 import { recordAudit } from "../audit.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 
-export const commentsRouter = Router();
+export const commentsRouter = createApiRouter();
 
 /** The reactions we support. Kept small on purpose — a wall of emoji is noise. */
 const REACTIONS = ["👍", "❤️", "🎉", "😂"];

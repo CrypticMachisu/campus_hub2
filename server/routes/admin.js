@@ -1,15 +1,15 @@
-import { Router } from "express";
 import { pool } from "../db.js";
 import { requireAuth, requireTier1 } from "../middleware/auth.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 
 /**
  * Operational dashboard for tier1 admins. The global API-key check has
- * already run by the time this mounts; requireAuth+requireTier1 then
- * gate the sensitive part down to platform admins (JWT, server-checked
- * role — not the API key itself).
+ * runs before each route here; requireAuth+requireTier1 then gate the
+ * sensitive part down to platform admins (JWT, server-checked role — not
+ * the API key itself).
  */
 export function createAdminRouter(limiter) {
-  const adminRouter = Router();
+  const adminRouter = createApiRouter();
 
   /**
    * GET /api/admin — per-key rate-limit status and last-IP tracking.

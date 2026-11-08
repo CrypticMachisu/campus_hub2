@@ -1,11 +1,11 @@
-import { Router } from "express";
 import { pool } from "../db.js";
 import { rowToUser } from "../rowMappers.js";
 import { promoteUserToClubAdmin, demoteUserFromClubAdmin } from "../queries.js";
 import { requireAuth, requireTier1 } from "../middleware/auth.js";
 import { recordAudit } from "../audit.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 
-export const usersRouter = Router();
+export const usersRouter = createApiRouter();
 
 /** GET /api/users — tier1 only. Every non-tier1 user, for the promote picker. */
 usersRouter.get("/", requireAuth, requireTier1, async (req, res) => {

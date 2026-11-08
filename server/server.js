@@ -14,8 +14,8 @@ import { adminRequestsRouter } from "./routes/adminRequests.js";
 import { clubsRouter } from "./routes/clubs.js";
 import { eventsRouter } from "./routes/events.js";
 import { signupsRouter } from "./routes/signups.js";
-import { requireApiKey, validApiKeyCount } from "./middleware/apiKey.js";
-import { rateLimit } from "./middleware/rateLimit.js";
+import { validApiKeyCount } from "./middleware/apiKey.js";
+import { apiGuards, limiter } from "./middleware/apiGuards.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
@@ -59,32 +59,26 @@ app.use(express.json());
 // Registered BEFORE the auth middleware, which is what exempts it.
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
-// Every mounted endpoint requires a valid consumer key, and no consumer may
-// exceed its rate limit (Week 9 Part C). The guards are attached to the known
-// routes rather than globally, so an unknown /api/* path can fall through to
-// the JSON 404 below instead of being misreported as an auth failure.
-// 100 requests per consumer per 60 seconds — see SECURITY_AUDIT.md.
-// The limiter instance is kept so GET /api/admin can read its stats.
-const limiter = rateLimit({
-  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000),
-  max: Number(process.env.RATE_LIMIT_MAX || 100),
-});
-const apiGuards = [requireApiKey, limiter];
+// Every route requires a valid consumer key, and no consumer may exceed its
+// rate limit (Week 9 Part C). createApiRouter registers the guards on each
+// route rather than on the mount, so unknown /api/* paths — including
+// subpaths under a known mount — fall through to the JSON 404 below instead
+// of being misreported as an auth failure. See middleware/apiGuards.js.
 
 // Week 12 (Part C): the /stats endpoint. After the key check on purpose —
 // it needs a key like every other endpoint.
 app.get("/api/stats", ...apiGuards, statsHandler);
 
-app.use("/api/auth", ...apiGuards, authRouter);
-app.use("/api/users", ...apiGuards, usersRouter);
-app.use("/api/admin-requests", ...apiGuards, adminRequestsRouter);
-app.use("/api/clubs", ...apiGuards, clubsRouter);
-app.use("/api/events", ...apiGuards, eventsRouter);
-app.use("/api/signups", ...apiGuards, signupsRouter);
-app.use("/api/comments", ...apiGuards, commentsRouter);
-app.use("/api/announcements", ...apiGuards, announcementsRouter);
-app.use("/api/partner", ...apiGuards, partnerRouter); // NEW: calls the partner's API from our server
-app.use("/api/admin", ...apiGuards, createAdminRouter(limiter));
+app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter);
+app.use("/api/admin-requests", adminRequestsRouter);
+app.use("/api/clubs", clubsRouter);
+app.use("/api/events", eventsRouter);
+app.use("/api/signups", signupsRouter);
+app.use("/api/comments", commentsRouter);
+app.use("/api/announcements", announcementsRouter);
+app.use("/api/partner", partnerRouter); // NEW: calls the partner's API from our server
+app.use("/api/admin", createAdminRouter(limiter));
 
 // Week 9 (Part D) fix: unknown URLs used to return Express's default HTML
 // 404 page, which leaks what framework/version the server runs and

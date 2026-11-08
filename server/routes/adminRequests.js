@@ -1,10 +1,10 @@
-import { Router } from "express";
 import { pool } from "../db.js";
 import { requireAuth, requireTier1, canManageClub } from "../middleware/auth.js";
 import { promoteUserToClubAdmin } from "../queries.js";
 import { recordAudit } from "../audit.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 
-export const adminRequestsRouter = Router();
+export const adminRequestsRouter = createApiRouter();
 
 const REQUEST_LIST_QUERY = `
     SELECT r.*, u.name AS user_name, u.email AS user_email, c.name AS club_name

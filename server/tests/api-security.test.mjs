@@ -54,6 +54,49 @@ test("An unknown API path returns a JSON 404 instead of an auth error", async ()
   assert.match(body.error, /not found/i);
 });
 
+test("Unknown API subpaths under known mounts return a JSON 404 without a key", async () => {
+  const paths = [
+    "/auth/not-a-route",
+    "/users/not-a-route",
+    "/admin-requests/not-a-route",
+    "/clubs/not-a-route",
+    "/events/not-a-route",
+    "/signups/not-a-route",
+    "/comments/not-a-route",
+    "/announcements/not-a-route",
+    "/partner/not-a-route",
+    "/admin/not-a-route",
+  ];
+
+  for (const path of paths) {
+    const res = await fetch(`${BASE_URL}${path}`);
+    assert.equal(res.status, 404, `${path} should return 404, not ${res.status}`);
+    const body = await res.json();
+    assert.match(body.error, /not found/i, `${path} should return a JSON 404`);
+  }
+});
+
+test("Every mounted API router still requires a key on its known routes", async () => {
+  const routes = [
+    ["GET", "/stats"],
+    ["POST", "/auth/login"],
+    ["GET", "/users"],
+    ["GET", "/admin-requests"],
+    ["GET", "/clubs"],
+    ["GET", "/events"],
+    ["GET", "/signups/mine"],
+    ["GET", "/comments?targetType=event&targetId=event-01"],
+    ["GET", "/announcements?clubId=club-01"],
+    ["GET", "/partner/produce"],
+    ["GET", "/admin"],
+  ];
+
+  for (const [method, path] of routes) {
+    const res = await fetch(`${BASE_URL}${path}`, { method });
+    assert.equal(res.status, 401, `${method} ${path} should require an API key`);
+  }
+});
+
 test("A request with no API key gets 401", async () => {
   const res = await apiGet("/clubs");
   assert.equal(res.status, 401);

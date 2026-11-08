@@ -1,10 +1,10 @@
-import { Router } from "express";
 import { pool } from "../db.js";
 import { rowToAnnouncement } from "../rowMappers.js";
 import { requireAuth, canManageClub } from "../middleware/auth.js";
 import { recordAudit } from "../audit.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 
-export const announcementsRouter = Router();
+export const announcementsRouter = createApiRouter();
 
 /** GET /api/announcements?clubId=... */
 announcementsRouter.get("/", async (req, res) => {

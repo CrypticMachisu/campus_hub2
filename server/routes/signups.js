@@ -1,9 +1,9 @@
-import { Router } from "express";
 import { pool } from "../db.js";
 import { rowToSignup } from "../rowMappers.js";
 import { requireAuth, canManageClub } from "../middleware/auth.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 
-export const signupsRouter = Router();
+export const signupsRouter = createApiRouter();
 
 /**
  * GET /api/signups/mine — the logged-in user's own signups.

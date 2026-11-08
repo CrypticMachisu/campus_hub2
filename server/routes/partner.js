@@ -1,11 +1,11 @@
-import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
 import { fetchWithRetry } from "../resilientFetch.js"; // Week 11: timeout + capped retries
 
 // Calls Team 6's AgroConnect API from the SERVER so the browser never
 // sees the partner's key. Their API requires an X-API-Key header on
 // every call; the key lives only in server/.env as PARTNER_API_KEY.
-export const partnerRouter = Router();
+export const partnerRouter = createApiRouter();
 
 const FRIENDLY_ERROR = { error: "Partner data unavailable" };
 
