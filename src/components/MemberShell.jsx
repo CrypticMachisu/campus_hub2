@@ -136,9 +136,7 @@ export default function MemberShell({ myClubs }) {
               <NavLink
                 to={`/workspace/${club.id}`}
                 className={({ isActive }) =>
-                  isActive
-                    ? `${styles.bottomClub} ${styles.bottomClubActive}`
-                    : styles.bottomClub
+                  isActive ? `${styles.bottomClub} ${styles.bottomClubActive}` : styles.bottomClub
                 }
                 style={{ "--chip-hue": hueFor(club.id) }}
               >

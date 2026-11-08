@@ -25,7 +25,7 @@ planning is recorded here because everything below follows from it.
   — 24 random bytes, 48 hex characters.
 - **Verified:** `git log --all -- server/.env .env` returns nothing (the
   file was never tracked), and `git log --all -p -S<first six characters of
-  each key>` returns nothing (no key appears in the history). Keys are also
+each key>` returns nothing (no key appears in the history). Keys are also
   not in logs (only the _count_ is printed at startup) or in this document.
 
 ## Part B — API key authentication

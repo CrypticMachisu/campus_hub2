@@ -3,12 +3,20 @@
 // If your pool lives somewhere else, add its path to the list below.
 afterAll(async () => {
   if (process.env.BASE_URL) return;
-  for (const p of ['./db', './config/db', './database', './config/database']) {
+  for (const p of ["./db", "./config/db", "./database", "./config/database"]) {
     let mod;
-    try { mod = require(p); } catch { continue; }
+    try {
+      mod = require(p);
+    } catch {
+      continue;
+    }
     const pool = mod.pool || mod;
-    if (pool && typeof pool.end === 'function') {
-      try { await pool.end(); } catch { /* already closed */ }
+    if (pool && typeof pool.end === "function") {
+      try {
+        await pool.end();
+      } catch {
+        /* already closed */
+      }
     }
     return;
   }
