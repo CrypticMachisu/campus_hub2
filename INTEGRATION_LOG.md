@@ -2,12 +2,12 @@
 
 **Us (consumer):** CampusHub, Team 7 **Upstream partner (provider):** AgroConnect, Team 6
 **Their base URL:** https://farmers-agroconnect.onrender.com/api
-**What we call:** `GET /farmers` (public, no key; URL they sent us: https://farmers-agroconnect.onrender.com/api/farmers) — shown on our Home page as "Farmers on AgroConnect". Also available: `GET /produce` panel.
+**What we call:** `GET /farmers` and `GET /produce` (both now require `X-API-Key`; verified 2026-11-08) — shown on our Home page as "Farmers on AgroConnect" and "Fresh from AgroConnect".
 **How:** our Express route `GET /api/partner/produce` calls them server-side; browser never calls them directly.
 
 ## Contract review before coding (from their README)
 
-- Auth: none for `GET /health`, `/produce`, `/farmers`, `/products`. JWT only for writes/orders. The handout's `X-API-Key` does not apply; `PARTNER_API_KEY` is optional and unused.
+- Auth (verified 2026-11-08): `GET /health` is public. `GET /farmers` and `GET /produce` return 401 `{"message":"A valid X-API-Key header is required."}` without a key. This differs from the earlier README, which said those reads were public and did not use `X-API-Key`.
 - `/farmers` shape: `200 { "farmers": [ {id, fullName, phone, county, focus, createdAt} ] }`. We forward only id, fullName, county, focus (not phone).
 - `/produce` shape: `200 { "listings": [ {id, title, category, price, unit, quantity, county, sellerName, availableFrom, ...} ] }`. No matches: `{ "listings": [] }`.
 - Errors: JSON `{ message, fields? }`; no machine-readable code.
@@ -15,32 +15,34 @@
 
 ## First call (Part B)
 
-- [ ] Date/time: ____ Command: `curl.exe -i https://farmers-agroconnect.onrender.com/api/farmers`
-- [ ] Status: ____ Time to respond (cold or warm?): ____
-- [ ] Matches README shape? ____ (paste response, nothing secret in it)
+- [x] Date/time: 2026-11-09. Command: `curl.exe -i https://farmers-agroconnect.onrender.com/api/farmers -H "X-API-Key: <Team 6 key>"`
+- [x] Status: 200. Time to respond: 1.7 s cold; 0.3 s once warm. Returned 5 farmers.
+- [x] Matches README shape: yes, `{ "farmers": [ ... ] }`.
 
 ## Bugs and surprises
 
 Only log what actually happened. Rows below are things to CHECK; delete any that turn out fine and fill in the rest.
 
-| #   | What broke (symptom)                                                                                                                  | Root cause                                        | Fix                                                               | Whose code, who fixed        |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------- |
-| 1   | Handout expects an API key, partner has none                                                                                          | Their public routes need no key                   | Called without a key; key kept optional in env                    | Handout assumption, no bug   |
-| 2   | First request after idle is very slow / times out                                                                                     | Render Free wakes after ~1 min (per their README) | Warm up before demo; timeouts are Week 11                         | Hosting limit, logged only   |
-| 3   | TO CHECK: README says single-item reads use `GET /produce/{id}` but also says "individual listing detail" is PROPOSED and returns 404 | README contradicts itself, or one part is stale   | Test `GET /produce/1`; report result with the bug-report template | Partner docs, partner to fix |
+| #   | What broke (symptom)                                                                                                        | Root cause                                        | Fix                                                                                  | Whose code, who fixed        |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------- |
+| 1   | Partner now requires `X-API-Key`; our server had no key configured                                                          | Upstream changed from public reads to keyed reads | Set `PARTNER_URL` and `PARTNER_API_KEY` from Team 6; live 200 on 2026-11-09          | Team 6 + Team 7, fixed       |
+| 2   | First request after idle is very slow / times out                                                                           | Render Free wakes after ~1 min (per their README) | Warm the real partner panels before demo; cold calls can still hit the 1.5 s timeout | Hosting limit, logged only   |
+| 3   | README says single-item reads use `GET /produce/{id}` but also says "individual listing detail" is PROPOSED and returns 404 | README contradicts itself, or one part is stale   | Tested `GET /produce/1`: 200 with a `listing`; docs are inconsistent, not the route  | Partner docs, partner to fix |
 
 ## Tests done on purpose (record what each did)
 
-| Test                                                          | Expected (their README)                                     | Actual |
-| ------------------------------------------------------------- | ----------------------------------------------------------- | ------ |
-| `GET /produce?search=zzzz` (no match)                         | 200 `{"listings":[]}`                                       |        |
-| `GET /produce?county=nakuru` vs `Nakuru`                      | exact, case-sensitive                                       |        |
-| `GET /produce/1`                                              | 200 `{listing}`                                             |        |
-| `GET /produce/9999`                                           | 404 `This listing no longer exists.`                        |        |
-| `GET /nope`                                                   | 404 `This API route was not found.`                         |        |
-| Our page with `PARTNER_URL` set to `https://nope.invalid/api` | friendly message, our server still up, log says `ENOTFOUND` |        |
-| Partner server stopped                                        | friendly message, log `ECONNREFUSED`/502                    |        |
-| Partner back                                                  | page recovers with no code change                           |        |
+| Test                                                    | Expected (their README)              | Actual (2026-11-09)                                     |
+| ------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------- |
+| `GET /farmers` with `X-API-Key`                         | 200 `{farmers}`                      | 200, 5 farmers                                          |
+| `GET /produce` with `X-API-Key`                         | 200 `{listings}`                     | 200, 4 listings                                         |
+| `GET /produce?search=zzzz` (no match)                   | 200 `{"listings":[]}`                | 200, 0 listings                                         |
+| `GET /produce/1`                                        | 200 `{listing}`                      | 200, `listing`                                          |
+| `GET /produce/9999`                                     | 404 `This listing no longer exists.` | 404, same message                                       |
+| `GET /nope`                                             | 404 `This API route was not found.`  | 404, same message                                       |
+| `GET /api/partner/farmers` through our server           | 200 `{data, stale, asOf}`            | 200, `stale: false`, 5 farmers                          |
+| `GET /api/partner/produce` through our server           | 200 `{data, stale, asOf}`            | 200, `stale: false`, 4 listings                         |
+| `GET /api/partner/farmers/5` through our server         | 200 `{data, stale, asOf}`            | 200, `stale: false`                                     |
+| First request immediately after restart (upstream cold) | live 200                             | 502 after three 1.5 s timeouts; warm calls returned 200 |
 
 ## Bug report template used (Part C)
 

@@ -126,7 +126,7 @@ Then fill in `server/.env`:
 | `API_KEYS`        | Comma-separated keys the consumers send as `X-API-Key`. Generate one: `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"` |
 | `PORT`            | 5000 (or anything free)                                                                                                                          |
 | `PARTNER_URL`     | `https://farmers-agroconnect.onrender.com/api` — leave as is                                                                                     |
-| `PARTNER_API_KEY` | Only if Team 6 issued you one; the app also runs without it                                                                                      |
+| `PARTNER_API_KEY` | Team 6's AgroConnect `X-API-Key`. Required for live farmer/produce data; without it the panels use their fallback state                          |
 
 `CORS_ORIGINS` is the comma-separated list of browser origins allowed to call the
 API. Add your deployed frontend's origin there; server-to-server callers send no
