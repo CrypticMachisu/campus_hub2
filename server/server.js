@@ -20,6 +20,7 @@ import { createAdminRouter } from "./routes/admin.js";
 import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { partnerRouter } from "./routes/partner.js"; // NEW: Team 6 AgroConnect integration
+import { agroOpportunitiesRouter } from "./routes/agroOpportunities.js";
 import { monitor, statsHandler } from "./monitoring.js"; // Week 12 (Parts B & C): logging + stats
 
 const app = express();
@@ -35,7 +36,10 @@ app.use(monitor);
 // This replaces two earlier middlewares — an unconditional cors() plus a
 // second one pinned to a single deployment URL. Together they sent duplicate
 // ACAO headers for that one origin and allowed every other origin anyway.
-const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
+const allowedOrigins = (
+  process.env.CORS_ORIGINS ||
+  "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
+)
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -79,6 +83,7 @@ app.use("/api/comments", commentsRouter);
 app.use("/api/announcements", announcementsRouter);
 app.use("/api/partner", partnerRouter); // NEW: calls the partner's API from our server
 app.use("/api/admin", createAdminRouter(limiter));
+app.use("/api/agro-opportunities", agroOpportunitiesRouter);
 
 // Week 9 (Part D) fix: unknown URLs used to return Express's default HTML
 // 404 page, which leaks what framework/version the server runs and

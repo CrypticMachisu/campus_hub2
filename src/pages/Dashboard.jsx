@@ -19,6 +19,7 @@ import {
 import { canManageClub } from "../utils/authStore";
 import { SkeletonGroup, SkeletonListRow, CardStackSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
+import AgroOpportunities from "../components/AgroOpportunities";
 import styles from "./Dashboard.module.css";
 
 const FALLBACK_IMAGE = "https://placehold.co/600x300";
@@ -506,7 +507,14 @@ export default function Dashboard() {
         {/* 5. Playbook — the club-specific bits members see ------------------- */}
         <ClubFocusSection club={club} className={styles.focusSection} />
 
-        {/* 6. Stats ----------------------------------------------------------- */}
+        {/* 6. AgroConnect Opportunities — Agri-Business & Farming Club only */}
+        {clubId === "club-07" && (
+          <section className={styles.section}>
+            <AgroOpportunities />
+          </section>
+        )}
+
+        {/* 7. Stats ----------------------------------------------------------- */}
         <section className={`${styles.section} ${styles.statsSection}`}>
           <h2>Stats</h2>
           <table className={styles.statsTable}>
@@ -531,26 +539,10 @@ export default function Dashboard() {
 // Small local subcomponent — keeps each event's sign-up count fetch
 // isolated so one failure doesn't block the whole stats table.
 function StatsRow({ event }) {
-  const [count, setCount] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    getSignupsByEvent(event.id)
-      .then((signups) => {
-        if (!cancelled) setCount(Array.isArray(signups) ? signups.length : 0);
-      })
-      .catch(() => {
-        if (!cancelled) setCount(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [event.id]);
-
   return (
     <tr>
       <td>{event.title}</td>
-      <td>{count === null ? "—" : count}</td>
+      <td>{event.signupCount ?? 0}</td>
     </tr>
   );
 }

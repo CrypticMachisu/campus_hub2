@@ -45,10 +45,12 @@ function AppRoutes() {
   }
 
   const myClubs = clubsForUser(user, clubs);
+
   const isMemberView = Boolean(user) && user.role !== "tier1" && myClubs.length > 0;
 
   if (isMemberView) {
     const homeClubId = myClubs[0].id;
+
     const manageableClubId = myClubs.find((club) => canManageClub(user, club.id))?.id;
 
     return (
@@ -59,13 +61,17 @@ function AppRoutes() {
 
         <Route element={<MemberShell myClubs={myClubs} />}>
           <Route path="/" element={<Navigate to={`/workspace/${homeClubId}`} replace />} />
+
           <Route path="/workspace" element={<Navigate to={`/workspace/${homeClubId}`} replace />} />
+
           <Route path="/workspace/:clubId" element={<ClubWorkspace />} />
+
           <Route path="/discover" element={<Home />} />
           <Route path="/clubs/:clubId" element={<ClubProfile />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
           <Route path="/my-events" element={<MyEvents />} />
           <Route path="/dashboard/:clubId" element={<Dashboard />} />
+
           <Route
             path="/dashboard"
             element={
@@ -75,6 +81,7 @@ function AppRoutes() {
               />
             }
           />
+
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
@@ -85,27 +92,32 @@ function AppRoutes() {
   return (
     <>
       <Navbar />
+
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+
         <Route path="/" element={<Home />} />
         <Route path="/discover" element={<Home />} />
         <Route path="/clubs/:clubId" element={<ClubProfile />} />
         <Route path="/events/:eventId" element={<EventDetail />} />
-        {/* Normally members get the member shell above. When the clubs request
-            fails there is no shell to host this page, so keep the route here
-            as well; ClubWorkspace can then show its own retry gate instead of
-            the URL falling through to NotFound. */}
+
+        {/* Allow signed-in users, including Tier 1 admins,
+            to open the club workspace. */}
         <Route
           path="/workspace/:clubId"
-          element={user && user.role !== "tier1" ? <ClubWorkspace /> : <Navigate to="/" replace />}
+          element={user ? <ClubWorkspace /> : <Navigate to="/" replace />}
         />
+
         <Route path="/my-events" element={<MyEvents />} />
         <Route path="/dashboard/:clubId" element={<Dashboard />} />
+
         <Route path="/dashboard" element={<Navigate to="/dashboard/club-01" replace />} />
+
         <Route path="*" element={<NotFound />} />
       </Routes>
+
       <Footer />
     </>
   );
