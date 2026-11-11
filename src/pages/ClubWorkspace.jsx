@@ -10,6 +10,7 @@ import { getComments } from "../utils/commentsStore";
 import { getSignups, saveSignup, deleteSignup } from "../utils/storage";
 import { getClubPlaybook } from "../utils/clubPlaybook";
 import NextClubEvent from "../components/NextClubEvent";
+import AgroOpportunities from "../components/AgroOpportunities";
 import ClubFocusPanel from "../components/ClubFocusPanel";
 import ClubAgenda from "../components/ClubAgenda";
 import CommentSection from "../components/CommentSection";
@@ -370,6 +371,7 @@ export default function ClubWorkspace() {
                 pendingIds={pendingIds}
                 onToggle={toggleRsvp}
               />
+              {clubId === "club-07" && <AgroOpportunities />}
 
               <section className={styles.section} aria-labelledby="workspace-feed">
                 <div className={styles.sectionHead}>
