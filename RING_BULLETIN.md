@@ -84,10 +84,10 @@ v1 stays up **past** Demo Day on purpose, so nobody's demo breaks. If 30 Novembe
 
 ## 5. Where everything lives
 
-| File                             | What it is                                                                                                              |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `DEPRECATION_NOTICE.md`          | The full notice for consumers: what, why, before/after, six migration steps, timeline, questions.                       |
-| `VERSIONING_NOTES.md`            | Our one breaking change, the exact front-end lines it breaks, who still uses v1, the handout checklist, the reflection. |
-| `INTEGRATION_LOG.md`             | The Week 13 row: what changed, who it hit, what was done and by whom.                                                   |
-| `openapi.yaml`, `README.md`      | The v2/deprecation pointer next to the normal API description.                                                          |
-| `server/tests/versions.test.mjs` | The proof v1 did not change and v2 has the new shape. Run `cd server && node --test tests/versions.test.mjs`.           |
+| File                         | What it is                                                                                                              |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `DEPRECATION_NOTICE.md`      | The full notice for consumers: what, why, before/after, six migration steps, timeline, questions.                       |
+| `VERSIONING_NOTES.md`        | Our one breaking change, the exact front-end lines it breaks, who still uses v1, the handout checklist, the reflection. |
+| `INTEGRATION_LOG.md`         | The Week 13 row: what changed, who it hit, what was done and by whom.                                                   |
+| `openapi.yaml`, `README.md`  | The v2/deprecation pointer next to the normal API description.                                                          |
+| `__tests__/versions.test.js` | The proof v1 did not change and v2 has the new shape. Run `npx jest` from the repo root.                                |

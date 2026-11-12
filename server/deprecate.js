@@ -4,7 +4,7 @@
 // and forgets still needs to find out from the API itself. These headers ride
 // on every v1 response: Deprecation says it is deprecated, Sunset says the day
 // it stops working, Link points at the replacement. They are only mounted on
-// v1; v2 must never carry them (see tests/versions.test.mjs).
+// v1; v2 must never carry them (see __tests__/versions.test.js).
 
 /**
  * @param {{ sunset: string, successor: string }} options

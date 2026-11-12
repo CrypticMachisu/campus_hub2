@@ -5,7 +5,7 @@ import { validApiKeyCount } from "./middleware/apiKey.js";
 
 // server.js only starts things. The routes, middleware and the two API
 // versions live in app.js, which is exported without listening so the test
-// suite can import it (see tests/versions.test.mjs).
+// suite can import it (see __tests__/versions.test.js).
 
 const PORT = process.env.PORT || 5000;
 assertDbConnection()
