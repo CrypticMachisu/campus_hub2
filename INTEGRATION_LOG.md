@@ -75,7 +75,10 @@ We contacted Jochebed Mukami from group 6 and we agreed to communicate on any is
 **Nothing broke this time for our consumers**, because v1 is still mounted on the old URLs and every v1 response says it is leaving. The two things that need a human before 30 November:
 
 - [x] Send the full `DEPRECATION_NOTICE.md` text to Team 8 and get a reply. **Sent by hand and delivered; no reply received** (confirmed 12 November 2026). Their migration to `/api/v2/events` is therefore unconfirmed — treat the silence as silence, not as agreement to move.
-- [ ] Read `GET /api/stats` + the request log and record which caller labels still hit `GET /api/events/` and `GET /api/v1/events/` before turning v1 off.
+- [x] Read the request log and record which caller labels still hit v1. Window 2026-11-09 10:12 → 2026-11-12 19:51, 487 requests in `server/requests.log`:
+      `/api/v1/events` **0** (only the test suite ever calls it); `/api/events` **26** (12×200, 2×201, 2×204, 8×401, 2×404, newest 12 Nov 17:34); `/api/v2/events` **17** (14×200, 3×401).
+      Only two caller labels exist: `key-54f179` (the key in the root `.env`, so our own front end and our curl checks) and `key-fe1e45` (the second configured key; its traffic pairs `/api/clubs` with events, which looks like a browser session).
+      **No third label exists**, so Team 8 has not called us with a key we can see; their 401 attempts appear as `caller: none`. If they hold `key-fe1e45`, then they did read `/api/v2/events` on 12 Nov — but the log cannot prove who owns that key, so treat their migration as unconfirmed. The `201`/`204` on unversioned `/api/events` at 17:34 are our own runbook curls, not the app (see `src/utils/api.js`, which appends `/v2`).
 
 ## Upstream deprecation notice (Team 6) — reviewed 12 November 2026
 
