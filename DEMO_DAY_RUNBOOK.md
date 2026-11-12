@@ -407,8 +407,9 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
   drift; only the response shape changes.
 - Proof: `diff docs/v1_before.json docs/v1_after.json` prints nothing (both 4684 bytes,
   sha256 `3356ca69…`), and `npx jest` pins it with 14 tests.
-- The notice to Team 8 is `DEPRECATION_NOTICE.md`; our upstream Team 6 has no v2, so the
-  partner integration is unchanged and we did not invent a contract.
+- The notice to Team 8 is `DEPRECATION_NOTICE.md`. Upstream, Team 6 sent a deprecation
+  notice on 12 November but it covers their product reads only; `/produce` and `/farmers`,
+  which we call, are confirmed unchanged, so the partner integration is untouched.
 
 **What Is Not Finished**
 
@@ -421,11 +422,12 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
   automated keystrokes — so a date edit is still unchecked by hand. `ClubProfile`, `MyEvents`,
   the ICS export and the workspace next-event panel were checked on 12 November and show the
   same dates as before the move.
-- Team 6 has not started versioning, so consuming their v2 is blocked, not skipped.
+- Team 6's `/api/v2/products` exists only on their machine with no test key, and their notice
+  does not cover `/produce`, so there is nothing of theirs to migrate to yet.
 - No `GET /api/clubs/:id` or `GET /api/events/:id` (v2 adds `PUT`/`DELETE` on `/events/:id`,
   not a single-event read).
 - Next: shared rate-limit store · hand-check a date change in the dashboard form · the Team 6
-  migration when their v2 exists.
+  migration when a notice covers `/produce` and a deployed v2 exists.
 
 ### 5.2 What to say (40 seconds, timed)
 
@@ -445,8 +447,9 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
 >
 > What is not finished: our rate-limit counts and saved partner data are in memory, so a
 > restart clears them. Our own front end moved to v2 this week: it reads the new timestamp in
-> one place and the rest of the app is untouched. And Team 6 has not started versioning, so
-> that migration is waiting on them, not on us."
+> one place and the rest of the app is untouched. Upstream, Team 6's notice this week covers
+> product reads we do not call, so our partner integration is unchanged — there is still
+> nothing of theirs to migrate to."
 
 ### 5.3 Optional live proof (10 s for versioning, 25 s for the stand-in partner)
 
