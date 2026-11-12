@@ -61,7 +61,9 @@ v1 stays up **past** Demo Day on purpose, so nobody's demo breaks. If 30 Novembe
 
 **What we are doing on our side.** One file (`server/routes/partner.js` plus a small versions table) will hold the path and the parser for each of your versions, chosen by `PARTNER_VERSION` in `server/.env`, with a test that fails loudly if the body does not match the version we think we are on. Rollback becomes one word in `.env`. We will not switch until we have seen one live v2 response and our own `/api/partner/*` answers `"stale": false`.
 
-**Our one-line ask right now:** reply with your versioning plan — whether a v2 exists, what would break, and when. If you have no v2 planned, say that too, and we will keep calling the current contract.
+**What we got back, 12 November.** A written deprecation notice for their product reads, plus an answer to our scope question: it covers `/api/products` and `/api/v1/products` only. `/produce` and `/farmers` are unchanged, `title` and `quantity` included, so we change nothing and keep calling the current contract. The rest of the list still stands — `/api/v2/products` exists only locally with no test key, the hosted v1 returned `401` without a key and carried none of the `Deprecation`/`Sunset`/`Link` headers the notice describes, no sunset status or body is committed, and 30 November is proposed rather than agreed. `POST /api/orders` still accepts `{ "items": [{ "id": 1, "type": "produce", "quantity": 2 }] }`, with `type` `produce` or `product`.
+
+**Our one-line ask now:** tell us when a notice would cover `/produce` or `/farmers`, and send the deployed v2 URL and a test key with it — not just the local branch.
 
 ---
 
@@ -76,11 +78,11 @@ v1 stays up **past** Demo Day on purpose, so nobody's demo breaks. If 30 Novembe
 
 ## 4. Who does what this week
 
-| Member            | Action                                                                                                                                                     | By        |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Team 8 (consumer) | Read the notice, reply that you read it, switch your reads to `/api/v2/events`, tell us when done so we can confirm it in `/stats`.                        | 19 Nov    |
-| Team 6 (producer) | Reply with your versioning plan and a notice channel; send the v2 contract and a test key when v2 exists.                                                  | This week |
-| Team 7 (us)       | Send the notice to Team 8 by hand, watch `/stats` for remaining v1 callers, keep v1 running until 30 Nov. Our own React front end already calls `/api/v2`. | Sunset    |
+| Member            | Action                                                                                                                                                                                                       | By        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| Team 8 (consumer) | Read the notice, reply that you read it, switch your reads to `/api/v2/events`, tell us when done so we can confirm it in `/stats`.                                                                          | 19 Nov    |
+| Team 6 (producer) | Notice received for product reads; scope confirmed as not ours. Still owed: a named notice channel, a deployed `/api/v2/products` with a test key, and the sunset status and body before any date is agreed. | This week |
+| Team 7 (us)       | Send the notice to Team 8 by hand, watch `/stats` for remaining v1 callers, keep v1 running until 30 Nov. Our own React front end already calls `/api/v2`.                                                   | Sunset    |
 
 ## 5. Where everything lives
 
