@@ -76,11 +76,11 @@ v1 stays up **past** Demo Day on purpose, so nobody's demo breaks. If 30 Novembe
 
 ## 4. Who does what this week
 
-| Member            | Action                                                                                                                                           | By        |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
-| Team 8 (consumer) | Read the notice, reply that you read it, switch your reads to `/api/v2/events`, tell us when done so we can confirm it in `/stats`.              | 19 Nov    |
-| Team 6 (producer) | Reply with your versioning plan and a notice channel; send the v2 contract and a test key when v2 exists.                                        | This week |
-| Team 7 (us)       | Send the notice to Team 8 by hand, migrate our own React front end to v2, watch `/stats` for remaining v1 callers, keep v1 running until 30 Nov. | Sunset    |
+| Member            | Action                                                                                                                                                     | By        |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| Team 8 (consumer) | Read the notice, reply that you read it, switch your reads to `/api/v2/events`, tell us when done so we can confirm it in `/stats`.                        | 19 Nov    |
+| Team 6 (producer) | Reply with your versioning plan and a notice channel; send the v2 contract and a test key when v2 exists.                                                  | This week |
+| Team 7 (us)       | Send the notice to Team 8 by hand, watch `/stats` for remaining v1 callers, keep v1 running until 30 Nov. Our own React front end already calls `/api/v2`. | Sunset    |
 
 ## 5. Where everything lives
 
