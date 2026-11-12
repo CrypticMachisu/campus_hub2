@@ -178,6 +178,8 @@ All demo accounts use the password **`campushub123`** (set by `npm run set-passw
 
 All endpoints require `X-API-Key` (except `/api/health`); the `Auth` column shows what the key consumer additionally needs.
 
+> **Versions.** The events endpoints are also served under `/api/v2`, where each event carries one ISO 8601 `startTime` (for example `"2026-11-02T06:30:00+03:00"`) instead of separate `date` and `time` fields. `/api/v1/events` and the unversioned `/api/events` keep the old shape, send `Deprecation`, `Sunset` and `Link` headers on every response, and stop working on **30 November 2026**. Migration steps: [DEPRECATION_NOTICE.md](DEPRECATION_NOTICE.md).
+
 | Method | Path                 | Auth                     | Purpose                  |
 | ------ | -------------------- | ------------------------ | ------------------------ |
 | GET    | `/api/health`        | none (no API key either) | Check the API is running |

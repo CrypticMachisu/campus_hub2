@@ -1,104 +1,11 @@
 import "dotenv/config";
-import express from "express";
-// Express 4 doesn't catch rejected async route handlers, so any thrown DB
-// error (e.g. a FK violation from a bad clubId) used to escape the router,
-// go unhandled and crash the whole server. This tiny shim simply routes
-// async rejections into Express's normal error chain, which is what our
-// JSON 500 handler below assumes.
-import "express-async-errors";
-import cors from "cors";
+import { app } from "./app.js";
 import { assertDbConnection } from "./db.js";
-import { authRouter } from "./routes/auth.js";
-import { usersRouter } from "./routes/users.js";
-import { adminRequestsRouter } from "./routes/adminRequests.js";
-import { clubsRouter } from "./routes/clubs.js";
-import { eventsRouter } from "./routes/events.js";
-import { signupsRouter } from "./routes/signups.js";
 import { validApiKeyCount } from "./middleware/apiKey.js";
-import { apiGuards, limiter } from "./middleware/apiGuards.js";
-import { createAdminRouter } from "./routes/admin.js";
-import { commentsRouter } from "./routes/comments.js";
-import { announcementsRouter } from "./routes/announcements.js";
-import { partnerRouter } from "./routes/partner.js"; // NEW: Team 6 AgroConnect integration
-import { monitor, statsHandler } from "./monitoring.js"; // Week 12 (Parts B & C): logging + stats
 
-const app = express();
-
-// Week 12 (Part B): request logging. Registered FIRST so rejected requests
-// (401, 429) are logged too. One JSON line per request — see monitoring.js.
-app.use(monitor);
-
-// Browser origins allowed to call the API. Server-to-server callers (our
-// partner, curl, the test suites) send no Origin header and are unaffected.
-// Set CORS_ORIGINS as a comma-separated list; "*" allows any browser origin.
-//
-// This replaces two earlier middlewares — an unconditional cors() plus a
-// second one pinned to a single deployment URL. Together they sent duplicate
-// ACAO headers for that one origin and allowed every other origin anyway.
-const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-      callback(null, false);
-    },
-  })
-);
-app.use(express.json());
-
-// Week 9 (Part B) — the only endpoint left without an API key. It
-// reveals no data and exists so external uptime checks (and partners
-// checking we're alive before spending their quota) get a cheap answer.
-// Registered BEFORE the auth middleware, which is what exempts it.
-app.get("/api/health", (req, res) => res.json({ ok: true }));
-
-// Every route requires a valid consumer key, and no consumer may exceed its
-// rate limit (Week 9 Part C). createApiRouter registers the guards on each
-// route rather than on the mount, so unknown /api/* paths — including
-// subpaths under a known mount — fall through to the JSON 404 below instead
-// of being misreported as an auth failure. See middleware/apiGuards.js.
-
-// Week 12 (Part C): the /stats endpoint. After the key check on purpose —
-// it needs a key like every other endpoint.
-app.get("/api/stats", ...apiGuards, statsHandler);
-
-app.use("/api/auth", authRouter);
-app.use("/api/users", usersRouter);
-app.use("/api/admin-requests", adminRequestsRouter);
-app.use("/api/clubs", clubsRouter);
-app.use("/api/events", eventsRouter);
-app.use("/api/signups", signupsRouter);
-app.use("/api/comments", commentsRouter);
-app.use("/api/announcements", announcementsRouter);
-app.use("/api/partner", partnerRouter); // NEW: calls the partner's API from our server
-app.use("/api/admin", createAdminRouter(limiter));
-
-// Week 9 (Part D) fix: unknown URLs used to return Express's default HTML
-// 404 page, which leaks what framework/version the server runs and
-// contradicted our "all responses are JSON" promise. Now a clean JSON 404.
-app.use((req, res) => {
-  res.status(404).json({ error: "Not found." });
-});
-
-// Centralized error handler so a thrown/rejected error in any route
-// returns clean JSON instead of an HTML stack trace or a hung request.
-app.use((err, req, res, next) => {
-  // Malformed request bodies are a client error, not a server failure.
-  // Express marks JSON parser failures with this type.
-  if (err.type === "entity.parse.failed") {
-    return res.status(400).json({ error: "Invalid JSON body." });
-  }
-
-  console.error(err);
-  res.status(500).json({ error: "Something went wrong on the server." });
-});
+// server.js only starts things. The routes, middleware and the two API
+// versions live in app.js, which is exported without listening so the test
+// suite can import it (see tests/versions.test.mjs).
 
 const PORT = process.env.PORT || 5000;
 assertDbConnection()
@@ -117,6 +24,9 @@ assertDbConnection()
         `Rate limit: ${process.env.RATE_LIMIT_MAX || 100} requests per ${process.env.RATE_LIMIT_WINDOW_MS || 60000} ms per key`
       );
       if (publicUrl) console.log(`Public URL: ${publicUrl}/api`);
+      console.log(
+        "API versions: /api/v2 (current) and /api/v1 = /api (deprecated, sunsets 2026-11-30)"
+      );
     });
   })
   .catch((err) => {

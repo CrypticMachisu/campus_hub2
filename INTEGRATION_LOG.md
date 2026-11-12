@@ -59,3 +59,19 @@ Our base URL (ngrok, changes on restart): https://movable-eastcoast-showman.ngro
 ## Collaboration evidence
 
 We contacted Jochebed Mukami from group 6 and we agreed to communicate on any issues faced with their api access.
+
+## Week 13 — versioning (what changed, and who it affected)
+
+**What we changed (our API, for our consumers):** each event now has one ISO `startTime` (`"2026-11-02T06:30:00+03:00"`) instead of separate `date` + `time`. v2 is `/api/v2/events`; v1 stays at `/api/events` and `/api/v1/events` and now sends `Deprecation`, `Sunset: Mon, 30 Nov 2026 00:00:00 GMT` and `Link` headers. Full text for Team 8: `DEPRECATION_NOTICE.md`.
+
+**Upstream notice received (Team 6, AgroConnect):** none. Their contract has no v2, so there is nothing to migrate to and we did not invent one. Our integration (`server/routes/partner.js`) still calls their `/farmers`, `/produce` and `/farmers/:id` under the current contract and is unchanged this week.
+
+| #   | Symptom                                                                      | Root cause                                                                                          | What we changed                                                                                        | Whose code, status      |
+| --- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------- |
+| 4   | Our own front end sorts every event as "oldest" and treats it as past on v2  | `date` + `time` were replaced by `startTime`; `new Date(date + "T" + time)` is `Invalid Date` → `0` | Nothing yet — front end stays on v1, so it keeps working until the sunset                              | Ours (Team 7), deferred |
+| 5   | A deprecation notice was _not_ received for AgroConnect's keyed-reads change | Their reads went from public to `X-API-Key` without an announcement                                 | We found it in our partner log (401 → 502 → `stale: true` banner), added the key, re-tested 2026-11-09 | Theirs + ours, resolved |
+
+**Nothing broke this time for our consumers**, because v1 is still mounted on the old URLs and every v1 response says it is leaving. The two things that need a human before 30 November:
+
+- [ ] Send the full `DEPRECATION_NOTICE.md` text to Team 8 (the file is in the repo root; sending it from a person is the part I cannot do) and get a reply.
+- [ ] Read `GET /api/stats` + the request log and record which caller labels still hit `GET /api/events/` and `GET /api/v1/events/` before turning v1 off.

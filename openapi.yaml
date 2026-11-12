@@ -12,6 +12,12 @@ info:
     Retry-After header. All responses are JSON, including the 404 for
     unknown URLs.
 
+    Versioning: the events endpoints are also served under /v2, where each
+    event carries one ISO 8601 startTime (with a +03:00 offset) instead of
+    separate date and time strings. /v1 and the unversioned paths keep the
+    old shape described below, send Deprecation/Sunset/Link headers, and
+    stop working on 2026-11-30. See DEPRECATION_NOTICE.md.
+
 servers:
   - url: http://localhost:5000/api
     description: Local development
