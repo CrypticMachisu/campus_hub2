@@ -99,7 +99,7 @@ Five v2 reads, five v1 reads on the explicit prefix, five on the old URL — the
 Two things this capture settled:
 
 - **The version suite does not feed these counts.** `__tests__/versions.test.js` drives the app in-process through supertest and never opens a port, so its v1/v2 traffic cannot appear in a server's `/stats`; only the api-security and signups/comments suites hit `:5000`. The numbers above come from deliberate curls, not from `npm test`.
-- **`server/.env` sets `PORT=0`**, so `npm start` binds a random port and `curl localhost:5000` gets nothing. The commands above assume `PORT=5000 node server.js`.
+- **`server/.env` sets `PORT=5000`**, so `npm start` binds 5000. A shell spawned by the desktop app injects `PORT=0` instead, and dotenv does not override a variable that is already set — that, not `.env`, is how the server ends up on a random port and `curl localhost:5000` gets nothing. The commands above pass `PORT=5000 node server.js` so the capture does not depend on either.
 
 These are not consumer numbers — 5/5/5 is the probe, not usage. Repeat the three loops against deployed traffic and replace them; Team 8's key will show a different `caller` label, which is the whole point.
 

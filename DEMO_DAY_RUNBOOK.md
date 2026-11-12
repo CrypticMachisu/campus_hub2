@@ -97,8 +97,12 @@ unversioned `/api` path is v1 with a date on it. `API keys loaded: 0` means `API
 empty — every request will 401. Fix before you present. Git Bash alternative: `./run.sh`
 from the repo root (same thing, plus dependency install on first run).
 
-> **PORT=0 trap:** `server/.env` sets `PORT=0`, so a plain `npm start` binds a random port
-> and "looks" down. Always pass `$env:PORT = "5000"` (or `PORT=5000 ./run.sh`) explicitly.
+> **PORT note (corrected 12 Nov):** `server/.env` sets `PORT=5000`, so `npm start` binds 5000 in
+> a normal terminal. The only way this server lands on a random port is an inherited `PORT=0`:
+> a shell spawned by the desktop app carries one, and dotenv never overrides a variable that is
+> already set. The `$env:PORT = "5000"` line above makes window A immune either way. If you see
+> `listening on port 0`, clear the variable instead of adding more overrides: `Remove-Item
+Env:PORT` in PowerShell, `unset PORT` in Git Bash.
 
 **Window B — the web front end:**
 
@@ -878,17 +882,17 @@ netstat -ano | findstr ":5000 :5173 :4000"
 taskkill /PID <pid> /F
 ```
 
-| Symptom                                         | Fix                                                                                   |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `EADDRINUSE :5000`                              | Stop the old process above, restart window A                                          |
-| Server prints `listening` but every call is 401 | `API_KEYS` empty or `VITE_API_KEY` differs from it                                    |
-| Front end loads, every list errors              | Root `.env` has no `VITE_API_KEY`, or `VITE_API_URL` is wrong — restart `npm run dev` |
-| `Couldn't connect to MySQL`                     | XAMPP MySQL is not running                                                            |
-| Server on a random port / nothing on 5000       | `PORT=0` came from `server/.env`; restart with `$env:PORT = "5000"`                   |
-| Partner panels are empty on first load          | Reload once; Team 6's host is cold                                                    |
-| 429 in the middle of the demo                   | Wait 60 s, or restart window A (counters are in memory)                               |
-| `npx jest` fails to load the config             | You deleted `jest.config.cjs` or `babel.config.cjs`; both are required                |
-| Projector cuts off the right side               | `Get-Content … -Tail 5` instead of the full list; widen the window before you start   |
+| Symptom                                         | Fix                                                                                       |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `EADDRINUSE :5000`                              | Stop the old process above, restart window A                                              |
+| Server prints `listening` but every call is 401 | `API_KEYS` empty or `VITE_API_KEY` differs from it                                        |
+| Front end loads, every list errors              | Root `.env` has no `VITE_API_KEY`, or `VITE_API_URL` is wrong — restart `npm run dev`     |
+| `Couldn't connect to MySQL`                     | XAMPP MySQL is not running                                                                |
+| Server on a random port / nothing on 5000       | An inherited `PORT=0` overrode `.env`'s 5000; clear it or start with `$env:PORT = "5000"` |
+| Partner panels are empty on first load          | Reload once; Team 6's host is cold                                                        |
+| 429 in the middle of the demo                   | Wait 60 s, or restart window A (counters are in memory)                                   |
+| `npx jest` fails to load the config             | You deleted `jest.config.cjs` or `babel.config.cjs`; both are required                    |
+| Projector cuts off the right side               | `Get-Content … -Tail 5` instead of the full list; widen the window before you start       |
 
 **Last resort, and say it out loud:** "The API is running from the repo on this machine; if
 the network partner is down I will show our saved-data path instead." Never fake a partner
