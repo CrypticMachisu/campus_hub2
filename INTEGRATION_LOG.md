@@ -71,6 +71,8 @@ We contacted Jochebed Mukami from group 6 and we agreed to communicate on any is
 | 4   | Our own front end sorts every event as "oldest" and treats it as past on v2  | `date` + `time` were replaced by `startTime`; `new Date(date + "T" + time)` is `Invalid Date` → `0` | Nothing yet — front end stays on v1, so it keeps working until the sunset                              | Ours (Team 7), deferred |
 | 5   | A deprecation notice was _not_ received for AgroConnect's keyed-reads change | Their reads went from public to `X-API-Key` without an announcement                                 | We found it in our partner log (401 → 502 → `stale: true` banner), added the key, re-tested 2026-11-09 | Theirs + ours, resolved |
 
+**Verified on 2026-11-12** against a local XAMPP MariaDB 10.11 (13 events): old code (`7f1eb1c`) vs new (`7bb594e`), `diff` of `/api/events` empty, `/api/v1/events` byte-identical to `/api/events`, `/api/v2/events` carrying one `startTime` with no `date`/`time`, deprecation headers on the v1 paths only, `/stats` reporting the three paths as separate rows, and the full server suite at 30/30. The same run confirmed a pre-existing limitation: the DATE→string mapping shifts the day on hosts east of UTC and v2 inherits it (`VERSIONING_NOTES.md` §12).
+
 **Nothing broke this time for our consumers**, because v1 is still mounted on the old URLs and every v1 response says it is leaving. The two things that need a human before 30 November:
 
 - [ ] Send the full `DEPRECATION_NOTICE.md` text to Team 8 (the file is in the repo root; sending it from a person is the part I cannot do) and get a reply.

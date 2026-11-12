@@ -566,7 +566,7 @@ Unexpected server failure (`500`):
 
 ## Known issues
 
-- **Event dates can come back one day early.** In the create-event example, `"date":"2026-11-01"` was returned as `"2026-10-31"` by a server running in East Africa (UTC+3). Check the returned `date` before relying on it.
+- **Event dates can come back one day early.** In the create-event example, `"date":"2026-11-01"` was returned as `"2026-10-31"` by a server running in East Africa (UTC+3). Check the returned `date` before relying on it. `/api/v2/events` reports the same day, because both versions share the date mapping — see `VERSIONING_NOTES.md` §12.
 - **The test accounts share one known password.** They are for local development only.
 
 ---

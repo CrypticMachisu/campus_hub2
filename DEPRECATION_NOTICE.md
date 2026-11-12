@@ -14,7 +14,9 @@ v1 of the events endpoints is deprecated. **v2 is live now** at `/api/v2/events`
 
 ## Why
 
-We were sending a date and a clock time with no timezone. A server running outside East Africa returned event dates a day early (it is in our README under Known issues), and every consumer had to glue two fields together before it could sort or compare events. One timestamp with a real offset removes both problems, and it gives us one field to extend later (an end time) without another break.
+We were sending a date and a clock time with no timezone, so every consumer had to glue two fields together before it could sort or compare events, and the calendar day itself can come out wrong depending on where the server runs (it is in our README under Known issues). One timestamp with a real offset removes the joining and states the zone outright, and it gives us one field to extend later (an end time) without another break.
+
+To be straight with you about the second half: this is a shape change, not a data fix. `startTime` carries the same calendar day v1 gives you, so if v1 shows an event a day early on your machine, v2 will too. We would rather say that here than have you find it in your own tests.
 
 ## Before and after
 

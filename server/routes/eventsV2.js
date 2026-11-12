@@ -8,9 +8,15 @@
 //
 // The change: v1 sends `date` ("YYYY-MM-DD") and `time` ("HH:MM") as separate
 // strings. v2 sends one ISO 8601 timestamp, `startTime`, with an explicit
-// +03:00 offset (East Africa Time, the zone the stored dates are in). That
-// fixes the known bug where a server in another timezone returned the date a
-// day early.
+// +03:00 offset (East Africa Time, the zone the stored dates are in), so a
+// consumer can sort and compare events without gluing two fields together.
+//
+// It does NOT repair the known off-by-one in the day itself: `date` comes from
+// v1's mapper (rowMappers.js, which formats a local-midnight Date with
+// toISOString()), so on a host east of UTC it is already a day early, and
+// startTime is built from that same string. Fixing the mapper changes v1's
+// values too, so it stays a separate, announced change — see
+// VERSIONING_NOTES.md §12.
 import { Router } from "express";
 import { eventsRouter } from "./events.js";
 

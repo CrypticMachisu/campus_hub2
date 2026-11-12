@@ -22,7 +22,7 @@ This is the short version for people in the ring. The formal paperwork is
 
 **Nothing else changed.** Clubs, auth, signups, comments, announcements and partner endpoints answer the same. `POST` and `PUT` bodies still accept `date` + `time` (and `startTime`), so the code that _writes_ events does not need touching — only the code that _reads_ them does.
 
-**Why we broke it:** we were sending a date and a clock time with no timezone. A server outside East Africa returned an event dated `2026-11-01` as `2026-10-31` (it is in our README under Known issues), and every consumer had to paste two fields together before it could sort or compare events.
+**Why we broke it:** we were sending a date and a clock time with no timezone, so every consumer had to paste two fields together before it could sort or compare events. One field with an explicit `+03:00` offset removes that job. It does **not** repair the day-shift bug in our README: `startTime` carries the same calendar day v1 reports, so if v1 shows an event a day early on your machine, v2 does too. We say that here rather than let you discover it in your own tests (`VERSIONING_NOTES.md` §12).
 
 ### What to do (about 15 minutes)
 
@@ -70,6 +70,7 @@ v1 stays up **past** Demo Day on purpose, so nobody's demo breaks. If 30 Novembe
 - Every non-events endpoint: `clubs`, `auth`, `users`, `admin-requests`, `signups`, `comments`, `announcements`, `partner`, `health`, `stats`.
 - `POST` / `PUT` / `DELETE` request bodies for events, including `date` + `time`.
 - API keys, the 100-requests-per-minute rate limit, and the `{ "error": "…" }` error envelope.
+- The calendar day itself: `startTime` uses the same date v1 computes, off-by-one included (see above).
 - Our Week 10/11 integration with AgroConnect — unchanged this week.
 
 ---
