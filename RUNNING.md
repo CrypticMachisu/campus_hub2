@@ -138,14 +138,14 @@ API. Add your deployed frontend's origin there; server-to-server callers send no
 ./run.sh            # Git Bash / macOS / Linux — installs server deps if missing, then runs
 ```
 
-`run.sh` tees every request line into `server/requests.log` while showing it in the same
+`run.sh` appends every request line to `server/requests.log` while showing it in the same
 terminal. Leave this terminal open — closing it stops the server.
 
 **Alternatives, in order of preference when `run.sh` fails:**
 
 ```bash
 # 1. manual equivalent of run.sh
-cd server && npm install && node server.js 2>&1 | tee requests.log
+cd server && npm install && node server.js 2>&1 | tee -a requests.log
 
 # 2. production start (no log copy)
 cd server && npm start
@@ -205,20 +205,46 @@ if `VITE_*` changes don't take effect, stop and re-run (Vite reads them at start
 
 ## Step 6 — letting teammates in (the public URL, optional)
 
-Weeks 9–12 use an **ngrok** tunnel so the ring partner can call you:
+Weeks 9–12 use an **ngrok** tunnel so the ring partner can call you. The target must be port **5000**; port **4040** is ngrok's own inspector and returns plain-text `404 page not found` for every API path.
+
+Pin the target in ngrok's config (`%LOCALAPPDATA%\ngrok\ngrok.yml` on Windows,
+`~/.config/ngrok/ngrok.yml` on macOS/Linux):
+
+```yaml
+version: "3"
+tunnels:
+  campushub:
+    proto: http
+    addr: 5000
+    domain: movable-eastcoast-showman.ngrok-free.dev
+```
+
+Start it by name:
 
 ```bash
-ngrok http 5000
+ngrok start campushub
 ```
+
+If you use the short form instead, `ngrok http 5000` is correct. **Never use `ngrok http 4040`.**
 
 Copy the `https://...ngrok-free.dev` forwarding URL, put it into `server/.env` as
 `PUBLIC_URL`, and restart the server — startup then prints `Public URL: <url>/api`.
 Teammates call `https://<that-url>/api/...` with the key **you issued them**.
 
-> **ngrok address changes** every time ngrok restarts unless you have a static domain:
-> re-share the new URL after each restart. If teammates get browser-warning pages,
-> their request needs the header `ngrok-skip-browser-warning: true` (our front end
-> already sends it).
+Run the repeatable tunnel check after each restart:
+
+```bash
+npm run check:tunnel
+```
+
+It must print `PASS public health: 200 {"ok":true}` and `PASS tunnel target: port 5000`.
+If the public URL returns plain-text `404 page not found`, the tunnel is pointing at
+ngrok's inspector; restart it against port 5000.
+
+> **The public URL is pinned to the static domain above.** If that domain changes,
+> update the config, `PUBLIC_URL`, and the README. If teammates get browser-warning
+> pages, their request needs the header `ngrok-skip-browser-warning: true` (our front
+> end already sends it).
 
 ## Troubleshooting quick list
 
@@ -232,6 +258,7 @@ Teammates call `https://<that-url>/api/...` with the key **you issued them**.
 | `/api/partner/*` answers 502 `Partner data unavailable`                | Expected behaviour when Team 6's upstream is down/slow/unauthorized — the log line above says why. The rest of the API is unaffected |
 | Front end loads but every list is an error                             | The React bundle has no `VITE_API_KEY` or points at the wrong `VITE_API_URL` — fix root `.env`, restart `npm run dev` (or rebuild)   |
 | ngrok teammates see an interstitial page                               | Send `ngrok-skip-browser-warning: true` (see Step 6)                                                                                 |
+| Public URL returns plain-text `404 page not found`                     | ngrok points at its inspector on 4040. Restart with `ngrok start campushub` (target 5000), then run `npm run check:tunnel`           |
 
 ## After a shutdown — the 60-second version
 

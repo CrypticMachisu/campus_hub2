@@ -6,6 +6,7 @@ CampusHub is a REST API for a campus clubs-and-events app. It lets students list
 - **Base URL (live, temporary):** `https://movable-eastcoast-showman.ngrok-free.dev/api`
 - **Stack:** Node.js + Express + MySQL
 - **API reference:** open `docs/index.html` in a browser (generated from `openapi.yaml`).
+- **Calling from another service:** see [PRODUCER_INTEGRATION.md](PRODUCER_INTEGRATION.md) for the live URL, headers, versioning, and error meanings.
 
 ---
 

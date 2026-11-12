@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "smoke": "node scripts/smoke.mjs",
+    "check:tunnel": "node scripts/check-tunnel.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "preview": "vite preview",

@@ -101,19 +101,59 @@ curl http://127.0.0.1:5000/api/clubs                       # 401 (key enforced)
 
 ### 6. Start the tunnel
 
-```bash
-ngrok http 5000
+Pin the target in ngrok's config so it cannot be started against ngrok's own
+inspector by mistake. Add this to `%LOCALAPPDATA%\ngrok\ngrok.yml`
+(`~/.config/ngrok/ngrok.yml` on macOS/Linux):
+
+```yaml
+version: "3"
+tunnels:
+  campushub:
+    proto: http
+    addr: 5000
+    domain: movable-eastcoast-showman.ngrok-free.dev
 ```
+
+Then start the named tunnel:
+
+```bash
+ngrok start campushub
+```
+
+> **Never run `ngrok http 4040`.** Port 4040 is ngrok's local inspector, not
+> the API. A tunnel pointed there answers every `/api/...` path with plain-text
+> `404 page not found`, before Express sees the request — a correct API key
+> makes no difference. The target must be `5000`.
+>
+> If you do not use a config file, `ngrok http 5000` is the short form. Confirm
+> the target before sharing the URL:
+> `curl -s http://127.0.0.1:4040/api/tunnels` → `"addr":"http://localhost:5000"`.
 
 Free-plan notes:
 
-- The URL **changes on every ngrok restart**. Two places must follow it:
+- The URL is pinned to the static domain in the config. If the domain changes (or you use a random URL instead), two places must follow it:
   - `PUBLIC_URL` in `server/.env` (restart the API after changing — it's read at startup),
   - the consumer-facing base URL in [README.md](README.md) ("Base URL (live, temporary)").
 - Consumers' first browser request returns an HTML interstitial; they send `ngrok-skip-browser-warning: true` (README covers this; the ngrok web UI at `127.0.0.1:4040` records every request).
-- If ngrok already runs from a different shell session, `127.0.0.1:4040` shows its current URL — don't start a second tunnel.
+- If ngrok already runs from a different shell session, `127.0.0.1:4040` shows its current URL and target — don't start a second tunnel.
+- Run `npm run check:tunnel` from the repo root after every restart. It fails on ngrok's plain-text 404 and checks that the target is port 5000.
 
 ### 7. End-to-end check through the tunnel
+
+Run the repeatable check first:
+
+```bash
+npm run check:tunnel
+```
+
+Expected:
+
+```
+PASS public health: 200 {"ok":true}
+PASS tunnel target: port 5000
+```
+
+Then check a real keyed request:
 
 ```bash
 curl https://<current-tunnel>/api/health -H "ngrok-skip-browser-warning: 1"
@@ -146,14 +186,15 @@ Kill it by the port it holds (same netstat/taskkill dance). Note the test burst 
 
 ## Troubleshooting cheat sheet
 
-| Symptom                                       | Cause / fix                                                                                                                        |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Server exits with `Couldn't connect to MySQL` | XAMPP MySQL not running, or `DB_*` in `server/.env` wrong.                                                                         |
-| `EADDRINUSE :5000` at startup                 | An old instance is still bound. `taskkill //PID <old-pid> //F`, then start again.                                                  |
-| Server "starts" but isn't on 5000             | The `PORT=0` trap — pass `PORT=5000` explicitly.                                                                                   |
-| Everything 401s in production traffic         | `API_KEYS` empty/typo — check the `API keys loaded:` count in the log.                                                             |
-| Consumers see an HTML page instead of JSON    | They hit the ngrok interstitial — send `ngrok-skip-browser-warning: true`.                                                         |
-| Consumers see 429                             | One consumer exceeded 100 requests/60s; they should honour `Retry-After`.                                                          |
-| 429 while you yourself test a working key     | Your own key filled its window; wait it out or use a second test key.                                                              |
-| Tunnel URL changed and consumers got errors   | Update `PUBLIC_URL` + README base URL and tell consumers; the tunnel is free-plan and rotates on restart.                          |
-| `docs/index.html` shows an old endpoint list  | It's a pre-generated Redoc bundle; rebuild it from `openapi.yaml` after spec changes (redoc CLI not scripted in package.json yet). |
+| Symptom                                            | Cause / fix                                                                                                                                        |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server exits with `Couldn't connect to MySQL`      | XAMPP MySQL not running, or `DB_*` in `server/.env` wrong.                                                                                         |
+| `EADDRINUSE :5000` at startup                      | An old instance is still bound. `taskkill //PID <old-pid> //F`, then start again.                                                                  |
+| Server "starts" but isn't on 5000                  | The `PORT=0` trap — pass `PORT=5000` explicitly.                                                                                                   |
+| Everything 401s in production traffic              | `API_KEYS` empty/typo — check the `API keys loaded:` count in the log.                                                                             |
+| Consumers see an HTML page instead of JSON         | They hit the ngrok interstitial — send `ngrok-skip-browser-warning: true`.                                                                         |
+| Public URL returns plain-text `404 page not found` | The tunnel points at ngrok's inspector on 4040, or another app. Restart with `ngrok start campushub` (target 5000) and run `npm run check:tunnel`. |
+| Consumers see 429                                  | One consumer exceeded 100 requests/60s; they should honour `Retry-After`.                                                                          |
+| 429 while you yourself test a working key          | Your own key filled its window; wait it out or use a second test key.                                                                              |
+| Tunnel URL changed and consumers got errors        | Update `PUBLIC_URL` + README base URL and tell consumers; the tunnel is free-plan and rotates on restart.                                          |
+| `docs/index.html` shows an old endpoint list       | It's a pre-generated Redoc bundle; rebuild it from `openapi.yaml` after spec changes (redoc CLI not scripted in package.json yet).                 |
