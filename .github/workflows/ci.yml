@@ -38,6 +38,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The version suite needs no database and no running API: it drives the
+      # exported app in-process with supertest and stubs the pool query. A red
+      # run fails the job, so a drift in v1's shape cannot reach main.
+      - name: Version tests (Jest)
+        run: npx jest
+
   api-tests:
     name: Server tests (MySQL + API)
     runs-on: ubuntu-latest
