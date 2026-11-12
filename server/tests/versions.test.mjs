@@ -169,6 +169,23 @@ test("v1 and the old URLs announce the sunset; v2 and unknown paths do not", asy
   }
 });
 
+test("v1 and v2 return the same error body, so callers' error handling survives", async () => {
+  const post = (path) =>
+    fetch(`${base}${path}`, {
+      method: "POST",
+      headers: { ...KEY, "Content-Type": "application/json" },
+      body: "{}",
+    });
+
+  const [v1, v2] = await Promise.all([post("/v1/events"), post("/v2/events")]);
+  assert.equal(v1.status, 401, "a write without a session is rejected in v1");
+  assert.equal(v2.status, v1.status, "v2 must reject it the same way");
+
+  const body = await v1.json();
+  assert.equal(typeof body.error, "string");
+  assert.deepEqual(await v2.json(), body, "the error envelope is not versioned");
+});
+
 test("an empty list still comes back as { events: [] } in v2", async () => {
   pool.query = async () => [[]]; // no rows
   try {
