@@ -3,3 +3,8 @@ dist/
 node_modules/
 docs/index.html
 package-lock.json
+
+# Evidence snapshots must stay byte-identical to the API responses they record;
+# prettier re-indenting them breaks the sha256 quoted in VERSIONING_NOTES.md.
+docs/v1_before.json
+docs/v1_after.json
