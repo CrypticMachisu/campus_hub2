@@ -3,9 +3,11 @@
 // defined". Naming it .cjs states the module type Node should use.
 module.exports = {
   testEnvironment: "node",
-  // The version suite is the handout's deliverable. The root __tests__/events
-  // harness belongs to a different API shape (paginated body, GET /events/:id)
-  // and is left out on purpose; run it explicitly if it is ever revived.
+  // Only the version suite. The old events/clubs harness asserted a contract
+  // this API never had ({data,total,page,limit}, GET /events/:id,
+  // GET /clubs/:id, clubs search/category filters, {error,message} bodies), and
+  // had never run. It was removed rather than ported: server/tests/ already
+  // covers those routes against the real shape.
   testMatch: ["**/__tests__/versions.test.js"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
   testTimeout: 15000,
