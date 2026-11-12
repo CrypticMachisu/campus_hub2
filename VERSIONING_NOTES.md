@@ -44,13 +44,64 @@ Two callers are known from the code, not from data:
 | `GET /api/events`        | Team 8, our downstream partner                         | unknown until the notice is answered |
 | `PUT`/`POST /api/events` | our own front end (`saveCustomEvent`)                  | yes                                  |
 
-I could not measure call counts: `/stats` lives in the server's memory and this machine has no MySQL, so no server was running to read it. When the API is up, the answer is one request:
+`/stats` lives in the server's memory, so it has to be read while the API is up. It was read once locally (capture below); real consumer numbers need a deployed server carrying real traffic.
+
+### Reading the v1 vs v2 counts from `/stats`
+
+Every route's running total is under `routes`, keyed by method + path:
 
 ```bash
-curl -s -H "X-API-Key: <key>" http://localhost:5000/api/stats
+curl -s -H "X-API-Key: $KEY" http://localhost:5000/api/stats
 ```
 
-Rows to read: `GET /api/events/` and `GET /api/v1/events/` are v1; `GET /api/v2/events/` is v2. The request log adds the caller label (`key-xxxxxx`) per line, which is how you tell Team 8 apart from our own front end. **v1 cannot be switched off today**: our own front end still reads `event.date` / `event.time`, and no partner has confirmed a migration.
+Filter it to the event rows if `jq` is installed:
+
+```bash
+curl -s -H "X-API-Key: $KEY" http://localhost:5000/api/stats \
+  | jq '.routes | with_entries(select(.key | contains("events")))'
+```
+
+| Route label in `routes`                                            | Version | Who it is                                      |
+| ------------------------------------------------------------------ | ------- | ---------------------------------------------- |
+| `GET /api/v1/events/`                                              | v1      | a caller using the explicit version prefix     |
+| `GET /api/events/`                                                 | v1      | a caller on the old unversioned URL            |
+| `GET /api/v2/events/`                                              | v2      | migrated traffic — the number that should grow |
+| `POST /api/v1/events/`, `POST /api/events/`                        | v1      | creating events, on either old URL             |
+| `PUT`/`DELETE /api/v1/events/:id` (and the unversioned `:id` rows) | v1      | editing and deleting                           |
+| `POST /api/v2/events/`, `PUT`/`DELETE /api/v2/events/:id`          | v2      | the same writes, migrated                      |
+
+The trailing `/` is part of the list label: the events router is mounted at `/events`, so its list route is `req.route.path === "/"` and the label is `"/api/v1/events" + "/"`. Read the rows for writes too — a caller that migrated reads but not writes is only half-migrated.
+
+Three things to keep in mind when reading them:
+
+- **The counts reset on restart.** They are in memory; `startedAt` and `uptimeSeconds` are in the same body. Compare v1 and v2 over the same window.
+- **A row counts attempts, including rejected ones.** A 401 on a known route still matches that route, so it lands in the row with `clientErrors` incremented (a 401 against `/api/events` did exactly that during the local run); only an unmatched path, such as an unknown 404, falls under `(no route)`. Read `count - clientErrors - serverErrors` when you want served reads.
+- **The rows say which version, not which caller.** To attribute a count, read the request log — one JSON line per request on the server's stdout, redirected to `server/requests.log` if you want a file (that path is gitignored by `*.log`, so whatever sits there is a leftover from an earlier local run — a stale five-line file from 9 November on this machine — never a committed sample). Each line carries the full `path` and a `caller` label (`key-xxxxxx`, a hash prefix — never the key). That is how Team 8 is told apart from our own front end.
+
+Our own checks count too: each read above adds one to `GET /api/stats`, and a burst of manual curls spends the same 100-per-60s budget as any other caller.
+
+#### Captured locally, 12 November 2026
+
+API started against the local MySQL, then five `GET`s sent to each events URL from a fresh process. `/stats` returned:
+
+```text
+startedAt 2026-11-12T10:19:02.851Z      total 16
+
+GET /api/v2/events/   count 5   clientErrors 0   avgMs 40.2
+GET /api/v1/events/   count 5   clientErrors 0   avgMs 23.9
+GET /api/events/      count 5   clientErrors 0   avgMs 24.3
+```
+
+Five v2 reads, five v1 reads on the explicit prefix, five on the old URL — the three rows the table predicts, with exactly the labels it names. All fifteen request-log lines carried the same `caller` label (`key-1a2313`), so one consumer is recognisable across all three of its URLs.
+
+Two things this capture settled:
+
+- **The version suite does not feed these counts.** `tests/versions.test.mjs` starts its own app on an ephemeral port, so its v1/v2 traffic never appears in a server's `/stats`; only the api-security and signups/comments suites hit `:5000`. The numbers above come from deliberate curls, not from `npm test`.
+- **`server/.env` sets `PORT=0`**, so `npm start` binds a random port and `curl localhost:5000` gets nothing. The commands above assume `PORT=5000 node server.js`.
+
+These are not consumer numbers — 5/5/5 is the probe, not usage. Repeat the three loops against deployed traffic and replace them; Team 8's key will show a different `caller` label, which is the whole point.
+
+**v1 cannot be switched off today**: our own front end still reads `event.date` / `event.time`, and no partner has confirmed a migration.
 
 ## 5. The notice we wrote
 
@@ -122,10 +173,10 @@ Nine tests, all passing: v1's exact field set (`date`, `time`, no `startTime`), 
 
 Every event object in v2 and in v1 comes out of the same handlers; the tests stub only the database query, so the mounts, guards and shaping are the real code.
 
-Two checks from the handout could not be run here and are the first thing to do on a machine with MySQL:
+Both handout evidence checks have now been captured on this machine:
 
-1. `curl .../api/events > v1_before.json` before deploying and `diff v1_before.json v1_after.json` after — this copy of the repository has no database and no running server.
-2. `curl -s .../api/stats` for the v1 call counts in section 4.
+1. **Evidence 1 — before/after `diff`.** The old server was run from a worktree at `7f1eb1c`; `GET /api/events` was saved as `docs/v1_before.json` (13 events, 4684 bytes, sha256 `3356ca69…`). The current code answered with the same bytes into `docs/v1_after.json`, so `diff` printed nothing. Both snapshots are committed under `docs/`, so the proof does not depend on a temp folder. The v1 response carried `Deprecation`/`Sunset`/`Link`; v2 carried none.
+2. **`/api/stats`** — captured locally, numbers and reading in section 4.
 
 The handout's `npx jest` command does not apply as written: the root Jest config (`jest.config.js`) is CommonJS inside a `"type": "module"` package, so Jest cannot load it, and the root `__tests__` harness requires an `app.js` at the repo root that does not exist. The server's own convention is `node --test` (see `server/tests/`), so the version tests follow that and run green.
 
@@ -137,13 +188,13 @@ The handout's `npx jest` command does not apply as written: the root Jest config
 | --------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **A.** Pick one legitimate breaking change                                                                                  | Done                      | §1 — one field replaced, real reason (§2).                                                                                                                                                                                                                                                                                                                                                  |
 | **A.** `VERSIONING_NOTES.md`: change, why, predicted failing line                                                           | Done, with a caveat       | §1–3. The prediction names our own consumer's line (`src/utils/dateTime.js:16`); the partner's line is **Manual** — ask Team 8 which file reads `date`/`time`.                                                                                                                                                                                                                              |
-| **B1.** `curl` snapshot to `v1_before.json` before changing anything                                                        | **Manual**                | No MySQL and no server copy on this machine, so there was nothing to snapshot. The frozen warehouse is byte-identical to the pre-change `server/routes/events.js` instead (§8). Run the two `curl`s when the DB is up.                                                                                                                                                                      |
+| **B1.** `curl` snapshot to `v1_before.json` before changing anything                                                        | Done                      | Old server run from a `7f1eb1c` worktree (reusing `server/node_modules` and `--env-file=../../server/.env`); `GET /api/events` saved as `docs/v1_before.json` — 13 events, 4684 bytes.                                                                                                                                                                                                      |
 | **B2.** Move handlers into `v1.js`, move don't edit                                                                         | Done                      | `server/routes/events.js` was never edited at all; `server/v1.js` mounts it unchanged. Zero edits is a stronger version of “move, don't edit”.                                                                                                                                                                                                                                              |
 | **B3.** `v2.js`, one mapper to the new shape                                                                                | Done                      | `server/routes/eventsV2.js` (`toV2Event`), mounted by `server/v2.js`.                                                                                                                                                                                                                                                                                                                       |
 | **B4.** Mount v2, then v1, then the unversioned paths                                                                       | Done                      | `server/app.js`: `/api/v2`, `/api/v1`, `/api`, all after monitor/CORS/`health`/`stats`; the key guard is per route, so v2 still needs a key (tested).                                                                                                                                                                                                                                       |
 | **B5.** Make the log/`/stats` show the version                                                                              | Done                      | `server/monitoring.js` captures `req.path` at request start, so log lines read `/api/v1/events` and `/api/v2/events`; `/stats` keys on `req.baseUrl + req.route.path`.                                                                                                                                                                                                                      |
-| **B6.** Call all three URLs by hand                                                                                         | Partial                   | v1 = old URL = old shape, and v2 = new shape are asserted in `versions.test.mjs`. Live `curl` is **Manual** (no DB).                                                                                                                                                                                                                                                                        |
-| **C1.** `diff v1_before.json v1_after.json` prints nothing                                                                  | **Manual**                | Same missing database. The test in `versions.test.mjs` is the proof that runs every time.                                                                                                                                                                                                                                                                                                   |
+| **B6.** Call all three URLs by hand                                                                                         | Done                      | Five GETs to each of `/api/events`, `/api/v1/events` and `/api/v2/events` against the live server: the two v1 URLs returned the old shape, v2 returned `startTime`. `versions.test.mjs` asserts the same split on every run.                                                                                                                                                                |
+| **C1.** `diff v1_before.json v1_after.json` prints nothing                                                                  | Done                      | `docs/v1_after.json` is the same 4684 bytes and the same sha256 (`3356ca69…`) as `docs/v1_before.json`; `diff` exits 0 and prints nothing. Re-check with `diff docs/v1_before.json docs/v1_after.json`.                                                                                                                                                                                     |
 | **C2.** A test that pins v1's shape, the old URL, v2's shape and the headers                                                | Done                      | `server/tests/versions.test.mjs`, 9 tests. v1 has no `GET /events/:id`, so the “error shape unchanged” check uses an unauthenticated `POST` and asserts v1 and v2 return the same body.                                                                                                                                                                                                     |
 | **C3.** `deprecate.js` + `old` on the v1 routes                                                                             | Done                      | `server/deprecate.js`; applied at the mount in `server/v1.js` so v2 cannot inherit the headers.                                                                                                                                                                                                                                                                                             |
 | **C4.** `npx jest` passes                                                                                                   | Substituted, deliberately | The root Jest config cannot load (CJS file in an ESM package) and its harness needs a root `app.js` that does not exist; the server's own convention is `node --test`, which is where these tests live and pass 9/9.                                                                                                                                                                        |
@@ -152,17 +203,17 @@ The handout's `npx jest` command does not apply as written: the root Jest config
 | **D.** Send it to the partner, full text, and ask for a reply                                                               | **Manual**                | Needs a person in the ring channel. The text is ready to paste; the checklist in `INTEGRATION_LOG.md` tracks the reply.                                                                                                                                                                                                                                                                     |
 | **D.** Sunset date the partner can meet, no later than the day before Demo Day, v1 alive until after Demo Day               | Done                      | Migrate by 19 Nov (Demo Day); v1 stops 30 Nov. The handout's two sentences pull against each other — we read the intent as “partner on v2 before Demo Day, v1 outlives Demo Day”, which is what the notice says.                                                                                                                                                                            |
 | **E1–E8.** Receive a notice, try their v2, `partner.js` + `PARTNER_VERSION`, parser tests, switch, `"stale": false`, log it | **Blocked, not done**     | Team 6 has published no v2 and sent no notice. `https://farmers-agroconnect.onrender.com/api/v2/farmers` answers `401` (their key guard runs before routing), so we cannot even see whether v2 exists without their key. Building a versions table against an invented contract would be worse than waiting; §6 records the position honestly. This is the 8 rubric points we cannot claim. |
-| **F.** Who still uses v1, from `/stats`                                                                                     | Partial                   | Method and the exact rows to read are in §4, and `/stats`/logs now separate `/api/v1/events/`, `/api/events/` and `/api/v2/events/`. The counts need a running server — **Manual**.                                                                                                                                                                                                         |
+| **F.** Who still uses v1, from `/stats`                                                                                     | Partial                   | Method, exact rows and one local capture (v2 5 / v1 5 / old 5) are in §4, and `/stats`/logs now separate `/api/v1/events/`, `/api/events/` and `/api/v2/events/`. Real consumer counts still need deployed traffic — **Manual**.                                                                                                                                                            |
 | **F.** Reflection, 150–250 words                                                                                            | Done                      | §7, 223 words.                                                                                                                                                                                                                                                                                                                                                                              |
 | **F.** `git status` clean, `.env` not committed                                                                             | Done                      | Committed and pushed; `.env` stayed in `.gitignore`.                                                                                                                                                                                                                                                                                                                                        |
 | **F.** `git add …`, commit, push                                                                                            | Done                      | `775138f` on `main`, plus the `week13-api-versioning` branch.                                                                                                                                                                                                                                                                                                                               |
 
 ### What a person still has to do
 
-1. **Snapshot and diff v1** with MySQL running (`curl … > v1_before.json`, then again after a restart, then `diff`) — the handout's Evidence 1.
-2. **Call the three URLs by hand** (`/api/v1/events`, `/api/events`, `/api/v2/events`) and eyeball the JSON, as in Part B step 6.
-3. **Send the notice to Team 8** in the ring channel, full text plus the repo link, and ask for a one-line reply. Then record the reply in `INTEGRATION_LOG.md`.
-4. **Ask Team 8 for the exact line** in their Week 10 integration that reads `event.date` / `event.time`, so §3 is about their code and not only ours.
-5. **Read `/stats` + the request log** once the API is deployed, and write down which caller labels are still on v1 (Part F).
-6. **Chase Team 6** for their versioning plan and a v2 contract with a key; only then build `partner.js`'s versions table, `PARTNER_VERSION` and `partner.test.js` (Part E).
-7. **Decide about our own front end** before 30 November: migrate it to `startTime` (§3 lists every line) or accept that it breaks at the sunset.
+1. **Send the notice to Team 8** in the ring channel, full text plus the repo link, and ask for a one-line reply. Then record the reply in `INTEGRATION_LOG.md`.
+2. **Ask Team 8 for the exact line** in their Week 10 integration that reads `event.date` / `event.time`, so §3 is about their code and not only ours.
+3. **Read `/stats` + the request log on the deployed server** and write down which caller labels are still on v1 (Part F). The local capture in §4 shows how to read it; it is not consumer traffic.
+4. **Chase Team 6** for their versioning plan and a v2 contract with a key; only then build `partner.js`'s versions table, `PARTNER_VERSION` and `partner.test.js` (Part E).
+5. **Decide about our own front end** before 30 November: migrate it to `startTime` (§3 lists every line) or accept that it breaks at the sunset.
+
+Both local evidence checks are now done: the §10 before/after `diff` and the §4 `/stats` capture.
