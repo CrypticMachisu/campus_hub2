@@ -325,8 +325,9 @@ happened.
 
 ## 8. Open items
 
-- Send [DEPRECATION_NOTICE.md](DEPRECATION_NOTICE.md) to Team 8 by hand and record the reply;
-  do not assume migration from the absence of a complaint.
+- Chase Team 8 for a reply to [DEPRECATION_NOTICE.md](DEPRECATION_NOTICE.md) (sent by hand,
+  unanswered) and confirm their caller label on `/api/v2/events` in `/stats`; do not assume
+  migration from silence.
 - Get Team 6's named notice channel, a deployed v2, its contract, and a test key.
   Their 12 November notice covers product reads only, so `/produce` still has no
   versioned path and no notice path. Only then build `PARTNER_VERSION` and the adapter

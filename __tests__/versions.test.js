@@ -225,6 +225,10 @@ describe("the sunset enforces itself", () => {
 
     expect((await request(late).get("/api/v2/events").set(KEY)).status).toBe(200);
     expect((await request(late).get("/api/health")).status).toBe(200);
+
+    // The notice retires events only. `/api/clubs` is still mounted, so it asks
+    // for a key (401) instead of being swept up by the sunset.
+    expect((await request(late).get("/api/clubs")).status).toBe(401);
   });
 });
 

@@ -74,7 +74,7 @@ We contacted Jochebed Mukami from group 6 and we agreed to communicate on any is
 
 **Nothing broke this time for our consumers**, because v1 is still mounted on the old URLs and every v1 response says it is leaving. The two things that need a human before 30 November:
 
-- [ ] Send the full `DEPRECATION_NOTICE.md` text to Team 8 (the file is in the repo root; sending it from a person is the part I cannot do) and get a reply.
+- [x] Send the full `DEPRECATION_NOTICE.md` text to Team 8 and get a reply. **Sent by hand and delivered; no reply received** (confirmed 12 November 2026). Their migration to `/api/v2/events` is therefore unconfirmed — treat the silence as silence, not as agreement to move.
 - [ ] Read `GET /api/stats` + the request log and record which caller labels still hit `GET /api/events/` and `GET /api/v1/events/` before turning v1 off.
 
 ## Upstream deprecation notice (Team 6) — reviewed 12 November 2026

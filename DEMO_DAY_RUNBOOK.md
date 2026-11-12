@@ -403,9 +403,9 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
 - `GET /api/v1/events` and the old `GET /api/events` keep the old shape and send
   `Deprecation: true`, `Sunset: Mon, 30 Nov 2026 00:00:00 GMT` and
   `Link: </api/v2/events>; rel="successor-version"` on **every** response.
-- v1 is stopped by a date check (`isV1Retired`) in front of its mounts, read on every
-  request, so the sunset happens without a deploy; after 30 Nov the old paths answer the
-  404 the notice promises, even in a process that started before the date.
+- v1 is stopped by a date check (`isV1Retired`) in front of the events mounts, read on every
+  request, so the sunset happens without a deploy; after 30 Nov the old events paths answer
+  the 404 the notice promises, even in a process that started before the date.
 - v2 is a mapper over v1's own handlers, so validation, permissions and status codes cannot
   drift; only the response shape changes.
 - Proof: `diff docs/v1_before.json docs/v1_after.json` prints nothing (both 4684 bytes,

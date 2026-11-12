@@ -78,14 +78,18 @@ export function createApp({ now = () => new Date() } = {}) {
   // to prevent.
   app.use("/api/v2", v2Router);
 
-  // Week 13 follow-up: the sunset enforces itself. This sits in front of both
+  // Week 13 follow-up: the sunset enforces itself. This sits in front of the
   // v1 mounts and reads the clock on every request, so from 2026-11-30T00:00:00Z
-  // every old path answers `404 {"error":"Not found."}` — the exact status and
-  // body DEPRECATION_NOTICE.md promises — even in a process that started before
-  // the date. Nobody has to delete a mount, and a long-running server cannot
-  // outlive its own notice. `/api/health`, `/api/stats` and `/api/v2` are
-  // registered above this line and are untouched.
-  app.use("/api", (req, res, next) => {
+  // the old events paths answer `404 {"error":"Not found."}` — the exact status
+  // and body DEPRECATION_NOTICE.md promises — even in a process that started
+  // before the date. Nobody has to delete a mount, and a long-running server
+  // cannot outlive its own notice.
+  //
+  // Scoped to /events on purpose: the notice retires the events endpoints, and
+  // says the other resources are unchanged. Killing every unversioned path here
+  // would break `/api/clubs` for a caller who read the notice literally, which
+  // is the failure this week is about.
+  app.use(["/api/events", "/api/v1/events"], (req, res, next) => {
     if (!isV1Retired(now())) return next();
     res.status(404).json({ error: "Not found." });
   });

@@ -80,9 +80,9 @@ v1 stays up **past** Demo Day on purpose, so nobody's demo breaks. If 30 Novembe
 
 | Member            | Action                                                                                                                                                                                                       | By        |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
-| Team 8 (consumer) | Read the notice, reply that you read it, switch your reads to `/api/v2/events`, tell us when done so we can confirm it in `/stats`.                                                                          | 19 Nov    |
+| Team 8 (consumer) | Read the notice — delivered 12 November, **not yet acknowledged** — reply that you read it, switch your reads to `/api/v2/events`, tell us when done so we can confirm it in `/stats`.                       | 19 Nov    |
 | Team 6 (producer) | Notice received for product reads; scope confirmed as not ours. Still owed: a named notice channel, a deployed `/api/v2/products` with a test key, and the sunset status and body before any date is agreed. | This week |
-| Team 7 (us)       | Send the notice to Team 8 by hand, watch `/stats` for remaining v1 callers, keep v1 running until 30 Nov. Our own React front end already calls `/api/v2`.                                                   | Sunset    |
+| Team 7 (us)       | Notice delivered to Team 8 by hand on 12 November; no reply yet. Watch `/stats` for remaining v1 callers, keep v1 running until 30 Nov. Our own React front end already calls `/api/v2`.                     | Sunset    |
 
 ## 5. Where everything lives
 
