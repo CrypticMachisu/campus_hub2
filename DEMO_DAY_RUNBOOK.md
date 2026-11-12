@@ -295,7 +295,7 @@ listening, which is what lets the tests drive it in-process.
 
 **Build and Test** — CI on every push: ESLint + Vite build + 21 server tests on a throwaway
 MySQL container (`api-security`, `migrate`, `signups-comments`), plus 14 Jest tests
-(9 version, 5 for the v2 mapping) that need no database; a headless browser smoke test for login, RSVP, waitlist and retry.
+(13 version, 5 for the v2 mapping) that need no database; a headless browser smoke test for login, RSVP, waitlist and retry.
 
 **Documentation** — `README.md` quickstart (PowerShell `curl.exe`, `--data "@file.json"`),
 `openapi.yaml` → `docs/index.html` (Redoc), plus `RUNNING.md`, `OPERATIONS.md`,
@@ -315,7 +315,7 @@ the v1/v2 split.
 > quickstart with Windows PowerShell examples. We built read and write endpoints for auth,
 > clubs, events, signups and comments. We have 21 automated server tests covering API key
 > and rate-limit security, the migration runner, and signup, waitlist and comment routes,
-> plus fourteen Jest tests that pin the v1 and v2 response shapes and the `startTime` mapping.
+> plus eighteen Jest tests that pin the v1 and v2 response shapes, the sunset switch and the `startTime` mapping.
 >
 > Security: every request except `/api/health` needs an API key, and each key gets 100
 > requests per 60 seconds. Past that the API returns 429 with a `Retry-After` header. Keys
@@ -403,10 +403,13 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
 - `GET /api/v1/events` and the old `GET /api/events` keep the old shape and send
   `Deprecation: true`, `Sunset: Mon, 30 Nov 2026 00:00:00 GMT` and
   `Link: </api/v2/events>; rel="successor-version"` on **every** response.
+- v1 is stopped by a date check (`isV1Retired`) in front of its mounts, read on every
+  request, so the sunset happens without a deploy; after 30 Nov the old paths answer the
+  404 the notice promises, even in a process that started before the date.
 - v2 is a mapper over v1's own handlers, so validation, permissions and status codes cannot
   drift; only the response shape changes.
 - Proof: `diff docs/v1_before.json docs/v1_after.json` prints nothing (both 4684 bytes,
-  sha256 `3356ca69…`), and `npx jest` pins it with 14 tests.
+  sha256 `3356ca69…`), and `npx jest` pins it with 18 tests.
 - The notice to Team 8 is `DEPRECATION_NOTICE.md`. Upstream, Team 6 sent a deprecation
   notice on 12 November but it covers their product reads only; `/produce` and `/farmers`,
   which we call, are confirmed unchanged, so the partner integration is untouched.
@@ -443,7 +446,7 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
 > beside v1: `/api/v2/events` has the new shape, and `/api/v1/events` plus the old
 > `/api/events` still answer exactly as before, now with a `Deprecation` header, a `Sunset`
 > date of 30 November and a `Link` to the replacement. We proved v1 did not change by
-> diffing the response before and after — it prints nothing — and pinned it with fourteen tests.
+> diffing the response before and after — it prints nothing — and pinned it with eighteen tests.
 >
 > What is not finished: our rate-limit counts and saved partner data are in memory, so a
 > restart clears them. Our own front end moved to v2 this week: it reads the new timestamp in
@@ -867,7 +870,7 @@ Demo accounts (password `campushub123`, from `npm run set-passwords`): `amara.ok
 | How do consumers know v1 is leaving?   | Every v1 response carries `Deprecation: true`, `Sunset`, `Link` — not just an email                                             | §5.3 command                |
 | What if Team 8 does not migrate?       | We watch `/stats`; v1 keeps serving until 30 Nov, so nobody breaks before Demo Day                                              | `/api/stats`                |
 | Did v1 actually stay identical?        | `diff docs/v1_before.json docs/v1_after.json` prints nothing; both are committed with sha256 `3356ca69…`                        | `docs/`                     |
-| Are the tests reliable?                | 21 server tests on a throwaway MySQL container in CI, plus 14 Jest tests (9 version, 5 mapping) that need no database           | CI tab, `npx jest`          |
+| Are the tests reliable?                | 21 server tests on a throwaway MySQL container in CI, plus 18 Jest tests (13 version, 5 mapping) that need no database          | CI tab, `npx jest`          |
 | Why did our own front end move to v2?  | One base URL in `src/utils/api.js` sets `…/v2`; `toUiEvent()` maps `startTime` back to `date`/`time`, so no page changed        | `src/utils/eventsStore.js`  |
 | What about Team 6's v2?                | They have not published one; we asked, and we will not build against an invented contract                                       | `RING_BULLETIN.md` §2       |
 | What about the 6-second slide on logs? | One JSON line per request, no key, no body, no query string; `/stats` aggregates                                                | `MONITORING_NOTES.md`       |

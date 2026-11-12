@@ -29,6 +29,18 @@ export const EVENTS_SUCCESSOR = "/api/v2/events";
 
 const old = deprecated({ sunset: EVENTS_SUNSET, successor: EVENTS_SUCCESSOR });
 
+/**
+ * True once the sunset promised in DEPRECATION_NOTICE.md has passed.
+ *
+ * `new Date("2026-11-30")` is midnight UTC, which is 03:00 in +03:00 — the
+ * exact instant the Sunset header names (`Mon, 30 Nov 2026 00:00:00 GMT`).
+ * app.js uses this to stop mounting v1, so the date is enforced by the server
+ * and not by whoever remembers to delete the mounts.
+ */
+export function isV1Retired(now = new Date()) {
+  return now.getTime() >= new Date(EVENTS_SUNSET).getTime();
+}
+
 export const v1Router = Router();
 
 // Mounted with `old` rather than edited inside the router: the handlers stay

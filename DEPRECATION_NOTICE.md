@@ -78,7 +78,7 @@ v2 — `GET /api/v2/events`
 
 - **Today, 12 November 2026:** v2 is live. v1 still works and sends `Deprecation: true`, `Sunset` and `Link` headers on every events response.
 - **19 November 2026 (Demo Day):** both demos should be running on v2.
-- **30 November 2026, 03:00 EAT:** v1 is removed. `/api/events` and `/api/v1/events` then answer `404` with `{"error":"Not found."}` — the same JSON body as any unknown path, not a special "gone" response. Test for that status rather than for a timeout. The `Sunset` header reads `Mon, 30 Nov 2026 00:00:00 GMT`, which is 03:00 in `+03:00`: the same moment.
+- **30 November 2026, 03:00 EAT:** v1 is removed. `/api/events` and `/api/v1/events` then answer `404` with `{"error":"Not found."}` — the same JSON body as any unknown path, not a special "gone" response. Test for that status rather than for a timeout. The `Sunset` header reads `Mon, 30 Nov 2026 00:00:00 GMT`, which is 03:00 in `+03:00`: the same moment. The switch is in the server, not a manual deploy, so it happens at that instant even if nobody is watching.
 
 v1 stays running past Demo Day on purpose, so nobody's demo breaks. The sunset above is the date we mean; if it is a problem, tell me and we will move it in writing.
 

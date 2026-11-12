@@ -14,7 +14,8 @@
 process.env.API_KEYS = "test-key"; // read per request, so hoisted imports are fine
 
 import request from "supertest";
-import { app } from "../server/app.js";
+import { app, createApp } from "../server/app.js";
+import { isV1Retired } from "../server/v1.js";
 import { pool } from "../server/db.js";
 
 const KEY = { "X-API-Key": "test-key" };
@@ -187,6 +188,43 @@ describe("deprecation headers", () => {
     expect(v2.status).toBe(v1.status); // v2 must reject it the same way
     expect(typeof v1.body.error).toBe("string");
     expect(v2.body).toEqual(v1.body); // the error envelope is not versioned
+  });
+});
+
+describe("the sunset enforces itself", () => {
+  test("the switch happens at the instant the Sunset header names", () => {
+    expect(isV1Retired(new Date("2026-11-29T23:59:59Z"))).toBe(false);
+    expect(isV1Retired(new Date("2026-11-30T00:00:00Z"))).toBe(true);
+  });
+
+  test("a day before the sunset, both versions still answer", async () => {
+    const early = createApp({ now: () => new Date("2026-11-29T12:00:00Z") });
+    for (const path of ["/api/events", "/api/v1/events", "/api/v2/events"]) {
+      expect((await request(early).get(path).set(KEY)).status).toBe(200);
+    }
+  });
+
+  test("the check is per request, so a server running across the date stops serving v1", async () => {
+    let clock = new Date("2026-11-29T12:00:00Z");
+    const app = createApp({ now: () => clock });
+    expect((await request(app).get("/api/events").set(KEY)).status).toBe(200);
+
+    clock = new Date("2026-11-30T00:00:00Z"); // same process, date passes
+    expect((await request(app).get("/api/events").set(KEY)).status).toBe(404);
+  });
+
+  test("after the sunset v1 is gone with the promised body, and v2 is untouched", async () => {
+    const late = createApp({ now: () => new Date("2026-12-01T00:00:00Z") });
+
+    for (const path of ["/api/events", "/api/v1/events"]) {
+      const res = await request(late).get(path).set(KEY);
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({ error: "Not found." }); // what the notice promises
+      expect(res.headers.deprecation).toBeUndefined(); // no point deprecating a removed route
+    }
+
+    expect((await request(late).get("/api/v2/events").set(KEY)).status).toBe(200);
+    expect((await request(late).get("/api/health")).status).toBe(200);
   });
 });
 
