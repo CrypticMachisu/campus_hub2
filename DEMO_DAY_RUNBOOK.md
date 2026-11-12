@@ -414,12 +414,14 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
   `src/utils/api.js`). Create → edit → delete was checked through the club admin dashboard:
   `POST` 201, `PUT` 200, `DELETE` 204, with the row and the stored `startTime` agreeing at
   every step. Only the time field was changed in that run — Chrome's date input rejected
-  automated keystrokes — so a date edit is still unchecked by hand.
+  automated keystrokes — so a date edit is still unchecked by hand. `ClubProfile`, `MyEvents`,
+  the ICS export and the workspace next-event panel were checked on 12 November and show the
+  same dates as before the move.
 - Team 6 has not started versioning, so consuming their v2 is blocked, not skipped.
 - No `GET /api/clubs/:id` or `GET /api/events/:id` (v2 adds `PUT`/`DELETE` on `/events/:id`,
   not a single-event read).
-- Next: shared rate-limit store · re-check ClubProfile, MyEvents and the ICS export after the
-  move to v2 · the Team 6 migration when their v2 exists.
+- Next: shared rate-limit store · hand-check a date change in the dashboard form · the Team 6
+  migration when their v2 exists.
 
 ### 5.2 What to say (40 seconds, timed)
 
