@@ -108,7 +108,8 @@ npm run dev
 ```
 
 Opens `http://localhost:5173`. The root `.env` supplies `VITE_API_URL` and `VITE_API_KEY`;
-both must agree with `server/.env` or every list shows an error.
+both must agree with `server/.env` or every list shows an error. The app appends `/v2` to
+`VITE_API_URL` itself, so the base stays `…/api` and its calls land on `/api/v2`.
 
 ### 1.3 Pre-stage the demo session (window C, audience not watching)
 
@@ -289,8 +290,8 @@ unknown path is a 404 and not a fake 401. The app is exported from `server/app.j
 listening, which is what lets the tests drive it in-process.
 
 **Build and Test** — CI on every push: ESLint + Vite build + 21 server tests on a throwaway
-MySQL container (`api-security`, `migrate`, `signups-comments`), plus 9 Jest version tests
-that need no database; a headless browser smoke test for login, RSVP, waitlist and retry.
+MySQL container (`api-security`, `migrate`, `signups-comments`), plus 14 Jest tests
+(9 version, 5 for the v2 mapping) that need no database; a headless browser smoke test for login, RSVP, waitlist and retry.
 
 **Documentation** — `README.md` quickstart (PowerShell `curl.exe`, `--data "@file.json"`),
 `openapi.yaml` → `docs/index.html` (Redoc), plus `RUNNING.md`, `OPERATIONS.md`,
@@ -310,7 +311,7 @@ the v1/v2 split.
 > quickstart with Windows PowerShell examples. We built read and write endpoints for auth,
 > clubs, events, signups and comments. We have 21 automated server tests covering API key
 > and rate-limit security, the migration runner, and signup, waitlist and comment routes,
-> plus nine Jest tests that pin the v1 and v2 response shapes.
+> plus fourteen Jest tests that pin the v1 and v2 response shapes and the `startTime` mapping.
 >
 > Security: every request except `/api/health` needs an API key, and each key gets 100
 > requests per 60 seconds. Past that the API returns 429 with a `Retry-After` header. Keys
@@ -401,7 +402,7 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
 - v2 is a mapper over v1's own handlers, so validation, permissions and status codes cannot
   drift; only the response shape changes.
 - Proof: `diff docs/v1_before.json docs/v1_after.json` prints nothing (both 4684 bytes,
-  sha256 `3356ca69…`), and `npx jest` pins it with 9 tests.
+  sha256 `3356ca69…`), and `npx jest` pins it with 14 tests.
 - The notice to Team 8 is `DEPRECATION_NOTICE.md`; our upstream Team 6 has no v2, so the
   partner integration is unchanged and we did not invent a contract.
 
@@ -409,13 +410,16 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
 
 - Rate-limit counts and saved partner data are in memory → a restart clears them.
 - Team 6's Render host can be cold; ngrok's URL changes on restart.
-- Our own React front end still reads `event.date` / `event.time`, so it is on v1 and must
-  move to `/api/v2/events` before 30 November.
+- Our own React front end now calls `/api/v2` (the version is applied once, in
+  `src/utils/api.js`). Create → edit → delete was checked through the club admin dashboard:
+  `POST` 201, `PUT` 200, `DELETE` 204, with the row and the stored `startTime` agreeing at
+  every step. Only the time field was changed in that run — Chrome's date input rejected
+  automated keystrokes — so a date edit is still unchecked by hand.
 - Team 6 has not started versioning, so consuming their v2 is blocked, not skipped.
 - No `GET /api/clubs/:id` or `GET /api/events/:id` (v2 adds `PUT`/`DELETE` on `/events/:id`,
   not a single-event read).
-- Next: shared rate-limit store · migrate our front end · the Team 6 migration when their v2
-  exists.
+- Next: shared rate-limit store · re-check ClubProfile, MyEvents and the ICS export after the
+  move to v2 · the Team 6 migration when their v2 exists.
 
 ### 5.2 What to say (40 seconds, timed)
 
@@ -431,12 +435,12 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
 > beside v1: `/api/v2/events` has the new shape, and `/api/v1/events` plus the old
 > `/api/events` still answer exactly as before, now with a `Deprecation` header, a `Sunset`
 > date of 30 November and a `Link` to the replacement. We proved v1 did not change by
-> diffing the response before and after — it prints nothing — and pinned it with nine tests.
+> diffing the response before and after — it prints nothing — and pinned it with fourteen tests.
 >
 > What is not finished: our rate-limit counts and saved partner data are in memory, so a
-> restart clears them. Our own front end still reads the old fields and has to move to v2
-> before the sunset. And Team 6 has not started versioning, so that migration is waiting on
-> them, not on us."
+> restart clears them. Our own front end moved to v2 this week: it reads the new timestamp in
+> one place and the rest of the app is untouched. And Team 6 has not started versioning, so
+> that migration is waiting on them, not on us."
 
 ### 5.3 Optional live proof (10 s for versioning, 25 s for the stand-in partner)
 
@@ -811,6 +815,7 @@ database; it uses a throwaway MySQL container.
 | `server/routes/clubs.js`                                             | The read Team 8 consumes                                                  | Rayyan, Hunja                               |
 | `server/tests/*.test.mjs`                                            | 21 server tests (3 suites)                                                | Roy / Build and Test                        |
 | `__tests__/versions.test.js`                                         | 9 Jest tests: v1 frozen, v2 shape, headers, key, 404                      | Roy / Build and Test, Tiphanie / Versioning |
+| `__tests__/eventsStore.test.js`                                      | 5 Jest tests: `startTime` → `date`/`time`, incl. past midnight            | Tiphanie / Versioning                       |
 | `jest.config.cjs`, `babel.config.cjs`                                | Jest config (CJS in an ESM package) + the test-only ESM→CJS transform     | Roy / Build and Test                        |
 | `docs/v1_before.json`, `docs/v1_after.json`                          | The Evidence 1 snapshots; identical bytes, sha256 `3356ca69…`             | Tiphanie / Versioning                       |
 | `.github/workflows/ci.yml`                                           | Lint + build + MySQL test job                                             | Roy / Build and Test                        |
@@ -853,8 +858,8 @@ Demo accounts (password `campushub123`, from `npm run set-passwords`): `amara.ok
 | How do consumers know v1 is leaving?   | Every v1 response carries `Deprecation: true`, `Sunset`, `Link` — not just an email                                             | §5.3 command                |
 | What if Team 8 does not migrate?       | We watch `/stats`; v1 keeps serving until 30 Nov, so nobody breaks before Demo Day                                              | `/api/stats`                |
 | Did v1 actually stay identical?        | `diff docs/v1_before.json docs/v1_after.json` prints nothing; both are committed with sha256 `3356ca69…`                        | `docs/`                     |
-| Are the tests reliable?                | 21 server tests on a throwaway MySQL container in CI, plus 9 Jest version tests that need no database                           | CI tab, `npx jest`          |
-| Why is our own front end still on v1?  | It is the next migration before 30 Nov; v1 still works, so nothing is broken today                                              | `VERSIONING_NOTES.md` §3    |
+| Are the tests reliable?                | 21 server tests on a throwaway MySQL container in CI, plus 14 Jest tests (9 version, 5 mapping) that need no database           | CI tab, `npx jest`          |
+| Why did our own front end move to v2?  | One base URL in `src/utils/api.js` sets `…/v2`; `toUiEvent()` maps `startTime` back to `date`/`time`, so no page changed        | `src/utils/eventsStore.js`  |
 | What about Team 6's v2?                | They have not published one; we asked, and we will not build against an invented contract                                       | `RING_BULLETIN.md` §2       |
 | What about the 6-second slide on logs? | One JSON line per request, no key, no body, no query string; `/stats` aggregates                                                | `MONITORING_NOTES.md`       |
 | Did you actually integrate?            | First call 2026-11-09: `/farmers` 200 with 5 farmers, `/produce` 200 with 4 listings                                            | `INTEGRATION_LOG.md`        |

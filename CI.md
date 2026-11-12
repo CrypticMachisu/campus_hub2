@@ -219,11 +219,14 @@ SEED_PASSWORD=campushub123
 Root `.env`:
 
 ```
+VITE_API_URL=http://localhost:5000/api
 VITE_API_KEY=<must match one of the keys in API_KEYS>
 ```
 
 The API requires `X-API-Key` on every endpoint except `GET /api/health`. The
-frontend reads `VITE_API_KEY`, so the two files must agree.
+frontend reads `VITE_API_KEY`, so the two files must agree. It appends `/v2` to
+`VITE_API_URL` itself (`src/utils/api.js`), so the base stays `…/api` and every
+store calls `/api/v2`; the app no longer uses the unversioned v1 paths.
 
 ---
 

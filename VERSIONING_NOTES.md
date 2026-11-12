@@ -12,7 +12,7 @@ The current shape is two fields that only mean anything together, and neither ca
 
 ## 3. Prediction: which exact line in the consumer's code fails
 
-Our first downstream consumer is our own front end, which calls `GET /api/events`. The first line to break is **`src/utils/dateTime.js:16`**:
+Our first downstream consumer is our own front end. It has since moved to `GET /api/v2/events` (commit `921fe8c`); before that move it called `GET /api/events`, and the prediction below is the failure the old shape would have produced. The first line to break is **`src/utils/dateTime.js:16`**:
 
 ```js
 const ts = new Date(`${event.date}T${event.time}`).getTime();
@@ -34,15 +34,17 @@ The same pattern appears in:
 
 Request bodies were deliberately left alone, so only code that _reads_ events breaks.
 
+The front end's move to v2 closes that gap in one place: `toUiEvent()` in `src/utils/eventsStore.js` slices `startTime` back into `date` + `time` for list and single-event responses, so every reader in the table keeps getting the fields it expects. It slices the string rather than converting through `Date`, so the stored East Africa Time wall clock cannot slide a day in another zone.
+
 ## 4. Who still uses v1 (Part F)
 
-Two callers are known from the code, not from data:
+Callers known from the code, not from data:
 
-| Path                     | Caller                                                 | Still on v1?                         |
-| ------------------------ | ------------------------------------------------------ | ------------------------------------ |
-| `GET /api/events`        | our own React front end (`src/utils/eventsStore.js:5`) | yes — not migrated in this change    |
-| `GET /api/events`        | Team 8, our downstream partner                         | unknown until the notice is answered |
-| `PUT`/`POST /api/events` | our own front end (`saveCustomEvent`)                  | yes                                  |
+| Path                     | Caller                                               | Still on v1?                               |
+| ------------------------ | ---------------------------------------------------- | ------------------------------------------ |
+| `GET /api/events`        | our own React front end (`src/utils/eventsStore.js`) | no — moved to `/api/v2/events` (`921fe8c`) |
+| `GET /api/events`        | Team 8, our downstream partner                       | unknown until the notice is answered       |
+| `PUT`/`POST /api/events` | our own front end (`saveCustomEvent`)                | no — writes go to `/api/v2/events`         |
 
 `/stats` lives in the server's memory, so it has to be read while the API is up. It was read once locally (capture below); real consumer numbers need a deployed server carrying real traffic.
 
@@ -101,7 +103,7 @@ Two things this capture settled:
 
 These are not consumer numbers — 5/5/5 is the probe, not usage. Repeat the three loops against deployed traffic and replace them; Team 8's key will show a different `caller` label, which is the whole point.
 
-**v1 cannot be switched off today**: our own front end still reads `event.date` / `event.time`, and no partner has confirmed a migration.
+**Our own front end no longer needs v1.** It moved to `/api/v2` on 12 November, so its reads and writes now land on the v2 rows; the capture above was taken before that move. Whether v1 can be switched off now depends on the other callers: Team 8 has not answered, and any remaining traffic will appear in the log under a different `caller` label.
 
 ## 5. The notice we wrote
 
@@ -132,18 +134,21 @@ As the API owner next time, one thing I would do differently: send the notice be
 
 ## 8. What changed in the repo
 
-| File                         | Change                                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `server/app.js`              | new — builds and exports the Express app without listening; mounts `/api/v1`, `/api/v2`, and the unversioned `/api` (v1) |
-| `server/server.js`           | now startup only: imports the app, checks MySQL, listens, logs the versions                                              |
-| `server/v1.js`               | new — the existing routers, unchanged, plus the deprecation headers on `/events`                                         |
-| `server/routes/eventsV2.js`  | new — v2 view: one `toV2Event()` mapper and a response adapter over the same v1 handlers                                 |
-| `server/v2.js`               | new — the same resources as v1, with `/events` on the v2 view                                                            |
-| `server/deprecate.js`        | new — `Deprecation`, `Sunset` and `Link` headers                                                                         |
-| `__tests__/versions.test.js` | new — the same nine assertions under Jest + supertest, which is what `npx jest` runs                                     |
-| `DEPRECATION_NOTICE.md`      | new — the notice to consumers                                                                                            |
-| `README.md`, `openapi.yaml`  | pointer to v2 and the notice                                                                                             |
-| `INTEGRATION_LOG.md`         | Week 13 section                                                                                                          |
+| File                            | Change                                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `server/app.js`                 | new — builds and exports the Express app without listening; mounts `/api/v1`, `/api/v2`, and the unversioned `/api` (v1) |
+| `server/server.js`              | now startup only: imports the app, checks MySQL, listens, logs the versions                                              |
+| `server/v1.js`                  | new — the existing routers, unchanged, plus the deprecation headers on `/events`                                         |
+| `server/routes/eventsV2.js`     | new — v2 view: one `toV2Event()` mapper and a response adapter over the same v1 handlers                                 |
+| `server/v2.js`                  | new — the same resources as v1, with `/events` on the v2 view                                                            |
+| `server/deprecate.js`           | new — `Deprecation`, `Sunset` and `Link` headers                                                                         |
+| `__tests__/versions.test.js`    | new — the same nine assertions under Jest + supertest, which is what `npx jest` runs                                     |
+| `__tests__/eventsStore.test.js` | new — 5 tests for the `startTime` → `date`/`time` mapping, including past midnight                                       |
+| `src/utils/api.js`              | the version is applied once, as `<VITE_API_URL>/v2`, so every store moved together                                       |
+| `src/utils/eventsStore.js`      | `toUiEvent()` maps v2's `startTime` back to `date` + `time`; create/update responses included                            |
+| `DEPRECATION_NOTICE.md`         | new — the notice to consumers                                                                                            |
+| `README.md`, `openapi.yaml`     | pointer to v2 and the notice                                                                                             |
+| `INTEGRATION_LOG.md`            | Week 13 section                                                                                                          |
 
 `server/routes/events.js` is untouched: v2 mounts the same handlers, so validation, permissions and status codes cannot drift between versions.
 
@@ -169,6 +174,8 @@ npx jest
 ```
 
 Nine tests, all passing: v1's exact field set (`date`, `time`, no `startTime`), the unversioned URL returning byte-identical JSON to `/api/v1`, v2's exact field set and `startTime` value, v2 rejecting a missing/invalid key on every mount, the three headers on both v1 paths and on neither v2 nor an unknown path, v1 and v2 returning the same error body, an empty v2 list, and unknown subpaths still returning the JSON 404.
+
+`npx jest` now runs **14**: those nine, plus five in `__tests__/eventsStore.test.js` that pin `toUiEvent()` — a normal timestamp, one with no seconds, one just past midnight, an early `+03:00` clock that must not slide back a day, and an event with no `startTime`. Run against a deliberately broken slice, four of the five failed, so the guard is live rather than decorative.
 
 Every event object in v2 and in v1 comes out of the same handlers; the tests stub only the database query, so the mounts, guards and shaping are the real code.
 
@@ -196,7 +203,7 @@ The handout's `npx jest` command now works as written. `jest.config.cjs` holds t
 | **C1.** `diff v1_before.json v1_after.json` prints nothing                                                                  | Done                  | `docs/v1_after.json` is the same 4684 bytes and the same sha256 (`3356ca69…`) as `docs/v1_before.json`; `diff` exits 0 and prints nothing. Re-check with `diff docs/v1_before.json docs/v1_after.json`.                                                                                                                                                                                     |
 | **C2.** A test that pins v1's shape, the old URL, v2's shape and the headers                                                | Done                  | `__tests__/versions.test.js`, 9 tests. v1 has no `GET /events/:id`, so the “error shape unchanged” check uses an unauthenticated `POST` and asserts v1 and v2 return the same body.                                                                                                                                                                                                         |
 | **C3.** `deprecate.js` + `old` on the v1 routes                                                                             | Done                  | `server/deprecate.js`; applied at the mount in `server/v1.js` so v2 cannot inherit the headers.                                                                                                                                                                                                                                                                                             |
-| **C4.** `npx jest` passes                                                                                                   | Done                  | `jest.config.cjs` (the `.cjs` extension fixes the CJS-inside-`"type": "module"` load error) plus `babel.config.cjs` for the ESM→CJS transform; `npx jest` passes 9/9.                                                                                                                                                                                                                       |
+| **C4.** `npx jest` passes                                                                                                   | Done                  | `jest.config.cjs` (the `.cjs` extension fixes the CJS-inside-`"type": "module"` load error) plus `babel.config.cjs` for the ESM→CJS transform; `npx jest` passes 14/14 (9 version + 5 mapping).                                                                                                                                                                                             |
 | **D.** `DEPRECATION_NOTICE.md` with what, why, before/after, steps, sunset, questions                                       | Done                  | `DEPRECATION_NOTICE.md` — all six handout sections, plus what is _not_ changing.                                                                                                                                                                                                                                                                                                            |
 | **D.** Commit the notice                                                                                                    | Done                  | `775138f` on `main`.                                                                                                                                                                                                                                                                                                                                                                        |
 | **D.** Send it to the partner, full text, and ask for a reply                                                               | **Manual**            | Needs a person in the ring channel. The text is ready to paste; the checklist in `INTEGRATION_LOG.md` tracks the reply.                                                                                                                                                                                                                                                                     |
@@ -213,6 +220,6 @@ The handout's `npx jest` command now works as written. `jest.config.cjs` holds t
 2. **Ask Team 8 for the exact line** in their Week 10 integration that reads `event.date` / `event.time`, so §3 is about their code and not only ours.
 3. **Read `/stats` + the request log on the deployed server** and write down which caller labels are still on v1 (Part F). The local capture in §4 shows how to read it; it is not consumer traffic.
 4. **Chase Team 6** for their versioning plan and a v2 contract with a key; only then build `partner.js`'s versions table, `PARTNER_VERSION` and `partner.test.js` (Part E).
-5. **Decide about our own front end** before 30 November: migrate it to `startTime` (§3 lists every line) or accept that it breaks at the sunset.
+5. **Re-check the pages the migration did not exercise** by hand before Demo Day: a date change in the dashboard's edit form (Chrome's date field rejected automated input), `ClubProfile`, `MyEvents` and the ICS export. The calls themselves already go to `/api/v2`; these are the views nobody has watched since the move.
 
 Both local evidence checks are now done: the §10 before/after `diff` and the §4 `/stats` capture.
