@@ -29,3 +29,9 @@ Four endpoints — `/api/farmers/{id}/farm-location`, `/api/products/{id}/detail
 ## 7. Sensitive location data exposed without authentication
 
 The proposed `/api/farmers/{id}/farm-location` endpoint has `security: []` (public) and returns precise geographic details — landmarks, farm size, and a personal visit-contact phone number. Given this is more sensitive than the general farmer directory, should this endpoint require authentication, or at least be rate-limited, to reduce the risk of scraping farmers' physical locations and contact details?
+
+## Update — 12 November 2026 (their product-read deprecation notice)
+
+- **Q1 (`quantity` vs `stock`) is answered for reads.** Their v2 product reads return `name` and `stock`, and `quantity` is removed there; product writes keep `title` and `quantity`. So the mismatch is deliberate, not a bug — but it means the same catalogue item has one field name on write and a different one on read. It does not affect us: we read `/produce`, which keeps `title` and `quantity`.
+- **Q2, Q3, Q5, Q6 remain open.** The notice adds no dates for the proposed detail/inventory endpoints, no conventional single-item `GET`, no farmer filtering/pagination, and no namespaced IDs; `POST /orders` still disambiguates produce from product with `type`.
+- **Not asked before, now raised:** their notice describes `Deprecation`/`Sunset`/`Link` headers that the hosted v1 does not actually send yet (401 without a key, no headers). That is the one place where a consumer following the notice would be misled.

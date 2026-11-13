@@ -25,7 +25,10 @@ There are two jobs, both on a fresh Ubuntu runner:
 1. Installs the root and `server/` dependencies with `npm ci`.
 2. Runs `npm run lint` (ESLint over the whole repo).
 3. Runs `npm run build` (the Vite production build).
-4. Fails if either command fails.
+4. Runs `npx jest` from the repo root — the version suite (v1 frozen, v2 has the new
+   shape, v1 carries the sunset headers). It needs no database and no running API:
+   it drives the exported app in-process with supertest.
+5. Fails if any of those commands fails.
 
 This catches syntax problems, unused imports, lint rules, and a broken frontend
 build before anyone merges.
@@ -51,7 +54,7 @@ developer would do locally:
      tests/signups-comments.test.mjs
    ```
 
-   That is 18 tests: API key/rate-limit security, the migration runner, and the
+   That is 21 tests: API key/rate-limit security, the migration runner, and the
    signup/waitlist/comment routes.
 
    The suites run **sequentially on purpose**: the security suite deliberately
@@ -67,8 +70,9 @@ developer would do locally:
   touch XAMPP, your laptop, or any shared database.
 - **It does not migrate a real database.** All schema work happens inside the
   disposable MySQL container and disappears with it.
-- **It does not run the frontend Jest tests.** The repo has Jest configured but
-  no root `npm test` script yet, so CI only lints and builds the frontend.
+- **It does not run a separate frontend test suite.** The only Jest suite is the
+  version suite, which job 1 runs. The old `__tests__/events|clubs` harness
+  asserted a paginated contract this API never had and was removed.
 - **It needs no repository secrets.** The JWT secret, API key, database
   password and seed password are dummy values defined in the workflow; they
   protect nothing outside the runner.
@@ -215,11 +219,14 @@ SEED_PASSWORD=campushub123
 Root `.env`:
 
 ```
+VITE_API_URL=http://localhost:5000/api
 VITE_API_KEY=<must match one of the keys in API_KEYS>
 ```
 
 The API requires `X-API-Key` on every endpoint except `GET /api/health`. The
-frontend reads `VITE_API_KEY`, so the two files must agree.
+frontend reads `VITE_API_KEY`, so the two files must agree. It appends `/v2` to
+`VITE_API_URL` itself (`src/utils/api.js`), so the base stays `…/api` and every
+store calls `/api/v2`; the app no longer uses the unversioned v1 paths.
 
 ---
 
@@ -230,6 +237,9 @@ frontend reads `VITE_API_KEY`, so the two files must agree.
 npm ci
 npm run lint
 npm run build
+
+# Version suite: v1 frozen, v2 shape, sunset headers (no database needed)
+npx jest
 
 # Server suites (the API must already be running, and the database seeded)
 cd server

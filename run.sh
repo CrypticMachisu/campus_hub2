@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the CampusHub API with one command, request log visible in the terminal.
+# Start the CampusHub API with one command, request log visible in the terminal and appended to server/requests.log.
 #
 #   ./run.sh              starts on http://localhost:5000/api
 #   PORT=5001 ./run.sh    a different port
@@ -22,7 +22,7 @@ fi
 
 export PORT="${PORT:-5000}"
 echo "CampusHub API on http://localhost:${PORT}/api"
-echo "Request log: one JSON line per request, also saved to server/requests.log"
+echo "Request log: one JSON line per request, also appended to server/requests.log"
 echo
 
-node server.js 2>&1 | tee requests.log
+node server.js 2>&1 | tee -a requests.log

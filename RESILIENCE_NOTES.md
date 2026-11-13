@@ -115,11 +115,16 @@ and the worst-case 5.1 s wait happens for every single caller until it recovers.
 ## The real-partner drill (Part E)
 
 `PARTNER_URL` in `server/.env` points at Team 6's live API
-(`https://farmers-agroconnect.onrender.com/api`) — it was changed to the stand-in only
-inside our test process (an env override), never in `.env`, so the real partner "went back
-in" by construction. Their API currently answers **401 to our key** (a key their team has
-not yet issued/reactivated); our code logs `partner rejected our API key (401)` and serves
-the friendly message or saved copy — the same paths this lab proves with the stand-in.
-The stop/restart drill with them (their server off → banner appears within 5.1 s; their
-server back → live data, no code change) is ready to run in one agreed window and needs
-zero code changes — the stand-in run above is the same drill, byte for byte.
+(`https://farmers-agroconnect.onrender.com/api`). Team 6 issued an API key on 2026-11-09,
+and the real partner is now live: direct `/farmers` returned 200 with 5 farmers (1.7 s
+cold), `/produce` returned 200 with 4 listings, `/produce/1` returned 200, and
+`/produce/9999` and `/nope` returned the documented 404 messages. Through our proxy after
+warming, `/partner/farmers` (5), `/partner/produce` (4) and `/partner/farmers/5` all
+returned 200 with `stale: false`.
+
+One real cold-start edge remains: immediately after an API restart, proxied calls hit the
+1.5 s per-attempt timeout three times and returned 502 until the upstream was warm. Warm
+the actual partner panels before a demo; `/health` alone is not enough. The stop/restart
+drill with Team 6 (their server off → banner appears within 5.1 s; their server back →
+live data, no code change) still needs an agreed window, but the stand-in run above covers
+the same paths.

@@ -46,19 +46,17 @@ export default function AgriClubSpotlight() {
 
   const loading = status.farmers === "loading" || status.listings === "loading";
   const bothDown = status.farmers === "error" && status.listings === "error";
-  const counties = new Set(
-    [...farmers, ...listings].map((x) => x.county).filter(Boolean)
-  );
+  const counties = new Set([...farmers, ...listings].map((x) => x.county).filter(Boolean));
 
   return (
     <section className={styles.spotlight}>
       <div className={styles.pitch}>
         <h2>Grow with us — and with AgroConnect</h2>
         <p>
-          AgroConnect is a marketplace where Kenyan farmers list their produce and buyers find
-          them. The Agri-Business &amp; Farming Club works with it directly: we study real
-          listings, meet the growers and build skills in farming and agri-business. New members
-          are welcome, whatever your course.
+          AgroConnect is a marketplace where Kenyan farmers list their produce and buyers find them.
+          The Agri-Business &amp; Farming Club works with it directly: we study real listings, meet
+          the growers and build skills in farming and agri-business. New members are welcome,
+          whatever your course.
         </p>
         <div className={styles.cta}>
           <a href="#events" className={styles.primary}>
