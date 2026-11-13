@@ -331,10 +331,11 @@ every command below still runs without it.
 unknown path is a 404 and not a fake 401. The app is exported from `server/app.js` without
 listening, which is what lets the tests drive it in-process.
 
-**Build and Test** — CI on every push: ESLint + Vite build + 22 server tests on a throwaway
-MySQL container (`api-security`, `migrate`, `signups-comments`, `agro-opportunities`), plus
-18 Jest tests (13 version, 5 for the v2 mapping) that need no database; a headless browser
-smoke test for login, RSVP, waitlist and retry.
+**Build and Test** — CI on every push: ESLint + Vite build + 21 server tests on a throwaway
+MySQL container (`api-security`, `migrate`, `signups-comments`), plus 18 Jest tests
+(13 version, 5 for the v2 mapping) that need no database. `npm test` locally adds
+`agro-opportunities`, 22 in total; the CI job does not run that file yet. A headless browser
+smoke test covers login, RSVP, waitlist and retry.
 
 **Documentation** — `README.md` quickstart (PowerShell `curl.exe`, `--data "@file.json"`),
 `openapi.yaml` → `docs/index.html` (Redoc), plus `RUNNING.md`, `OPERATIONS.md`,
@@ -919,7 +920,7 @@ Demo accounts (password `campushub123`, from `npm run set-passwords`): `amara.ok
 | How do consumers know v1 is leaving?   | Every v1 response carries `Deprecation: true`, `Sunset`, `Link` — not just an email                                             | §5.3 command                |
 | What if Team 8 does not migrate?       | We watch `/stats`; v1 keeps serving until 30 Nov, so nobody breaks before Demo Day                                              | `/api/stats`                |
 | Did v1 actually stay identical?        | `diff docs/v1_before.json docs/v1_after.json` prints nothing; both are committed with sha256 `3356ca69…`                        | `docs/`                     |
-| Are the tests reliable?                | 22 server tests on a throwaway MySQL container in CI, plus 18 Jest tests (13 version, 5 mapping) that need no database          | CI tab, `npx jest`          |
+| Are the tests reliable?                | 21 server tests on a throwaway MySQL container in CI, 22 locally with the agro suite, plus 18 Jest tests that need no database  | CI tab, `npx jest`          |
 | Who can see the agro opportunities?    | Club-07 members and its admins only: `401` signed out, `403` another club's member, checked server-side, not in the UI          | §3.5                        |
 | Are those opportunities Team 6's data? | No. They are local records (`source: seed` or `admin`); AgroConnect only supplies the matched grower's details and a snapshot   | `server/routes/agro.js`     |
 | Why did our own front end move to v2?  | One base URL in `src/utils/api.js` sets `…/v2`; `toUiEvent()` maps `startTime` back to `date`/`time`, so no page changed        | `src/utils/eventsStore.js`  |
