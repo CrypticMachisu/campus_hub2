@@ -286,6 +286,42 @@ agroRouter.delete("/opportunities/:id", requireAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/v2/agro/opportunities/:id/interested — admins see who to contact.
+ * A count is not actionable: the point of registering interest is that the
+ * club can follow up, so this is the one place an email is returned, and only
+ * to someone who can manage club-07.
+ */
+agroRouter.get("/opportunities/:id/interested", requireAuth, async (req, res) => {
+  if (!canManageClub(req.user, AGRI_CLUB_ID)) {
+    return res.status(403).json({ error: "You don't have admin access to that club." });
+  }
+
+  const [opportunities] = await pool.query(
+    "SELECT opportunity_id FROM agro_opportunities WHERE opportunity_id = :id",
+    { id: req.params.id }
+  );
+  if (!opportunities[0]) return res.status(404).json({ error: "Opportunity not found." });
+
+  const [rows] = await pool.query(
+    `SELECT i.user_id, i.created_at, u.name, u.email
+     FROM agro_interest i
+     JOIN users u ON u.user_id = i.user_id
+     WHERE i.opportunity_id = :id
+     ORDER BY i.created_at, i.user_id`,
+    { id: req.params.id }
+  );
+
+  res.json({
+    interested: rows.map((row) => ({
+      id: row.user_id,
+      name: row.name,
+      email: row.email,
+      interestedAt: row.created_at,
+    })),
+  });
+});
+
+/**
  * POST /api/v2/agro/opportunities/:id/interest — a club member registers
  * interest. Idempotent: registering twice returns 200 with the same count,
  * the first time returns 201.

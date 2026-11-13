@@ -33,6 +33,11 @@ tags:
     description: Events hosted by clubs.
   - name: Admin
     description: Tier1-only operational dashboard.
+  - name: Agro
+    description: >
+      Member-only activities for the Agri-Business & Farming club. Every
+      opportunity is a local CampusHub record; AgroConnect only supplies the
+      matched grower's details.
 
 # Default for every operation: a valid X-API-Key is required (Week 9).
 security:
@@ -584,6 +589,325 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /v2/agro/opportunities:
+    get:
+      tags: [Agro]
+      operationId: listAgroOpportunities
+      summary: List upcoming Agri club opportunities
+      description: >
+        Farm visits, tree-planting days, harvest mornings and volunteering
+        shifts, soonest first. Only upcoming rows are returned.
+
+        Every row is a local record (`source` is `seed` or `admin`); none is
+        derived from AgroConnect, so the list still answers when the partner is
+        down. The `partner` block says whether the grower details beside the
+        cards are live, saved (`stale: true` with `asOf`), or unavailable.
+
+        Membership is checked server-side: a member of club-07 or an admin of
+        it gets 200, a signed-out caller 401, and a member of any other club
+        403. This resource exists only under /v2 — /v1 is frozen.
+      security:
+        - apiKeyAuth: []
+          bearerAuth: []
+      responses:
+        "200":
+          description: Upcoming opportunities the caller may see.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunities:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AgroOpportunity"
+                  partner:
+                    type: object
+                    properties:
+                      live:
+                        type: boolean
+                        description: True when the grower list came from AgroConnect this request.
+                      stale:
+                        type: boolean
+                        description: True when the saved copy is being served instead.
+                      asOf:
+                        type: string
+                        nullable: true
+                        description: When the grower list was fetched, or null if never.
+                      growerCount:
+                        type: integer
+              example:
+                opportunities:
+                  - id: agro-opp-01
+                    kind: farm_visit
+                    title: "Farm visit: Grace's tomato plot"
+                    description: A morning with a grower who sells on AgroConnect.
+                    location: Kiambu (transport from the Student Union)
+                    county: Kiambu
+                    startsAt: "2026-11-16T08:00:00+03:00"
+                    capacity: 24
+                    hostName: Grace Wanjiku
+                    farmerId: null
+                    source: seed
+                    interestCount: 2
+                    interested: false
+                partner:
+                  live: true
+                  stale: false
+                  asOf: "2026-11-13T06:13:16.991Z"
+                  growerCount: 5
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The caller is not a member or admin of the Agri club.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Only Agri-Business & Farming Club members can see opportunities.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Agro]
+      operationId: createAgroOpportunity
+      summary: Publish an opportunity
+      description: >
+        Club-07 admins only. `startsAt` (ISO 8601) wins when both it and
+        `date`/`time` are sent; a date/time pair is read as East Africa Time.
+      security:
+        - apiKeyAuth: []
+          bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgroOpportunityInput"
+            example:
+              kind: tree_planting
+              title: "Tree planting: Ngong river bank"
+              description: Planting day with the county environment office.
+              location: Ngong river bank, Kajiado
+              county: Kajiado
+              date: "2026-12-05"
+              time: "07:30"
+              capacity: 40
+              hostName: Faith Njeri
+      responses:
+        "201":
+          description: Opportunity published.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunity:
+                    $ref: "#/components/schemas/AgroOpportunity"
+        "400":
+          description: Invalid kind, title, location, start time, capacity or farmerId.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: kind must be one of farm_visit, tree_planting, harvest, volunteering.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/NoClubAccess"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /v2/agro/opportunities/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Opportunity ID.
+        schema:
+          type: string
+          example: agro-opp-01
+    delete:
+      tags: [Agro]
+      operationId: deleteAgroOpportunity
+      summary: Remove an opportunity
+      description: Club-07 admins only. Interest registrations are deleted with it.
+      security:
+        - apiKeyAuth: []
+          bearerAuth: []
+      responses:
+        "204":
+          description: Opportunity removed. The response body is empty.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/NoClubAccess"
+        "404":
+          description: No opportunity with that ID.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Opportunity not found.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /v2/agro/opportunities/{id}/interest:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Opportunity ID.
+        schema:
+          type: string
+          example: agro-opp-01
+    post:
+      tags: [Agro]
+      operationId: registerAgroInterest
+      summary: Register interest in an opportunity
+      description: >
+        Club-07 members and admins only. Idempotent: the first registration
+        returns 201, registering again returns 200 with the same count.
+      security:
+        - apiKeyAuth: []
+          bearerAuth: []
+      responses:
+        "201":
+          description: Interest registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgroInterest"
+              example:
+                interest:
+                  opportunityId: agro-opp-01
+                  interested: true
+                  interestCount: 3
+        "200":
+          description: Already registered; the count is unchanged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgroInterest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The caller is not a member or admin of the Agri club.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Join the Agri-Business & Farming Club to register interest.
+        "404":
+          description: No opportunity with that ID.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Opportunity not found.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    delete:
+      tags: [Agro]
+      operationId: withdrawAgroInterest
+      summary: Withdraw interest
+      description: Removes the caller's own registration; safe to repeat.
+      security:
+        - apiKeyAuth: []
+          bearerAuth: []
+      responses:
+        "200":
+          description: Interest withdrawn (or was not registered).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgroInterest"
+              example:
+                interest:
+                  opportunityId: agro-opp-01
+                  interested: false
+                  interestCount: 2
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: No opportunity with that ID.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Opportunity not found.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /v2/agro/opportunities/{id}/interested:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Opportunity ID.
+        schema:
+          type: string
+          example: agro-opp-01
+    get:
+      tags: [Agro]
+      operationId: listAgroInterested
+      summary: Who registered interest (club admins only)
+      description: >
+        The roster the club follows up with. This is the only endpoint that
+        returns member email addresses, and only to someone who can manage
+        club-07; members get 403.
+      security:
+        - apiKeyAuth: []
+          bearerAuth: []
+      responses:
+        "200":
+          description: People who registered interest, oldest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  interested:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        email:
+                          type: string
+                          format: email
+                        interestedAt:
+                          type: string
+                          format: date-time
+              example:
+                interested:
+                  - id: user-05
+                    name: Sofia Ramirez
+                    email: sofia.ramirez@campus.edu
+                    interestedAt: "2026-11-13T08:04:00.000Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/NoClubAccess"
+        "404":
+          description: No opportunity with that ID.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Opportunity not found.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /admin:
     get:
       tags: [Admin]
@@ -655,6 +979,111 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  schemas:
+    AgroOpportunity:
+      type: object
+      description: >
+        A local Agri club activity. `source` says whether it was seeded with
+        the club or published by an admin; the partner never contributes these
+        rows.
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [farm_visit, tree_planting, harvest, volunteering]
+        title:
+          type: string
+        description:
+          type: string
+        location:
+          type: string
+        county:
+          type: string
+        startsAt:
+          type: string
+          example: "2026-11-16T08:00:00+03:00"
+        capacity:
+          type: integer
+          nullable: true
+        hostName:
+          type: string
+        farmerId:
+          type: integer
+          nullable: true
+        source:
+          type: string
+          enum: [seed, admin]
+        interestCount:
+          type: integer
+        interested:
+          type: boolean
+          description: Whether the calling member registered interest.
+        grower:
+          type: object
+          nullable: true
+          description: Present when the host matched a grower from AgroConnect or its saved snapshot.
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            county:
+              type: string
+            focus:
+              type: string
+    AgroOpportunityInput:
+      type: object
+      required: [kind, title, location]
+      description: >
+        A start is required as well: send `startsAt`, or `date` plus `time`.
+      properties:
+        kind:
+          type: string
+          enum: [farm_visit, tree_planting, harvest, volunteering]
+        title:
+          type: string
+          maxLength: 150
+        description:
+          type: string
+        startsAt:
+          type: string
+          example: "2026-12-05T07:30:00+03:00"
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          example: "07:30"
+        location:
+          type: string
+          maxLength: 150
+        county:
+          type: string
+          maxLength: 80
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        hostName:
+          type: string
+          maxLength: 120
+        farmerId:
+          type: integer
+          minimum: 1
+    AgroInterest:
+      type: object
+      properties:
+        interest:
+          type: object
+          properties:
+            opportunityId:
+              type: string
+            interested:
+              type: boolean
+            interestCount:
+              type: integer
 
   responses:
     ApiKeyUnauthorized:

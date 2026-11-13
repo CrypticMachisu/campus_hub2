@@ -48,6 +48,14 @@ export async function withdrawOpportunityInterest(opportunityId) {
   return interest;
 }
 
+/** Admin only: the members who registered interest, with contact details. */
+export async function getOpportunityInterested(opportunityId) {
+  const { interested } = await apiFetch(
+    `/agro/opportunities/${encodeURIComponent(opportunityId)}/interested`
+  );
+  return interested;
+}
+
 /** Club admins only (server-checked). */
 export async function addAgroOpportunity(payload) {
   const { opportunity } = await apiFetch("/agro/opportunities", {

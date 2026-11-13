@@ -88,6 +88,7 @@ test("Every mounted API router still requires a key on its known routes", async 
     ["GET", "/comments?targetType=event&targetId=event-01"],
     ["GET", "/announcements?clubId=club-01"],
     ["GET", "/partner/produce"],
+    ["GET", "/v2/agro/opportunities"],
     ["GET", "/admin"],
   ];
 

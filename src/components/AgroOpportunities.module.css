@@ -247,6 +247,45 @@
   cursor: default;
 }
 
+.roster {
+  margin-top: var(--space-sm, 0.5rem);
+  padding: var(--space-sm, 0.5rem) var(--space-md, 1rem);
+  background: var(--color-card-bg, #fbf6e9);
+  border: 1px dashed var(--color-border, #d8cba9);
+  border-radius: var(--radius, 6px);
+}
+
+.rosterList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rosterPerson {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.rosterPerson a {
+  color: var(--color-secondary, #2f6e64);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.rosterNote {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.66rem;
+  color: var(--color-text-muted, #6b6457);
+}
+
 .form {
   display: flex;
   flex-direction: column;

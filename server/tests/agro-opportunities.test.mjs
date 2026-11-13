@@ -124,11 +124,35 @@ test(
     assert.equal(withInterest.interested, true, "the caller's own interest should be flagged");
     assert.ok(withInterest.interestCount >= 1);
 
+    // The roster is admin-only and names who to follow up with.
+    const rosterUrl = `/v2/agro/opportunities/${seeded.id}/interested`;
+    assert.equal((await api(rosterUrl, { token: agriMember })).status, 403);
+
+    const roster = await api(rosterUrl, { token: admin });
+    const people = (await expectJson(roster, 200, "interest roster")).interested;
+    assert.ok(
+      people.some(
+        (person) => person.email === (process.env.TEST_ADMIN_EMAIL || "amara.okafor@campus.edu")
+      ),
+      "the admin's own registration should be on the roster"
+    );
+    assert.ok(
+      people.every((person) => typeof person.name === "string" && person.email.includes("@"))
+    );
+
     const withdrawn = await api(`/v2/agro/opportunities/${seeded.id}/interest`, {
       method: "DELETE",
       token: admin,
     });
     assert.equal((await expectJson(withdrawn, 200, "withdraw")).interest.interested, false);
+
+    const rosterAfterWithdraw = await api(rosterUrl, { token: admin });
+    assert.ok(
+      !(await expectJson(rosterAfterWithdraw, 200, "roster after withdraw")).interested.some(
+        (person) => person.email === (process.env.TEST_ADMIN_EMAIL || "amara.okafor@campus.edu")
+      ),
+      "withdrawing interest should remove the admin from the roster"
+    );
 
     // Only a club admin may publish or delete activities.
     const memberCreate = await api("/v2/agro/opportunities", {

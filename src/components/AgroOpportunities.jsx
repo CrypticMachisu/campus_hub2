@@ -9,6 +9,7 @@ import {
   addAgroOpportunity,
   deleteAgroOpportunity,
   getAgroOpportunities,
+  getOpportunityInterested,
   kindLabel,
   registerOpportunityInterest,
   withdrawOpportunityInterest,
@@ -66,6 +67,11 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
   const [pendingIds, setPendingIds] = useState(() => new Set());
   const [notice, setNotice] = useState("");
   const [confirmingId, setConfirmingId] = useState(null);
+  const [openRosterId, setOpenRosterId] = useState(null);
+  const [roster, setRoster] = useState([]);
+  const [rosterStatus, setRosterStatus] = useState("idle"); // idle | loading | ok | error
+  const [rosterError, setRosterError] = useState("");
+  const [rosterRefresh, setRosterRefresh] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formStatus, setFormStatus] = useState("idle"); // idle | saving | error
@@ -95,6 +101,29 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
     }
     load();
   }, [member, load]);
+
+  // The admin's interest roster is fetched only while it is open, and again
+  // after the admin changes their own interest on that card.
+  useEffect(() => {
+    if (!openRosterId) return undefined;
+    let cancelled = false;
+    setRosterStatus("loading");
+    setRosterError("");
+    getOpportunityInterested(openRosterId)
+      .then((people) => {
+        if (cancelled) return;
+        setRoster(people);
+        setRosterStatus("ok");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setRosterError(err.message);
+        setRosterStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [openRosterId, rosterRefresh]);
 
   /** Optimistic interest toggle, rolled back if the API refuses. */
   async function toggleInterest(opportunity) {
@@ -130,6 +159,7 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
           ? `You're on the list for ${opportunity.title}. The club can see your interest.`
           : `You've withdrawn your interest in ${opportunity.title}.`
       );
+      if (openRosterId === opportunity.id) setRosterRefresh((count) => count + 1);
     } catch (err) {
       setOpportunities((current) =>
         current.map((entry) =>
@@ -264,6 +294,19 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
             Add to calendar
           </button>
 
+          {managesClub && (
+            <button
+              type="button"
+              className={styles.ghostButton}
+              aria-expanded={openRosterId === opportunity.id}
+              onClick={() =>
+                setOpenRosterId(openRosterId === opportunity.id ? null : opportunity.id)
+              }
+            >
+              {openRosterId === opportunity.id ? "Hide interest" : "Who&apos;s interested"}
+            </button>
+          )}
+
           {managesClub &&
             (confirmingId === opportunity.id ? (
               <span className={styles.confirm}>
@@ -293,6 +336,27 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
               </button>
             ))}
         </div>
+
+        {openRosterId === opportunity.id && (
+          <div className={styles.roster}>
+            {rosterStatus === "loading" && <p className={styles.rosterNote}>Loading…</p>}
+            {rosterStatus === "error" && <p className={styles.error}>{rosterError}</p>}
+            {rosterStatus === "ok" && roster.length === 0 && (
+              <p className={styles.rosterNote}>Nobody has registered interest yet.</p>
+            )}
+            {rosterStatus === "ok" && roster.length > 0 && (
+              <ul className={styles.rosterList}>
+                {roster.map((person) => (
+                  <li key={person.id} className={styles.rosterPerson}>
+                    <span>{person.name}</span>
+                    <a href={`mailto:${person.email}`}>{person.email}</a>
+                    <span className={styles.rosterNote}>{savedAt(person.interestedAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </li>
     );
   }
