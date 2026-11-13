@@ -45,14 +45,14 @@ const EMPTY_FORM = {
 };
 
 /**
- * Upcoming AgroConnect opportunities for the Agri club: farm visits,
- * tree-planting days, harvest mornings and volunteering shifts.
+ * Upcoming opportunities for the Agri club: farm visits, tree-planting days,
+ * harvest mornings and volunteering shifts.
  *
  * Nothing here is derived from the partner. Every activity is a local record,
  * either seeded with the club or published by one of its admins — that is what
  * `source` says, and the two are listed separately rather than blended.
- * AgroConnect only supplies the matched grower's details beside a card, so the
- * list renders whether or not Team 6's API is answering.
+ * AgroConnect only supplies the matched grower's details and stall beside a
+ * card, so the list renders whether or not Team 6's API is answering.
  *
  * Members see the list and register interest; club admins also get the form to
  * publish and remove activities. Everyone else gets a members-only note.
@@ -63,17 +63,7 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
   const member = Boolean(user) && (isClubMember(user, AGRI_CLUB_ID) || managesClub);
 
   const [opportunities, setOpportunities] = useState([]);
-  const [partner, setPartner] = useState({
-    live: false,
-    asOf: null,
-    stale: false,
-    opportunities: [],
-    opportunitiesAvailable: false,
-  });
-  // Two sources, two tabs: what the club runs, and what the producer's API
-  // offers. They are never blended, which is why the split is a tab rather
-  // than another badge on the same list.
-  const [tab, setTab] = useState("local");
+  const [partner, setPartner] = useState({ live: false, asOf: null, stale: false });
   const [status, setStatus] = useState(member ? "loading" : "locked"); // locked | loading | ok | error
   const [error, setError] = useState("");
   const [pendingIds, setPendingIds] = useState(() => new Set());
@@ -478,43 +468,7 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
 
       {member && (
         <>
-          <div
-            className={styles.tabs}
-            role="tablist"
-            aria-label="Where the opportunities come from"
-          >
-            <button
-              type="button"
-              role="tab"
-              id="agro-tab-local"
-              aria-selected={tab === "local"}
-              aria-controls="agro-panel-local"
-              className={tab === "local" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => setTab("local")}
-            >
-              Club activities <span className={styles.tabCount}>{opportunities.length}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="agro-tab-partner"
-              aria-selected={tab === "partner"}
-              aria-controls="agro-panel-partner"
-              className={tab === "partner" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => setTab("partner")}
-            >
-              From AgroConnect{" "}
-              <span className={styles.tabCount}>{partner.opportunities.length}</span>
-            </button>
-          </div>
-
-          <div
-            className={styles.tabPanel}
-            id="agro-panel-local"
-            role="tabpanel"
-            aria-labelledby="agro-tab-local"
-            hidden={tab !== "local"}
-          >
+          <div>
             <p className={styles.freshness}>
               {partner.live
                 ? "Grower details and produce are live from AgroConnect. Activities are the club's own records."
@@ -703,37 +657,6 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
                 )}
               </>
             )}
-          </div>
-
-          <div
-            className={styles.tabPanel}
-            id="agro-panel-partner"
-            role="tabpanel"
-            aria-labelledby="agro-tab-partner"
-            hidden={tab !== "partner"}
-          >
-            {/* When Team 6 exposes an opportunities feed, its rows arrive in
-                `partner.opportunities` and render here. Until then this is the
-                honest state: there is no feed, and nothing saved to fall
-                back on. */}
-            <div className={styles.alert} role="status">
-              <p className={styles.alertTitle}>
-                {partner.live
-                  ? "AgroConnect is reachable, but has no opportunities feed yet"
-                  : "AgroConnect's server is unavailable"}
-              </p>
-              <p className={styles.alertBody}>
-                {partner.live
-                  ? "We can read their growers, but they do not publish activities we can call."
-                  : "We asked the producer's API and got no answer."}{" "}
-                We have no saved opportunities from them to fall back on, so this tab stays empty
-                rather than inventing any. The club&apos;s own activities and your registrations are
-                unaffected, and this fills in once their feed is connected.
-              </p>
-              <button type="button" className={styles.ghostButton} onClick={load}>
-                Ask again
-              </button>
-            </div>
           </div>
         </>
       )}
