@@ -57,7 +57,7 @@ const EMPTY_FORM = {
  * Members see the list and register interest; club admins also get the form to
  * publish and remove activities. Everyone else gets a members-only note.
  */
-export default function AgroOpportunities({ heading = "AgroConnect opportunities" }) {
+export default function AgroOpportunities({ heading = "Farm visits and volunteering" }) {
   const { user } = useAuth();
   const managesClub = canManageClub(user, AGRI_CLUB_ID);
   const member = Boolean(user) && (isClubMember(user, AGRI_CLUB_ID) || managesClub);
@@ -263,8 +263,8 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
         <p className={styles.meta}>
           {opportunity.grower
             ? opportunity.grower.county
-              ? `Grower from ${opportunity.grower.county}`
-              : "Linked to an AgroConnect grower"
+              ? `Hosted by a grower in ${opportunity.grower.county}`
+              : "Hosted by an AgroConnect grower"
             : opportunity.hostName
               ? `Host: ${opportunity.hostName}`
               : "Hosted by the Agro club"}
@@ -285,7 +285,7 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
             {opportunity.grower.focus && <p className={styles.meta}>{opportunity.grower.focus}</p>}
             {opportunity.grower.listings?.length > 0 && (
               <>
-                <p className={styles.stall}>At their stall right now</p>
+                <p className={styles.stall}>At their stall</p>
                 <ul className={styles.listings}>
                   {opportunity.grower.listings.map((listing) => (
                     <li key={listing.id} className={styles.listing}>
@@ -434,7 +434,7 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
     <section className={styles.section} aria-labelledby="agro-opportunities">
       <div className={styles.head}>
         <div>
-          <p className={styles.eyebrow}>From our growers</p>
+          <p className={styles.eyebrow}>Club activities</p>
           <h2 id="agro-opportunities" className={styles.title}>
             {heading}
           </h2>
@@ -471,14 +471,14 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
           <div>
             <p className={styles.freshness}>
               {partner.live
-                ? "Grower details and produce are live from AgroConnect. Activities are the club's own records."
+                ? "Growers and their produce come live from AgroConnect. The activities below are the club's own."
                 : partner.stale
-                  ? `AgroConnect isn't answering — showing the grower list we saved on ${savedAt(
+                  ? `AgroConnect isn't answering, so grower details come from the list we saved on ${savedAt(
                       partner.asOf
-                    )}. The activities below are the club's own and are unaffected.`
-                  : "AgroConnect isn't answering and we have no saved grower list yet — showing the club's own activities."}
+                    )}. The activities below are the club's own.`
+                  : "AgroConnect isn't answering and we have no saved grower list, so these are the club's own activities without a stall."}
               {partner.produce?.stale
-                ? ` Their produce list is the copy saved on ${savedAt(partner.produce.asOf)}.`
+                ? ` Their produce is the copy we saved on ${savedAt(partner.produce.asOf)}.`
                 : ""}
             </p>
 

@@ -503,3 +503,84 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_audit_created (created_at)
 ) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- partner_snapshots, agro_opportunities, agro_interest (migrations 010–012)
+-- The Agri club's activities are local records; AgroConnect only supplies the
+-- grower beside a card, matched by host_name. Included here so a fresh import
+-- has the panel working without running the migrator (migrations 010–012
+-- mirror exactly this). Dates stay relative to CURDATE(), like the events.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS partner_snapshots (
+    cache_key VARCHAR(80) PRIMARY KEY,
+    payload   LONGTEXT NOT NULL,
+    as_of     DATETIME NOT NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS agro_opportunities (
+    opportunity_id VARCHAR(60)  PRIMARY KEY,
+    kind           VARCHAR(24)  NOT NULL,
+    title          VARCHAR(150) NOT NULL,
+    description    TEXT,
+    location       VARCHAR(150) NOT NULL,
+    county         VARCHAR(80)  NULL,
+    starts_at      DATETIME     NOT NULL,
+    capacity       INT          NULL,
+    host_name      VARCHAR(120) NULL,
+    farmer_id      INT          NULL,
+    source         VARCHAR(12)  NOT NULL DEFAULT 'admin',
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_agro_starts (starts_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS agro_interest (
+    opportunity_id VARCHAR(60) NOT NULL,
+    user_id        VARCHAR(30) NOT NULL,
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (opportunity_id, user_id),
+    CONSTRAINT fk_agro_interest_opportunity
+        FOREIGN KEY (opportunity_id) REFERENCES agro_opportunities(opportunity_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_agro_interest_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO agro_opportunities
+    (opportunity_id, kind, title, description, location, county, starts_at, capacity, host_name, source)
+VALUES
+    ('agro-opp-01', 'farm_visit',
+     'Farm visit: Grace''s tomato plot',
+     'A morning with a grower who sells on AgroConnect. Walk the plot, see how the tomatoes are graded for market, and ask what a fair price looks like from her side of the table.',
+     'Kiambu (transport from the Student Union)', 'Kiambu',
+     TIMESTAMP(DATE_ADD(CURDATE(), INTERVAL 3 DAY), '08:00:00'), 24, 'Daniel Kamau', 'seed'),
+
+    ('agro-opp-02', 'tree_planting',
+     'Tree planting: Ngong river bank',
+     'The club''s termly planting day with the county environment office. We plant indigenous seedlings and stake the ones from last term. Wear closed shoes and bring a water bottle.',
+     'Ngong river bank, Kajiado', 'Kajiado',
+     TIMESTAMP(DATE_ADD(CURDATE(), INTERVAL 9 DAY), '07:30:00'), 60, 'Kemboi Kirui', 'seed'),
+
+    ('agro-opp-03', 'harvest',
+     'Harvest morning at Karen greens',
+     'Help bring in a leafy-greens crop, then sort and pack it for the Saturday market. No experience needed — the grower walks everyone through the harvesting.',
+     'Karen, Nairobi', 'Nairobi',
+     TIMESTAMP(DATE_ADD(CURDATE(), INTERVAL 14 DAY), '06:30:00'), 30, 'Mark Kage', 'seed'),
+
+    ('agro-opp-04', 'volunteering',
+     'Market stall volunteering',
+     'Run the club''s AgroConnect stall at the Saturday market: set up, talk to buyers, log what sells and what does not. Two-hour shifts, pairs welcome.',
+     'City market, Nairobi', 'Nairobi',
+     TIMESTAMP(DATE_ADD(CURDATE(), INTERVAL 6 DAY), '16:00:00'), 12, NULL, 'seed');
+
+INSERT IGNORE INTO agro_interest (opportunity_id, user_id)
+SELECT 'agro-opp-01', user_id FROM users
+WHERE email IN ('sofia.ramirez@campus.edu', 'blujohn01@campus.edu');
+
+INSERT IGNORE INTO agro_interest (opportunity_id, user_id)
+SELECT 'agro-opp-02', user_id FROM users
+WHERE email = 'sofia.ramirez@campus.edu';
+
+INSERT IGNORE INTO agro_interest (opportunity_id, user_id)
+SELECT 'agro-opp-04', user_id FROM users
+WHERE email = 'blujohn01@campus.edu';

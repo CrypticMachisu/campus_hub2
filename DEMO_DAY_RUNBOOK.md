@@ -310,7 +310,7 @@ The point to make is that this feature is **additive**: nothing a consumer alrea
 changed.
 
 1. [C] Log in as `sofia.ramirez@campus.edu` / `campushub123`, then open
-   `http://localhost:5173/clubs/club-07` and scroll to **AgroConnect opportunities**.
+   `http://localhost:5173/clubs/club-07` and scroll to **Farm visits and volunteering**.
    If the panel looks cramped on the projector, collapse the member sidebar with the «
    button at its top right; the floating » button brings it back, and the choice survives a
    reload.
@@ -319,7 +319,7 @@ changed.
    grower listing tomatoes is not a farm visit, so we never manufacture one from the
    partner's data."
    Then point at a card's grower line: the name with the **AgroConnect** tag, the county and
-   focus underneath, and "At their stall right now" with up to three listings (e.g.
+   focus underneath, and "At their stall" with up to three listings (e.g.
    `Fresh tomatoes · KES 120/kg`). Say: "That part is theirs, fetched live and labelled; the
    visit itself is ours." If the tag is missing, Team 6 had no matching grower and the card
    falls back to the plain host name — it never guesses a stall.
@@ -894,7 +894,7 @@ database; it uses a throwaway MySQL container.
 | `server/migrations/010_agro_opportunities.sql`                       | Opportunity, interest and partner-snapshot tables + seeded activities         | §3.5 (optional)                             |
 | `server/migrations/011_seed_agro_interest.sql`                       | Three seeded interest registrations so counts are not zero                    | §3.5 (optional)                             |
 | `server/migrations/012_link_seed_growers.sql`                        | Points the seeded activities at real partner growers (name match)             | §3.5 (optional)                             |
-| `src/components/AgroOpportunities.jsx`                               | Member/rights-gated panel, tabs, grower picker, stall lines, admin roster     | §3.5 (optional)                             |
+| `src/components/AgroOpportunities.jsx`                               | Member/rights-gated panel, grower picker, stall lines, admin roster           | §3.5 (optional)                             |
 | `src/utils/agroStore.js`                                             | Client calls for `/v2/agro` and the partner grower list; one date mapping     | §3.5 (optional)                             |
 | `server/routes/events.js`                                            | List / create / delete used in the live demo (untouched by versioning)        | Hunja                                       |
 | `server/routes/clubs.js`                                             | The read Team 8 consumes                                                      | Rayyan, Hunja                               |

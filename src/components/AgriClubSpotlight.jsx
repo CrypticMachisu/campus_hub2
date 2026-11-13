@@ -24,17 +24,17 @@ export default function AgriClubSpotlight() {
   useEffect(() => {
     let cancelled = false;
     apiFetch("/partner/farmers", { auth: false })
-      .then((data) => {
+      .then((payload) => {
         if (cancelled) return;
-        setFarmers(data);
+        setFarmers(payload.data ?? []);
         setStatus((s) => ({ ...s, farmers: "ok" }));
       })
       .catch(() => !cancelled && setStatus((s) => ({ ...s, farmers: "error" })));
 
     apiFetch("/partner/produce", { auth: false })
-      .then((data) => {
+      .then((payload) => {
         if (cancelled) return;
-        setListings(data);
+        setListings(payload.data ?? []);
         setStatus((s) => ({ ...s, listings: "ok" }));
       })
       .catch(() => !cancelled && setStatus((s) => ({ ...s, listings: "error" })));
