@@ -359,7 +359,6 @@ INSERT INTO club_members (user_id, club_id) VALUES
     ('user-03', 'club-04'),
     ('user-04', 'club-06'),
     ('user-05', 'club-01'),
-    ('user-05', 'club-07'),
     ('user-07', 'club-01'),
     ('user-08', 'club-02');
 
@@ -481,6 +480,12 @@ VALUES
         (SELECT category_id FROM categories WHERE name = 'Agriculture'),
         CURDATE() + INTERVAL 7 DAY, '17:00', 'Science Block, Room 105',
         '/images/club-fair.svg');
+
+-- Sofia belongs to the Agri club as well, so the opportunities panel and its
+-- member-only test have a member on a fresh install (not just on a database
+-- that has been used). This row lives here, after club-07 exists, because the
+-- earlier club_members insert runs before the Agri club is created.
+INSERT IGNORE INTO club_members (user_id, club_id) VALUES ('user-05', 'club-07');
 
 -- ----------------------------------------------------------------------------
 -- audit_log (migration 009)
