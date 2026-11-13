@@ -9,6 +9,15 @@ command in it has been checked against the code in this repository.
 > **Week 13 update (12 Nov 2026):** API versioning shipped, so every slide, cue and test
 > count below reflects `/api/v2` running beside a deprecated `/api/v1`. The Versioning slide
 > is no longer a "next step" — it is a live demo beat with its own command in §5.3.
+>
+> **Post-Week-13 addition (13 Nov 2026):** the Agri club now has AgroConnect
+> opportunities — farm visits, tree-planting days, harvest mornings and volunteering —
+> at `GET /api/v2/agro/opportunities`, member-only, with interest registration and an
+> admin roster. It is **additive and v2-only**. Because there is no time left before
+> Demo Day to re-test a consumer-facing change, we are not touching the outward-facing
+> endpoints: `/api/events`, `/api/v2/events`, `/api/clubs`, `/api/partner/*` and every
+> header and payload they return stay exactly as they are. Nothing in Team 8's or Team
+> 6's integration moves. The optional demo beat is §3.5.
 
 > Notes on sources: the slide template ZIP and Edgar's prompt files were not attached in
 > the chat this runbook was written in, so the slide **names** below come from the deck
@@ -58,12 +67,12 @@ never again. That is why all the command work happens in C.
 
 - [ ] XAMPP Control Panel → **MySQL** started (green). Only one MySQL may hold port 3306.
 - [ ] `git pull origin main`; the latest CI run on `main` is **green**.
-- [ ] `cd server; npm run migrate:status` → on a migrated database, `9 applied, 0 pending`.
-      **On this machine it prints `0 applied, 9 pending`** because the schema was imported
-      from `server/campushub_database.sql` and `schema_migrations` was never baselined. That
-      is expected — do **not** run `npm run migrate` before the demo, it would try to create
-      tables that already exist.
-- [ ] `npx jest` from the repo root → `9 passed` (the version suite; no database, ~3 s).
+- [ ] `cd server; npm run migrate:status` → `11 applied, 0 pending` (this machine is
+      migrated as of 13 Nov, including the two Agro-opportunity migrations). If a fresh
+      schema was imported from `server/campushub_database.sql` without a baseline it prints
+      `0 applied, 11 pending`; that is expected — do **not** run `npm run migrate` then, it
+      would try to create tables that already exist.
+- [ ] `npx jest` from the repo root → `18 passed` (version + mapping suites; no database, ~10 s).
 - [ ] `server/requests.log` deleted or empty (so the log only contains demo traffic).
       `Remove-Item server\requests.log -ErrorAction SilentlyContinue`
 - [ ] Windows are open in the order A (API, left), B (Vite, middle), C (demo, right/full
@@ -137,6 +146,11 @@ if ($env:TOKEN) { "Token OK ($($env:TOKEN.Length) chars)" } else { "TOKEN MISSIN
 Warm the partner panels — open the Home page **twice** and scroll to "Fresh from
 AgroConnect". Team 6's host sleeps; the first call after idle can take a minute or return
 502, and `/health` alone does **not** warm the data routes.
+
+For the optional opportunities beat in §3.5, log in as `sofia.ramirez@campus.edu` (she is a
+member of `club-07`) and open `http://localhost:5173/clubs/club-07` once, so the grower
+details are warm and the panel is not fetching for the first time on stage. The activity
+list itself is local and loads without the partner.
 
 Leave window A running with the startup block on screen: that block **is** Hunja's "I just
 started the API from scratch" evidence, so he does not restart it on stage. Stage nothing
@@ -283,6 +297,30 @@ say plainly: "That label is ours."
 | `429`                                     | "That's our rate limiter: 100 requests per key per minute, with `Retry-After`."             | Restart window A (counters are in memory) or wait 60 s.  |
 | `SQLITE`/MySQL error                      | "MySQL is down, so the API exits on purpose."                                               | XAMPP → Start MySQL → restart window A.                  |
 
+### 3.5 Optional live beat — Agro club opportunities (members only, ~20 s)
+
+Skippable. It needs a logged-in member, so it costs a login unless §1.3 already staged one.
+The point to make is that this feature is **additive**: nothing a consumer already calls has
+changed.
+
+1. [C] Log in as `sofia.ramirez@campus.edu` / `campushub123`, then open
+   `http://localhost:5173/clubs/club-07` and scroll to **AgroConnect opportunities**.
+2. [C] Point at the two groups — **Added by club admins** and **CampusHub starter
+   activities** — and say: "These are our own records, not Team 6's. A grower listing
+   tomatoes is not a farm visit, so we never manufacture one from the partner's data."
+3. [C] Click **I'm interested** on one card. The count goes up, the live region confirms it,
+   and **Add to calendar** exports the activity as an `.ics`.
+4. [C] Log in as `amara.okafor@campus.edu` (tier1) and press **Who's interested** on the same
+   card: the roster shows names, emails and the time each member registered.
+
+If a lecturer asks who can see this: the server checks membership, so a signed-out visitor
+or a member of another club gets `401`/`403` and no activities, while the panel on the page
+shows a members-only note. The list also survives Team 6 being down — each card's grower
+details fall back to the saved snapshot and the line above the cards says when it was saved.
+
+If you are behind time, **skip this beat**. It is the newest feature, not the core demo, and
+every command below still runs without it.
+
 ---
 
 ## 4. Roy — Design, Build and Test, Documentation, Security, Monitoring (~50 s)
@@ -293,9 +331,10 @@ say plainly: "That label is ours."
 unknown path is a 404 and not a fake 401. The app is exported from `server/app.js` without
 listening, which is what lets the tests drive it in-process.
 
-**Build and Test** — CI on every push: ESLint + Vite build + 21 server tests on a throwaway
-MySQL container (`api-security`, `migrate`, `signups-comments`), plus 14 Jest tests
-(13 version, 5 for the v2 mapping) that need no database; a headless browser smoke test for login, RSVP, waitlist and retry.
+**Build and Test** — CI on every push: ESLint + Vite build + 22 server tests on a throwaway
+MySQL container (`api-security`, `migrate`, `signups-comments`, `agro-opportunities`), plus
+18 Jest tests (13 version, 5 for the v2 mapping) that need no database; a headless browser
+smoke test for login, RSVP, waitlist and retry.
 
 **Documentation** — `README.md` quickstart (PowerShell `curl.exe`, `--data "@file.json"`),
 `openapi.yaml` → `docs/index.html` (Redoc), plus `RUNNING.md`, `OPERATIONS.md`,
@@ -429,6 +468,11 @@ Expected: the last five JSON lines, one per request, including the 401 and the p
   does not cover `/produce`, so there is nothing of theirs to migrate to yet.
 - No `GET /api/clubs/:id` or `GET /api/events/:id` (v2 adds `PUT`/`DELETE` on `/events/:id`,
   not a single-event read).
+- The Agro opportunities feature is deliberately not extended before Demo Day. It is
+  additive (`/api/v2/agro/*` only), member-gated, tested and documented, and we will not
+  touch an outward-facing endpoint (`/events`, `/api/v2/events`, `/clubs`, `/partner/*`)
+  this close to the presentation — there is no time to re-run the consumer checks that a
+  change there would need.
 - Next: shared rate-limit store · hand-check a date change in the dashboard form · the Team 6
   migration when a notice covers `/produce` and a deployed v2 exists.
 
@@ -808,50 +852,55 @@ database; it uses a throwaway MySQL container.
 
 ## 9. Appendix C — files used in the presentation
 
-| Path                                                                 | What it is                                                                | Who shows it / slide                        |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------- |
-| `server/server.js`                                                   | Startup only: checks MySQL, listens, logs the versions                    | Hunja                                       |
-| `server/app.js`                                                      | Builds and exports the app: monitor first, health, v1/v2 mounts, JSON 404 | Rayyan, Hunja                               |
-| `server/v1.js`                                                       | The old version, frozen, plus the deprecation headers on `/events`        | Tiphanie / Versioning                       |
-| `server/v2.js`                                                       | The new version: same resources, `/events` on the v2 view                 | Tiphanie / Versioning                       |
-| `server/routes/eventsV2.js`                                          | The one `toV2Event` mapper and the response adapter                       | Tiphanie / Versioning                       |
-| `server/deprecate.js`                                                | `Deprecation`, `Sunset`, `Link` headers                                   | Tiphanie / Versioning                       |
-| `server/monitoring.js`                                               | Request log + `/api/stats`                                                | Roy / Monitoring                            |
-| `server/middleware/apiKey.js`                                        | `X-API-Key` guard, timing-safe compare, 401                               | Roy / Security                              |
-| `server/middleware/rateLimit.js`                                     | 100 req / 60 s, 429 + `Retry-After`                                       | Roy / Security                              |
-| `server/middleware/apiGuards.js`                                     | Guards registered per route so unknown paths stay 404                     | Roy / Design                                |
-| `server/resilientFetch.js`                                           | Timeout, retries, 4xx rule, 429 `Retry-After`                             | Tiphanie / Resilience                       |
-| `server/routes/partner.js`                                           | Team 6 proxy, `serveWithFallback`, `stale` flag                           | Tiphanie, Hunja                             |
-| `src/components/PartnerFarmers.jsx`                                  | "Farmers on AgroConnect" + stale banner                                   | Tiphanie / Resilience                       |
-| `server/routes/events.js`                                            | List / create / delete used in the live demo (untouched by versioning)    | Hunja                                       |
-| `server/routes/clubs.js`                                             | The read Team 8 consumes                                                  | Rayyan, Hunja                               |
-| `server/tests/*.test.mjs`                                            | 21 server tests (3 suites)                                                | Roy / Build and Test                        |
-| `__tests__/versions.test.js`                                         | 9 Jest tests: v1 frozen, v2 shape, headers, key, 404                      | Roy / Build and Test, Tiphanie / Versioning |
-| `__tests__/eventsStore.test.js`                                      | 5 Jest tests: `startTime` → `date`/`time`, incl. past midnight            | Tiphanie / Versioning                       |
-| `jest.config.cjs`, `babel.config.cjs`                                | Jest config (CJS in an ESM package) + the test-only ESM→CJS transform     | Roy / Build and Test                        |
-| `docs/v1_before.json`, `docs/v1_after.json`                          | The Evidence 1 snapshots; identical bytes, sha256 `3356ca69…`             | Tiphanie / Versioning                       |
-| `.github/workflows/ci.yml`                                           | Lint + build + MySQL test job                                             | Roy / Build and Test                        |
-| `openapi.yaml`                                                       | The contract; `info.version: 2.0.0` + the v2/deprecation note             | Roy / Documentation, Tiphanie / Versioning  |
-| `docs/index.html`                                                    | Pre-generated Redoc reference from the OpenAPI file                       | Roy / Documentation                         |
-| `README.md`                                                          | Quickstart, keys, rate limit, monitoring, versioning pointer              | Roy / Documentation                         |
-| `CI.md`, `RUNNING.md`, `OPERATIONS.md`                               | CI, cold start, ops runbook                                               | Q&A backup                                  |
-| `VERSIONING_NOTES.md`                                                | The change, the prediction, who uses v1, the handout checklist            | Tiphanie / Versioning                       |
-| `DEPRECATION_NOTICE.md`                                              | The full notice sent to consumers                                         | Tiphanie / Versioning                       |
-| `RING_BULLETIN.md`                                                   | The short version for the ring (Team 8, Team 6)                           | Rayyan / Our Ring                           |
-| `MONITORING_NOTES.md`                                                | Predicted vs measured, Part E numbers                                     | Roy / Monitoring                            |
-| `RESILIENCE_NOTES.md`                                                | Modes tested, 5.19 s measured, what we did not build                      | Tiphanie / Resilience                       |
-| `INTEGRATION_LOG.md`                                                 | Team 6 contract, first call, surprises                                    | Rayyan / Our Ring                           |
-| `login.json`, `event.json`, `club.json`, `reg.json`, `badlogin.json` | Demo payloads (`--data "@file.json"`) — must be in the window-C folder    | Hunja                                       |
-| `traffic.js`                                                         | Generates mixed traffic so `/stats` has data                              | Q&A / Monitoring                            |
-| `server/flaky-partner.js`                                            | Stand-in partner with `/__mode/slow`, `/flaky`, `/error`, `/ok`           | Tiphanie (optional)                         |
-| `server/tools/caller-labels.js`                                      | Prints log labels without printing keys                                   | Rayyan, Roy                                 |
-| `scripts/smoke.mjs`                                                  | Headless browser smoke test (login, RSVP, waitlist, retry)                | Q&A / Build and Test                        |
-| `run.sh`                                                             | One-command start that tees `requests.log`                                | Hunja (Git Bash)                            |
-| `server/.env`, `.env`                                                | Keys and config — **never shown on screen**                               | —                                           |
+| Path                                                                 | What it is                                                                  | Who shows it / slide                        |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------- |
+| `server/server.js`                                                   | Startup only: checks MySQL, listens, logs the versions                      | Hunja                                       |
+| `server/app.js`                                                      | Builds and exports the app: monitor first, health, v1/v2 mounts, JSON 404   | Rayyan, Hunja                               |
+| `server/v1.js`                                                       | The old version, frozen, plus the deprecation headers on `/events`          | Tiphanie / Versioning                       |
+| `server/v2.js`                                                       | The new version: same resources, `/events` on the v2 view                   | Tiphanie / Versioning                       |
+| `server/routes/eventsV2.js`                                          | The one `toV2Event` mapper and the response adapter                         | Tiphanie / Versioning                       |
+| `server/deprecate.js`                                                | `Deprecation`, `Sunset`, `Link` headers                                     | Tiphanie / Versioning                       |
+| `server/monitoring.js`                                               | Request log + `/api/stats`                                                  | Roy / Monitoring                            |
+| `server/middleware/apiKey.js`                                        | `X-API-Key` guard, timing-safe compare, 401                                 | Roy / Security                              |
+| `server/middleware/rateLimit.js`                                     | 100 req / 60 s, 429 + `Retry-After`                                         | Roy / Security                              |
+| `server/middleware/apiGuards.js`                                     | Guards registered per route so unknown paths stay 404                       | Roy / Design                                |
+| `server/resilientFetch.js`                                           | Timeout, retries, 4xx rule, 429 `Retry-After`                               | Tiphanie / Resilience                       |
+| `server/routes/partner.js`                                           | Team 6 proxy, `serveWithFallback`, `stale` flag                             | Tiphanie, Hunja                             |
+| `src/components/PartnerFarmers.jsx`                                  | "Farmers on AgroConnect" + stale banner                                     | Tiphanie / Resilience                       |
+| `server/routes/agro.js`                                              | Opportunities: member-only reads, interest, admin roster, snapshot fallback | §3.5 (optional)                             |
+| `server/migrations/010_agro_opportunities.sql`                       | Opportunity, interest and partner-snapshot tables + seeded activities       | §3.5 (optional)                             |
+| `server/migrations/011_seed_agro_interest.sql`                       | Three seeded interest registrations so counts are not zero                  | §3.5 (optional)                             |
+| `src/components/AgroOpportunities.jsx`                               | Member/rights-gated panel, grouped by seed vs admin, roster for admins      | §3.5 (optional)                             |
+| `src/utils/agroStore.js`                                             | Client calls for `/v2/agro`; `startsAt` → `date`/`time` in one place        | §3.5 (optional)                             |
+| `server/routes/events.js`                                            | List / create / delete used in the live demo (untouched by versioning)      | Hunja                                       |
+| `server/routes/clubs.js`                                             | The read Team 8 consumes                                                    | Rayyan, Hunja                               |
+| `server/tests/*.test.mjs`                                            | 22 server tests (4 suites, incl. `agro-opportunities`)                      | Roy / Build and Test                        |
+| `__tests__/versions.test.js`                                         | 13 Jest tests: v1 frozen, v2 shape, headers, key, 404, sunset               | Roy / Build and Test, Tiphanie / Versioning |
+| `__tests__/eventsStore.test.js`                                      | 5 Jest tests: `startTime` → `date`/`time`, incl. past midnight              | Tiphanie / Versioning                       |
+| `jest.config.cjs`, `babel.config.cjs`                                | Jest config (CJS in an ESM package) + the test-only ESM→CJS transform       | Roy / Build and Test                        |
+| `docs/v1_before.json`, `docs/v1_after.json`                          | The Evidence 1 snapshots; identical bytes, sha256 `3356ca69…`               | Tiphanie / Versioning                       |
+| `.github/workflows/ci.yml`                                           | Lint + build + MySQL test job                                               | Roy / Build and Test                        |
+| `openapi.yaml`                                                       | The contract; `info.version: 2.0.0` + the v2/deprecation note               | Roy / Documentation, Tiphanie / Versioning  |
+| `docs/index.html`                                                    | Pre-generated Redoc reference from the OpenAPI file                         | Roy / Documentation                         |
+| `README.md`                                                          | Quickstart, keys, rate limit, monitoring, versioning pointer                | Roy / Documentation                         |
+| `CI.md`, `RUNNING.md`, `OPERATIONS.md`                               | CI, cold start, ops runbook                                                 | Q&A backup                                  |
+| `VERSIONING_NOTES.md`                                                | The change, the prediction, who uses v1, the handout checklist              | Tiphanie / Versioning                       |
+| `DEPRECATION_NOTICE.md`                                              | The full notice sent to consumers                                           | Tiphanie / Versioning                       |
+| `RING_BULLETIN.md`                                                   | The short version for the ring (Team 8, Team 6)                             | Rayyan / Our Ring                           |
+| `MONITORING_NOTES.md`                                                | Predicted vs measured, Part E numbers                                       | Roy / Monitoring                            |
+| `RESILIENCE_NOTES.md`                                                | Modes tested, 5.19 s measured, what we did not build                        | Tiphanie / Resilience                       |
+| `INTEGRATION_LOG.md`                                                 | Team 6 contract, first call, surprises                                      | Rayyan / Our Ring                           |
+| `login.json`, `event.json`, `club.json`, `reg.json`, `badlogin.json` | Demo payloads (`--data "@file.json"`) — must be in the window-C folder      | Hunja                                       |
+| `traffic.js`                                                         | Generates mixed traffic so `/stats` has data                                | Q&A / Monitoring                            |
+| `server/flaky-partner.js`                                            | Stand-in partner with `/__mode/slow`, `/flaky`, `/error`, `/ok`             | Tiphanie (optional)                         |
+| `server/tools/caller-labels.js`                                      | Prints log labels without printing keys                                     | Rayyan, Roy                                 |
+| `scripts/smoke.mjs`                                                  | Headless browser smoke test (login, RSVP, waitlist, retry)                  | Q&A / Build and Test                        |
+| `run.sh`                                                             | One-command start that tees `requests.log`                                  | Hunja (Git Bash)                            |
+| `server/.env`, `.env`                                                | Keys and config — **never shown on screen**                                 | —                                           |
 
 Demo accounts (password `campushub123`, from `npm run set-passwords`): `amara.okafor@campus.edu`
 (tier1, the token in `login.json`), `leo.fischer@campus.edu` (club admin, club-01),
-`sofia.ramirez@campus.edu` (member, club-01).
+`sofia.ramirez@campus.edu` (member, club-01 **and club-07** — use her for §3.5).
 
 ---
 
@@ -870,7 +919,9 @@ Demo accounts (password `campushub123`, from `npm run set-passwords`): `amara.ok
 | How do consumers know v1 is leaving?   | Every v1 response carries `Deprecation: true`, `Sunset`, `Link` — not just an email                                             | §5.3 command                |
 | What if Team 8 does not migrate?       | We watch `/stats`; v1 keeps serving until 30 Nov, so nobody breaks before Demo Day                                              | `/api/stats`                |
 | Did v1 actually stay identical?        | `diff docs/v1_before.json docs/v1_after.json` prints nothing; both are committed with sha256 `3356ca69…`                        | `docs/`                     |
-| Are the tests reliable?                | 21 server tests on a throwaway MySQL container in CI, plus 18 Jest tests (13 version, 5 mapping) that need no database          | CI tab, `npx jest`          |
+| Are the tests reliable?                | 22 server tests on a throwaway MySQL container in CI, plus 18 Jest tests (13 version, 5 mapping) that need no database          | CI tab, `npx jest`          |
+| Who can see the agro opportunities?    | Club-07 members and its admins only: `401` signed out, `403` another club's member, checked server-side, not in the UI          | §3.5                        |
+| Are those opportunities Team 6's data? | No. They are local records (`source: seed` or `admin`); AgroConnect only supplies the matched grower's details and a snapshot   | `server/routes/agro.js`     |
 | Why did our own front end move to v2?  | One base URL in `src/utils/api.js` sets `…/v2`; `toUiEvent()` maps `startTime` back to `date`/`time`, so no page changed        | `src/utils/eventsStore.js`  |
 | What about Team 6's v2?                | They have not published one; we asked, and we will not build against an invented contract                                       | `RING_BULLETIN.md` §2       |
 | What about the 6-second slide on logs? | One JSON line per request, no key, no body, no query string; `/stats` aggregates                                                | `MONITORING_NOTES.md`       |
