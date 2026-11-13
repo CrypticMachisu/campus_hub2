@@ -359,6 +359,7 @@ INSERT INTO club_members (user_id, club_id) VALUES
     ('user-03', 'club-04'),
     ('user-04', 'club-06'),
     ('user-05', 'club-01'),
+    ('user-05', 'club-07'),
     ('user-07', 'club-01'),
     ('user-08', 'club-02');
 

@@ -980,111 +980,6 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
-  schemas:
-    AgroOpportunity:
-      type: object
-      description: >
-        A local Agri club activity. `source` says whether it was seeded with
-        the club or published by an admin; the partner never contributes these
-        rows.
-      properties:
-        id:
-          type: string
-        kind:
-          type: string
-          enum: [farm_visit, tree_planting, harvest, volunteering]
-        title:
-          type: string
-        description:
-          type: string
-        location:
-          type: string
-        county:
-          type: string
-        startsAt:
-          type: string
-          example: "2026-11-16T08:00:00+03:00"
-        capacity:
-          type: integer
-          nullable: true
-        hostName:
-          type: string
-        farmerId:
-          type: integer
-          nullable: true
-        source:
-          type: string
-          enum: [seed, admin]
-        interestCount:
-          type: integer
-        interested:
-          type: boolean
-          description: Whether the calling member registered interest.
-        grower:
-          type: object
-          nullable: true
-          description: Present when the host matched a grower from AgroConnect or its saved snapshot.
-          properties:
-            id:
-              type: integer
-            name:
-              type: string
-            county:
-              type: string
-            focus:
-              type: string
-    AgroOpportunityInput:
-      type: object
-      required: [kind, title, location]
-      description: >
-        A start is required as well: send `startsAt`, or `date` plus `time`.
-      properties:
-        kind:
-          type: string
-          enum: [farm_visit, tree_planting, harvest, volunteering]
-        title:
-          type: string
-          maxLength: 150
-        description:
-          type: string
-        startsAt:
-          type: string
-          example: "2026-12-05T07:30:00+03:00"
-        date:
-          type: string
-          format: date
-        time:
-          type: string
-          example: "07:30"
-        location:
-          type: string
-          maxLength: 150
-        county:
-          type: string
-          maxLength: 80
-        capacity:
-          type: integer
-          minimum: 1
-          maximum: 10000
-        hostName:
-          type: string
-          maxLength: 120
-        farmerId:
-          type: integer
-          minimum: 1
-    AgroInterest:
-      type: object
-      properties:
-        interest:
-          type: object
-          properties:
-            opportunityId:
-              type: string
-            interested:
-              type: boolean
-            interestCount:
-              type: integer
-
   responses:
     ApiKeyUnauthorized:
       description: Missing or invalid API key.
@@ -1392,3 +1287,106 @@ components:
           type: string
         imageUrl:
           type: string
+    AgroOpportunity:
+      type: object
+      description: >
+        A local Agri club activity. `source` says whether it was seeded with
+        the club or published by an admin; the partner never contributes these
+        rows.
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [farm_visit, tree_planting, harvest, volunteering]
+        title:
+          type: string
+        description:
+          type: string
+        location:
+          type: string
+        county:
+          type: string
+        startsAt:
+          type: string
+          example: "2026-11-16T08:00:00+03:00"
+        capacity:
+          type: integer
+          nullable: true
+        hostName:
+          type: string
+        farmerId:
+          type: integer
+          nullable: true
+        source:
+          type: string
+          enum: [seed, admin]
+        interestCount:
+          type: integer
+        interested:
+          type: boolean
+          description: Whether the calling member registered interest.
+        grower:
+          type: object
+          nullable: true
+          description: Present when the host matched a grower from AgroConnect or its saved snapshot.
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            county:
+              type: string
+            focus:
+              type: string
+    AgroOpportunityInput:
+      type: object
+      required: [kind, title, location]
+      description: >
+        A start is required as well: send `startsAt`, or `date` plus `time`.
+      properties:
+        kind:
+          type: string
+          enum: [farm_visit, tree_planting, harvest, volunteering]
+        title:
+          type: string
+          maxLength: 150
+        description:
+          type: string
+        startsAt:
+          type: string
+          example: "2026-12-05T07:30:00+03:00"
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          example: "07:30"
+        location:
+          type: string
+          maxLength: 150
+        county:
+          type: string
+          maxLength: 80
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        hostName:
+          type: string
+          maxLength: 120
+        farmerId:
+          type: integer
+          minimum: 1
+    AgroInterest:
+      type: object
+      properties:
+        interest:
+          type: object
+          properties:
+            opportunityId:
+              type: string
+            interested:
+              type: boolean
+            interestCount:
+              type: integer

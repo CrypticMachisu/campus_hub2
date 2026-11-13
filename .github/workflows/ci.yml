@@ -100,6 +100,15 @@ jobs:
       - name: Load schema and demo data
         run: mysql -h 127.0.0.1 -P 3306 -u root -proot < server/campushub_database.sql
 
+      # The agro tables arrive in migrations 010/011, and the baseline step
+      # records those files WITHOUT running them. This job starts from the
+      # schema file rather than a migrated database, so apply them here — both
+      # files are re-runnable (CREATE TABLE IF NOT EXISTS / INSERT IGNORE).
+      - name: Load the agro tables
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub < server/migrations/010_agro_opportunities.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub < server/migrations/011_seed_agro_interest.sql
+
       - name: Baseline migrations and set demo passwords
         run: |
           cd server
@@ -130,7 +139,8 @@ jobs:
           node --test --test-concurrency=1 \
             tests/api-security.test.mjs \
             tests/migrate.test.mjs \
-            tests/signups-comments.test.mjs
+            tests/signups-comments.test.mjs \
+            tests/agro-opportunities.test.mjs
 
       - name: Show API log on failure
         if: failure()
