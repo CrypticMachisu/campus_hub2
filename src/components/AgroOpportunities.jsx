@@ -127,7 +127,7 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
       );
       setNotice(
         nextInterested
-          ? `You're on the list for ${opportunity.title}. The club will email the details.`
+          ? `You're on the list for ${opportunity.title}. The club can see your interest.`
           : `You've withdrawn your interest in ${opportunity.title}.`
       );
     } catch (err) {
