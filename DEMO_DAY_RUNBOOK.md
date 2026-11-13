@@ -73,6 +73,10 @@ never again. That is why all the command work happens in C.
       `0 applied, 11 pending`; that is expected — do **not** run `npm run migrate` then, it
       would try to create tables that already exist.
 - [ ] `npx jest` from the repo root → `18 passed` (version + mapping suites; no database, ~10 s).
+- [ ] `cd server; npm run refresh:agro` on the morning of the demo. The four seeded
+      activities were dated relative to when the migration ran, and the API only returns
+      upcoming ones, so this re-anchors the seeds to +3/+6/+9/+14 days. Admin-added
+      activities keep their dates.
 - [ ] `server/requests.log` deleted or empty (so the log only contains demo traffic).
       `Remove-Item server\requests.log -ErrorAction SilentlyContinue`
 - [ ] Windows are open in the order A (API, left), B (Vite, middle), C (demo, right/full
