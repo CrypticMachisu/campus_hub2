@@ -23,7 +23,7 @@ const EVENT_LIST_QUERY = `
  * a date/time pair is read as East Africa Time (the app's canonical zone), so
  * either documented or current callers keep working.
  */
-function parseStartTime(startTimeOrBody) {
+export function parseStartTime(startTimeOrBody) {
   let startTime = startTimeOrBody;
 
   if (startTimeOrBody && typeof startTimeOrBody === "object") {

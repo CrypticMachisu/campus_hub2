@@ -11,6 +11,8 @@ import { getSignups, saveSignup, deleteSignup } from "../utils/storage";
 import { getClubPlaybook } from "../utils/clubPlaybook";
 import NextClubEvent from "../components/NextClubEvent";
 import ClubFocusPanel from "../components/ClubFocusPanel";
+import AgroOpportunities from "../components/AgroOpportunities";
+import { AGRI_CLUB_ID } from "../components/AgriClubSpotlight";
 import ClubAgenda from "../components/ClubAgenda";
 import CommentSection from "../components/CommentSection";
 import ErrorState from "../components/ErrorState";
@@ -363,6 +365,10 @@ export default function ClubWorkspace() {
           <div className={styles.layout}>
             <div className={styles.column}>
               <ClubFocusPanel playbook={playbook} clubName={club.name} />
+
+              {/* Members register interest here and download each activity;
+                  the same panel is on the public club page. */}
+              {club.id === AGRI_CLUB_ID && <AgroOpportunities heading="Upcoming activities" />}
 
               <ClubAgenda
                 events={clubEvents}

@@ -43,7 +43,7 @@ const failureReason = (err) =>
  * returns { ok: true, data, asOf } or { ok: false, status, reason } and
  * logs WHY (timeout, network code, or partner status) — never the key.
  */
-async function partnerGet(path, query = {}) {
+export async function partnerGet(path, query = {}) {
   const base = partnerBase();
   if (!base) {
     console.error("PARTNER_URL is not set in server/.env");

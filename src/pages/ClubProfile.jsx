@@ -11,6 +11,7 @@ import { requestClubAdmin } from "../utils/adminStore";
 import { SkeletonGroup, ClubProfileSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
 import AgriClubSpotlight, { AGRI_CLUB_ID } from "../components/AgriClubSpotlight";
+import AgroOpportunities from "../components/AgroOpportunities";
 import styles from "./ClubProfile.module.css";
 
 export default function ClubProfile() {
@@ -113,6 +114,10 @@ export default function ClubProfile() {
 
       {/* Agri club only: live AgroConnect data used to market the platform and recruit members */}
       {club.id === AGRI_CLUB_ID && <AgriClubSpotlight />}
+
+      {/* Agri club only: farm visits, planting days and other grower activities.
+          These are our own records, so they render even when AgroConnect is down. */}
+      {club.id === AGRI_CLUB_ID && <AgroOpportunities />}
 
       {/* Target Club Scheduled Events Segment */}
 

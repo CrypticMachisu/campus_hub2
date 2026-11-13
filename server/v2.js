@@ -17,6 +17,7 @@ import { signupsRouter } from "./routes/signups.js";
 import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { partnerRouter } from "./routes/partner.js";
+import { agroRouter } from "./routes/agro.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { limiter } from "./middleware/apiGuards.js";
 
@@ -31,4 +32,7 @@ v2Router.use("/signups", signupsRouter);
 v2Router.use("/comments", commentsRouter);
 v2Router.use("/announcements", announcementsRouter);
 v2Router.use("/partner", partnerRouter);
+// New resource, so it ships in v2 only: v1 is frozen and a v1 caller must
+// never see a resource that was not there yesterday.
+v2Router.use("/agro", agroRouter);
 v2Router.use("/admin", createAdminRouter(limiter));
