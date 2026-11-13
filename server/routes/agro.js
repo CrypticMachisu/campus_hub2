@@ -56,68 +56,105 @@ function rowToOpportunity(row, interestIds = new Set()) {
   };
 }
 
-const SNAPSHOT_KEY = "agroconnect:farmers";
+const FARMERS_SNAPSHOT = "agroconnect:farmers";
+const PRODUCE_SNAPSHOT = "agroconnect:produce";
 
-/** Last farmer list we successfully fetched, or null. */
-async function readSnapshot() {
+/** Last list we successfully fetched for one partner feed, or null. */
+async function readSnapshot(key) {
   const [rows] = await pool.query(
     "SELECT payload, as_of FROM partner_snapshots WHERE cache_key = :key",
-    { key: SNAPSHOT_KEY }
+    { key }
   );
   const row = rows[0];
   if (!row) return null;
   try {
-    const farmers = JSON.parse(row.payload);
-    if (!Array.isArray(farmers)) return null;
-    return { farmers, asOf: new Date(row.as_of).toISOString() };
+    const items = JSON.parse(row.payload);
+    if (!Array.isArray(items)) return null;
+    return { items, asOf: new Date(row.as_of).toISOString() };
   } catch {
     return null;
   }
 }
 
-/** Save the snapshot on every success, so a restart does not erase it. */
-async function writeSnapshot(farmers, asOf) {
+/** Save a feed on every success, so a restart does not erase it. */
+async function writeSnapshot(key, items, asOf) {
   await pool.query(
     `INSERT INTO partner_snapshots (cache_key, payload, as_of)
      VALUES (:key, :payload, :asOf)
      ON DUPLICATE KEY UPDATE payload = VALUES(payload), as_of = VALUES(as_of)`,
-    { key: SNAPSHOT_KEY, payload: JSON.stringify(farmers), asOf: new Date(asOf) }
+    { key, payload: JSON.stringify(items), asOf: new Date(asOf) }
   );
 }
 
 /**
- * Grower context for the cards: live from AgroConnect, else the saved copy
- * with its timestamp, else nothing (club-added host names still render).
+ * Live -> saved copy -> nothing, the same rule for every partner list.
+ * Nothing here is turned into an opportunity; these lists only decorate a
+ * card the club already created.
  */
-async function growerFeed() {
-  const result = await partnerGet("/farmers");
-
-  if (result.ok && Array.isArray(result.data?.farmers)) {
-    const farmers = result.data.farmers.map((farmer) => ({
-      id: farmer.id,
-      fullName: farmer.fullName,
-      county: farmer.county,
-      focus: farmer.focus,
-    }));
+async function cachedFeed(path, key, shape, map) {
+  const result = await partnerGet(path);
+  if (result.ok && shape(result.data)) {
+    const items = map(result.data);
     try {
-      await writeSnapshot(farmers, result.asOf);
+      await writeSnapshot(key, items, result.asOf);
     } catch (err) {
-      console.error("could not save the AgroConnect farmer snapshot:", err.message);
+      console.error(`could not save the ${key} snapshot:`, err.message);
     }
-    return { farmers, live: true, asOf: result.asOf };
+    return { items, live: true, asOf: result.asOf };
   }
 
-  const saved = await readSnapshot().catch((err) => {
-    console.error("could not read the AgroConnect farmer snapshot:", err.message);
+  const saved = await readSnapshot(key).catch((err) => {
+    console.error(`could not read the ${key} snapshot:`, err.message);
     return null;
   });
   return saved
-    ? { farmers: saved.farmers, live: false, asOf: saved.asOf }
-    : { farmers: [], live: false, asOf: null };
+    ? { items: saved.items, live: false, asOf: saved.asOf }
+    : { items: [], live: false, asOf: null };
 }
 
-/** Attach the grower's live/saved details when we can match one. */
-function withGrower(opportunity, farmers) {
+/**
+ * Both partner feeds for the cards, fetched together: one timeout budget
+ * (~5.1 s worst case) rather than two, which keeps the page inside its 10 s
+ * client fetch.
+ */
+async function partnerFeeds() {
+  const [farmers, produce] = await Promise.all([
+    cachedFeed(
+      "/farmers",
+      FARMERS_SNAPSHOT,
+      (data) => Array.isArray(data?.farmers),
+      (data) =>
+        data.farmers.map((farmer) => ({
+          id: farmer.id,
+          fullName: farmer.fullName,
+          county: farmer.county,
+          focus: farmer.focus,
+        }))
+    ),
+    cachedFeed(
+      "/produce",
+      PRODUCE_SNAPSHOT,
+      (data) => Array.isArray(data?.listings),
+      (data) =>
+        data.listings.map((listing) => ({
+          id: listing.id,
+          title: listing.title,
+          price: listing.price,
+          unit: listing.unit,
+          quantity: listing.quantity,
+          county: listing.county,
+          sellerName: listing.sellerName,
+        }))
+    ),
+  ]);
+  return { farmers, produce };
+}
+
+/**
+ * Attach the matched grower and their current listings. The opportunity stays
+ * ours; the partner data is shown beside it and labelled as theirs.
+ */
+function withGrower(opportunity, farmers, produce) {
   const host = opportunity.hostName.trim().toLowerCase();
   const match = farmers.find(
     (farmer) =>
@@ -125,6 +162,15 @@ function withGrower(opportunity, farmers) {
       (host && String(farmer.fullName).toLowerCase() === host)
   );
   if (!match) return opportunity;
+
+  // Their listings identify the seller only by name, so this is a name match
+  // rather than an id join. A miss simply shows no stall, never a wrong one.
+  const listings = produce
+    .filter(
+      (listing) => String(listing.sellerName).toLowerCase() === String(match.fullName).toLowerCase()
+    )
+    .slice(0, 3);
+
   return {
     ...opportunity,
     grower: {
@@ -132,6 +178,7 @@ function withGrower(opportunity, farmers) {
       name: match.fullName,
       county: match.county || "",
       focus: match.focus || "",
+      listings,
     },
   };
 }
@@ -167,14 +214,22 @@ agroRouter.get("/opportunities", requireAuth, async (req, res) => {
   );
   const interestIds = new Set(mine.map((row) => row.opportunity_id));
 
-  const feed = await growerFeed();
+  const feeds = await partnerFeeds();
   res.json({
-    opportunities: rows.map((row) => withGrower(rowToOpportunity(row, interestIds), feed.farmers)),
+    opportunities: rows.map((row) =>
+      withGrower(rowToOpportunity(row, interestIds), feeds.farmers.items, feeds.produce.items)
+    ),
     partner: {
-      live: feed.live,
-      asOf: feed.asOf,
-      stale: !feed.live && Boolean(feed.asOf),
-      growerCount: feed.farmers.length,
+      live: feeds.farmers.live,
+      asOf: feeds.farmers.asOf,
+      stale: !feeds.farmers.live && Boolean(feeds.farmers.asOf),
+      growerCount: feeds.farmers.items.length,
+      produce: {
+        live: feeds.produce.live,
+        asOf: feeds.produce.asOf,
+        stale: !feeds.produce.live && Boolean(feeds.produce.asOf),
+        count: feeds.produce.items.length,
+      },
       // Team 6 publishes growers and produce, not activities. Report the
       // opportunities feed as unavailable rather than deriving rows from a
       // grower or produce listing — that would put activities in front of

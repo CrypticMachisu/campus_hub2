@@ -67,10 +67,10 @@ never again. That is why all the command work happens in C.
 
 - [ ] XAMPP Control Panel → **MySQL** started (green). Only one MySQL may hold port 3306.
 - [ ] `git pull origin main`; the latest CI run on `main` is **green**.
-- [ ] `cd server; npm run migrate:status` → `11 applied, 0 pending` (this machine is
-      migrated as of 13 Nov, including the two Agro-opportunity migrations). If a fresh
+- [ ] `cd server; npm run migrate:status` → `12 applied, 0 pending` (this machine is
+      migrated as of 13 Nov, including the three Agro-opportunity migrations). If a fresh
       schema was imported from `server/campushub_database.sql` without a baseline it prints
-      `0 applied, 11 pending`; that is expected — do **not** run `npm run migrate` then, it
+      `0 applied, 12 pending`; that is expected — do **not** run `npm run migrate` then, it
       would try to create tables that already exist.
 - [ ] `npx jest` from the repo root → `18 passed` (version + mapping suites; no database, ~10 s).
 - [ ] `cd server; npm run refresh:agro` on the morning of the demo. The four seeded

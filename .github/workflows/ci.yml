@@ -108,6 +108,7 @@ jobs:
         run: |
           mysql -h 127.0.0.1 -P 3306 -u root -proot campushub < server/migrations/010_agro_opportunities.sql
           mysql -h 127.0.0.1 -P 3306 -u root -proot campushub < server/migrations/011_seed_agro_interest.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub < server/migrations/012_link_seed_growers.sql
 
       - name: Baseline migrations and set demo passwords
         run: |

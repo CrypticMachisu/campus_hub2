@@ -48,6 +48,15 @@ export async function withdrawOpportunityInterest(opportunityId) {
   return interest;
 }
 
+/**
+ * The partner's grower list, for the admin's grower picker. This is the
+ * existing /partner proxy, so it carries its own stale flag and asOf.
+ */
+export async function getPartnerFarmers() {
+  const { data, stale, asOf } = await apiFetch("/partner/farmers");
+  return { farmers: Array.isArray(data) ? data : [], stale, asOf };
+}
+
 /** Admin only: the members who registered interest, with contact details. */
 export async function getOpportunityInterested(opportunityId) {
   const { interested } = await apiFetch(
