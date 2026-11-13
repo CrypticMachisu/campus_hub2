@@ -39,6 +39,28 @@ export default function MemberShell({ myClubs }) {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Retractable sidebar: the preference survives a reload, so someone who
+  // collapses it to read a wide agenda does not get it back on every visit.
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try {
+      return localStorage.getItem("campushub_sidebar") !== "closed";
+    } catch {
+      return true;
+    }
+  });
+
+  function toggleSidebar() {
+    setSidebarOpen((open) => {
+      const next = !open;
+      try {
+        localStorage.setItem("campushub_sidebar", next ? "open" : "closed");
+      } catch {
+        // Private mode / storage disabled: collapse for this session only.
+      }
+      return next;
+    });
+  }
+
   // The club currently in context, whichever club-scoped page we're on.
   const segments = location.pathname.split("/").filter(Boolean);
   const activeClubId = ["workspace", "dashboard", "clubs"].includes(segments[0])
@@ -54,64 +76,91 @@ export default function MemberShell({ myClubs }) {
   }, [activeClub]);
 
   return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell}${sidebarOpen ? "" : ` ${styles.shellCollapsed}`}`}>
       <a className={styles.skipLink} href="#workspace-main">
         Skip to content
       </a>
 
-      <aside className={styles.sidebar}>
-        <Link to="/" className={styles.brand}>
-          Campus<span className={styles.brandAccent}>Hub</span>
-        </Link>
-        <p className={styles.tagline}>Member workspace</p>
-
-        <nav aria-label="My clubs" className={styles.clubNav}>
-          <p className={styles.navLabel}>My clubs</p>
-          <ul className={styles.clubList}>
-            {myClubs.map((club) => (
-              <li key={club.id}>
-                <NavLink
-                  to={`/workspace/${club.id}`}
-                  className={navClass}
-                  style={{ "--chip-hue": hueFor(club.id) }}
-                >
-                  <span className={styles.monogram} aria-hidden="true">
-                    {monogram(club.name)}
-                  </span>
-                  <span className={styles.clubText}>
-                    <span className={styles.clubName}>{club.name}</span>
-                    <span className={styles.clubMeta}>
-                      {canManageClub(user, club.id) ? "You manage" : club.category}
-                    </span>
-                  </span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <nav aria-label="Workspace" className={styles.utilityNav}>
-          <NavLink to="/discover" className={utilityClass}>
-            Discover other clubs
-          </NavLink>
-          <NavLink to="/my-events" className={utilityClass}>
-            My events
-          </NavLink>
-          {activeClub && canManageClub(user, activeClub.id) && (
-            <NavLink to={`/dashboard/${activeClub.id}`} className={utilityClass}>
-              Manage {activeClub.name}
-            </NavLink>
-          )}
-        </nav>
-
-        <div className={styles.account}>
-          <span className={styles.accountName}>{user.name}</span>
-          <span className={styles.accountEmail}>{user.email}</span>
-          <button type="button" className={styles.logout} onClick={logout}>
-            Log out
+      {sidebarOpen && (
+        <aside className={styles.sidebar} id="member-sidebar">
+          <button
+            type="button"
+            className={styles.collapseButton}
+            onClick={toggleSidebar}
+            aria-expanded="true"
+            aria-controls="member-sidebar"
+            title="Hide sidebar"
+          >
+            <span aria-hidden="true">«</span>
+            <span className="visually-hidden">Hide sidebar</span>
           </button>
-        </div>
-      </aside>
+          <Link to="/" className={styles.brand}>
+            Campus<span className={styles.brandAccent}>Hub</span>
+          </Link>
+          <p className={styles.tagline}>Member workspace</p>
+
+          <nav aria-label="My clubs" className={styles.clubNav}>
+            <p className={styles.navLabel}>My clubs</p>
+            <ul className={styles.clubList}>
+              {myClubs.map((club) => (
+                <li key={club.id}>
+                  <NavLink
+                    to={`/workspace/${club.id}`}
+                    className={navClass}
+                    style={{ "--chip-hue": hueFor(club.id) }}
+                  >
+                    <span className={styles.monogram} aria-hidden="true">
+                      {monogram(club.name)}
+                    </span>
+                    <span className={styles.clubText}>
+                      <span className={styles.clubName}>{club.name}</span>
+                      <span className={styles.clubMeta}>
+                        {canManageClub(user, club.id) ? "You manage" : club.category}
+                      </span>
+                    </span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="Workspace" className={styles.utilityNav}>
+            <NavLink to="/discover" className={utilityClass}>
+              Discover other clubs
+            </NavLink>
+            <NavLink to="/my-events" className={utilityClass}>
+              My events
+            </NavLink>
+            {activeClub && canManageClub(user, activeClub.id) && (
+              <NavLink to={`/dashboard/${activeClub.id}`} className={utilityClass}>
+                Manage {activeClub.name}
+              </NavLink>
+            )}
+          </nav>
+
+          <div className={styles.account}>
+            <span className={styles.accountName}>{user.name}</span>
+            <span className={styles.accountEmail}>{user.email}</span>
+            <button type="button" className={styles.logout} onClick={logout}>
+              Log out
+            </button>
+          </div>
+        </aside>
+      )}
+
+      {!sidebarOpen && (
+        <button
+          type="button"
+          className={styles.expandButton}
+          onClick={toggleSidebar}
+          aria-expanded="false"
+          aria-controls="member-sidebar"
+          title="Show sidebar"
+        >
+          <span aria-hidden="true">»</span>
+          <span className="visually-hidden">Show sidebar</span>
+        </button>
+      )}
 
       <div className={styles.mainArea}>
         <header className={styles.mobileHeader}>

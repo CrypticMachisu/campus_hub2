@@ -88,6 +88,10 @@ test(
       body.partner.live || body.partner.asOf === null || body.partner.stale,
       "partner block should describe live, saved, or missing data"
     );
+    // The partner has no opportunities resource, so that feed is reported as
+    // unavailable and empty — never filled with guessed rows.
+    assert.equal(body.partner.opportunitiesAvailable, false);
+    assert.deepEqual(body.partner.opportunities, []);
     // Every activity is a local record; none is pulled from the partner.
     for (const opportunity of body.opportunities) {
       assert.ok(

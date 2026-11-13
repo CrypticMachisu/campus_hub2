@@ -175,6 +175,13 @@ agroRouter.get("/opportunities", requireAuth, async (req, res) => {
       asOf: feed.asOf,
       stale: !feed.live && Boolean(feed.asOf),
       growerCount: feed.farmers.length,
+      // Team 6 publishes growers and produce, not activities. Report the
+      // opportunities feed as unavailable rather than deriving rows from a
+      // grower or produce listing — that would put activities in front of
+      // students that nobody scheduled. When they expose a feed, it is read
+      // here and this stops being false, without changing the local rows.
+      opportunities: [],
+      opportunitiesAvailable: false,
     },
   });
 });

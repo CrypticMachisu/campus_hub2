@@ -309,12 +309,21 @@ changed.
 
 1. [C] Log in as `sofia.ramirez@campus.edu` / `campushub123`, then open
    `http://localhost:5173/clubs/club-07` and scroll to **AgroConnect opportunities**.
-2. [C] Point at the two groups — **Added by club admins** and **CampusHub starter
-   activities** — and say: "These are our own records, not Team 6's. A grower listing
-   tomatoes is not a farm visit, so we never manufacture one from the partner's data."
-3. [C] Click **I'm interested** on one card. The count goes up, the live region confirms it,
-   and **Add to calendar** exports the activity as an `.ics`.
-4. [C] Log in as `amara.okafor@campus.edu` (tier1) and press **Who's interested** on the same
+   If the panel looks cramped on the projector, collapse the member sidebar with the «
+   button at its top right; the floating » button brings it back, and the choice survives a
+   reload.
+2. [C] Point at the **Club activities** tab and its two groups — **Added by club admins** and
+   **CampusHub starter activities** — and say: "These are our own records, not Team 6's. A
+   grower listing tomatoes is not a farm visit, so we never manufacture one from the
+   partner's data."
+3. [C] Switch to the **From AgroConnect** tab. It shows an alert, not a list: their API
+   either is not answering or has no opportunities feed yet, and we have no saved
+   opportunities from them, so there is nothing honest to display. Say: "This is where
+   their activities will appear once we connect that feed. We would rather show the gap
+   than invent it."
+4. [C] Back on **Club activities**, click **I'm interested** on one card. The count goes up,
+   the live region confirms it, and **Add to calendar** exports the activity as an `.ics`.
+5. [C] Log in as `amara.okafor@campus.edu` (tier1) and press **Who's interested** on the same
    card: the roster shows names, emails and the time each member registered.
 
 If a lecturer asks who can see this: the server checks membership, so a signed-out visitor
@@ -333,7 +342,9 @@ every command below still runs without it.
 
 **Design** — one Express app, thin routes over MySQL; guards per route, not per mount, so an
 unknown path is a 404 and not a fake 401. The app is exported from `server/app.js` without
-listening, which is what lets the tests drive it in-process.
+listening, which is what lets the tests drive it in-process. In the member workspace the
+sidebar is retractable (its state survives a reload), and the opportunities panel keeps
+local activities and the partner's feed in two separate tabs so the sources never mix.
 
 **Build and Test** — CI on every push: ESLint + Vite build + 22 server tests on a throwaway
 MySQL container (`api-security`, `migrate`, `signups-comments`, `agro-opportunities`), plus
@@ -910,25 +921,27 @@ Demo accounts (password `campushub123`, from `npm run set-passwords`): `amara.ok
 
 ## 10. Appendix D — Q&A cheat sheet
 
-| Likely question                        | 15-second answer                                                                                                                | Show                        |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| Where is the key stored?               | `server/.env` only, git-ignored; `PARTNER_API_KEY` in the same file, used server-side only                                      | `server/.env.example`       |
-| How do you know Team 8 called you?     | Two different `key-` labels in the log for the same route                                                                       | window A                    |
-| Why not retry writes?                  | A retried POST could place an order twice — idempotency                                                                         | `server/resilientFetch.js`  |
-| Why 1.5 s?                             | ~5× a normal 0.2 s reply, far below the 10 s slow mode; worst case 5.1 s                                                        | `RESILIENCE_NOTES.md`       |
-| Why not a circuit breaker?             | Not built; we retry every request, which is the honest limitation                                                               | slide                       |
-| Is the rate limit shared?              | No, in memory per process, resets on restart — next step is a shared store                                                      | `rateLimit.js`              |
-| Why break the event shape?             | `date` + `time` carried no timezone and had to be glued together to sort; one `startTime` with `+03:00` fixes the day-early bug | `VERSIONING_NOTES.md` §1–2  |
-| How is v2 not a copy of v1?            | v2 mounts v1's own handlers and maps only the response (`toV2Event`), so validation and permissions cannot drift                | `server/routes/eventsV2.js` |
-| How do consumers know v1 is leaving?   | Every v1 response carries `Deprecation: true`, `Sunset`, `Link` — not just an email                                             | §5.3 command                |
-| What if Team 8 does not migrate?       | We watch `/stats`; v1 keeps serving until 30 Nov, so nobody breaks before Demo Day                                              | `/api/stats`                |
-| Did v1 actually stay identical?        | `diff docs/v1_before.json docs/v1_after.json` prints nothing; both are committed with sha256 `3356ca69…`                        | `docs/`                     |     | Are the tests reliable? | 22 server tests on a throwaway MySQL container in CI, plus 18 Jest tests (13 version, 5 mapping) that need no database | CI tab, `npx jest` |
-| Who can see the agro opportunities?    | Club-07 members and its admins only: `401` signed out, `403` another club's member, checked server-side, not in the UI          | §3.5                        |
-| Are those opportunities Team 6's data? | No. They are local records (`source: seed` or `admin`); AgroConnect only supplies the matched grower's details and a snapshot   | `server/routes/agro.js`     |
-| Why did our own front end move to v2?  | One base URL in `src/utils/api.js` sets `…/v2`; `toUiEvent()` maps `startTime` back to `date`/`time`, so no page changed        | `src/utils/eventsStore.js`  |
-| What about Team 6's v2?                | They have not published one; we asked, and we will not build against an invented contract                                       | `RING_BULLETIN.md` §2       |
-| What about the 6-second slide on logs? | One JSON line per request, no key, no body, no query string; `/stats` aggregates                                                | `MONITORING_NOTES.md`       |
-| Did you actually integrate?            | First call 2026-11-09: `/farmers` 200 with 5 farmers, `/produce` 200 with 4 listings                                            | `INTEGRATION_LOG.md`        |
+| Likely question                        | 15-second answer                                                                                                                                      | Show                          |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Where is the key stored?               | `server/.env` only, git-ignored; `PARTNER_API_KEY` in the same file, used server-side only                                                            | `server/.env.example`         |
+| How do you know Team 8 called you?     | Two different `key-` labels in the log for the same route                                                                                             | window A                      |
+| Why not retry writes?                  | A retried POST could place an order twice — idempotency                                                                                               | `server/resilientFetch.js`    |
+| Why 1.5 s?                             | ~5× a normal 0.2 s reply, far below the 10 s slow mode; worst case 5.1 s                                                                              | `RESILIENCE_NOTES.md`         |
+| Why not a circuit breaker?             | Not built; we retry every request, which is the honest limitation                                                                                     | slide                         |
+| Is the rate limit shared?              | No, in memory per process, resets on restart — next step is a shared store                                                                            | `rateLimit.js`                |
+| Why break the event shape?             | `date` + `time` carried no timezone and had to be glued together to sort; one `startTime` with `+03:00` fixes the day-early bug                       | `VERSIONING_NOTES.md` §1–2    |
+| How is v2 not a copy of v1?            | v2 mounts v1's own handlers and maps only the response (`toV2Event`), so validation and permissions cannot drift                                      | `server/routes/eventsV2.js`   |
+| How do consumers know v1 is leaving?   | Every v1 response carries `Deprecation: true`, `Sunset`, `Link` — not just an email                                                                   | §5.3 command                  |
+| What if Team 8 does not migrate?       | We watch `/stats`; v1 keeps serving until 30 Nov, so nobody breaks before Demo Day                                                                    | `/api/stats`                  |
+| Did v1 actually stay identical?        | `diff docs/v1_before.json docs/v1_after.json` prints nothing; both are committed with sha256 `3356ca69…`                                              | `docs/`                       |
+| Are the tests reliable?                | 22 server tests on a throwaway MySQL container in CI, plus 18 Jest tests (13 version, 5 mapping) that need no database                                | CI tab, `npx jest`            |
+| Who can see the agro opportunities?    | Club-07 members and its admins only: `401` signed out, `403` another club's member, checked server-side, not in the UI                                | §3.5                          |
+| Are those opportunities Team 6's data? | No. They are local records (`source: seed` or `admin`); AgroConnect only supplies the matched grower's details and a snapshot                         | `server/routes/agro.js`       |
+| Why is the AgroConnect tab empty?      | Their API exposes no opportunities feed (and is unreachable right now), and we have no saved ones, so the tab shows the gap instead of inventing rows | §3.5, `server/routes/agro.js` |
+| Why did our own front end move to v2?  | One base URL in `src/utils/api.js` sets `…/v2`; `toUiEvent()` maps `startTime` back to `date`/`time`, so no page changed                              | `src/utils/eventsStore.js`    |
+| What about Team 6's v2?                | They have not published one; we asked, and we will not build against an invented contract                                                             | `RING_BULLETIN.md` §2         |
+| What about the 6-second slide on logs? | One JSON line per request, no key, no body, no query string; `/stats` aggregates                                                                      | `MONITORING_NOTES.md`         |
+| Did you actually integrate?            | First call 2026-11-09: `/farmers` 200 with 5 farmers, `/produce` 200 with 4 listings                                                                  | `INTEGRATION_LOG.md`          |
 
 ---
 

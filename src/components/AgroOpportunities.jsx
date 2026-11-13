@@ -61,7 +61,17 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
   const member = Boolean(user) && (isClubMember(user, AGRI_CLUB_ID) || managesClub);
 
   const [opportunities, setOpportunities] = useState([]);
-  const [partner, setPartner] = useState({ live: false, asOf: null, stale: false });
+  const [partner, setPartner] = useState({
+    live: false,
+    asOf: null,
+    stale: false,
+    opportunities: [],
+    opportunitiesAvailable: false,
+  });
+  // Two sources, two tabs: what the club runs, and what the producer's API
+  // offers. They are never blended, which is why the split is a tab rather
+  // than another badge on the same list.
+  const [tab, setTab] = useState("local");
   const [status, setStatus] = useState(member ? "loading" : "locked"); // locked | loading | ok | error
   const [error, setError] = useState("");
   const [pendingIds, setPendingIds] = useState(() => new Set());
@@ -417,162 +427,231 @@ export default function AgroOpportunities({ heading = "AgroConnect opportunities
 
       {member && (
         <>
-          <p className={styles.freshness}>
-            {partner.live
-              ? "Grower details are live from AgroConnect. Activities are the club's own records."
-              : partner.stale
-                ? `AgroConnect isn't answering — showing the grower list we saved on ${savedAt(
-                    partner.asOf
-                  )}. The activities below are the club's own and are unaffected.`
-                : "AgroConnect isn't answering and we have no saved grower list yet — showing the club's own activities."}
-          </p>
+          <div
+            className={styles.tabs}
+            role="tablist"
+            aria-label="Where the opportunities come from"
+          >
+            <button
+              type="button"
+              role="tab"
+              id="agro-tab-local"
+              aria-selected={tab === "local"}
+              aria-controls="agro-panel-local"
+              className={tab === "local" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              onClick={() => setTab("local")}
+            >
+              Club activities <span className={styles.tabCount}>{opportunities.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="agro-tab-partner"
+              aria-selected={tab === "partner"}
+              aria-controls="agro-panel-partner"
+              className={tab === "partner" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              onClick={() => setTab("partner")}
+            >
+              From AgroConnect{" "}
+              <span className={styles.tabCount}>{partner.opportunities.length}</span>
+            </button>
+          </div>
 
-          <p className="visually-hidden" role="status">
-            {notice}
-          </p>
-
-          {showForm && managesClub && (
-            <form className={styles.form} onSubmit={handleAdd}>
-              <div className={styles.formRow}>
-                <label className={styles.field}>
-                  <span>Type</span>
-                  <select
-                    value={form.kind}
-                    onChange={(e) => setForm({ ...form, kind: e.target.value })}
-                  >
-                    {OPPORTUNITY_KINDS.map((kind) => (
-                      <option key={kind.id} value={kind.id}>
-                        {kind.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={styles.field}>
-                  <span>Title</span>
-                  <input
-                    required
-                    maxLength={150}
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  />
-                </label>
-              </div>
-
-              <div className={styles.formRow}>
-                <label className={styles.field}>
-                  <span>Date</span>
-                  <input
-                    required
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  />
-                </label>
-                <label className={styles.field}>
-                  <span>Time</span>
-                  <input
-                    required
-                    type="time"
-                    value={form.time}
-                    onChange={(e) => setForm({ ...form, time: e.target.value })}
-                  />
-                </label>
-                <label className={styles.field}>
-                  <span>Spaces</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10000"
-                    placeholder="No limit"
-                    value={form.capacity}
-                    onChange={(e) => setForm({ ...form, capacity: e.target.value })}
-                  />
-                </label>
-              </div>
-
-              <div className={styles.formRow}>
-                <label className={styles.field}>
-                  <span>Where</span>
-                  <input
-                    required
-                    maxLength={150}
-                    value={form.location}
-                    onChange={(e) => setForm({ ...form, location: e.target.value })}
-                  />
-                </label>
-                <label className={styles.field}>
-                  <span>County</span>
-                  <input
-                    maxLength={80}
-                    value={form.county}
-                    onChange={(e) => setForm({ ...form, county: e.target.value })}
-                  />
-                </label>
-                <label className={styles.field}>
-                  <span>Host / grower</span>
-                  <input
-                    maxLength={120}
-                    value={form.hostName}
-                    onChange={(e) => setForm({ ...form, hostName: e.target.value })}
-                  />
-                </label>
-              </div>
-
-              <label className={styles.field}>
-                <span>What happens</span>
-                <textarea
-                  rows={3}
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                />
-              </label>
-
-              {formError && <p className={styles.error}>{formError}</p>}
-              <button
-                type="submit"
-                className={styles.primaryButton}
-                disabled={formStatus === "saving"}
-              >
-                {formStatus === "saving" ? "Publishing…" : "Publish activity"}
-              </button>
-            </form>
-          )}
-
-          {status === "loading" && (
-            <p className={styles.empty} aria-busy="true">
-              Loading opportunities…
+          <div
+            className={styles.tabPanel}
+            id="agro-panel-local"
+            role="tabpanel"
+            aria-labelledby="agro-tab-local"
+            hidden={tab !== "local"}
+          >
+            <p className={styles.freshness}>
+              {partner.live
+                ? "Grower details are live from AgroConnect. Activities are the club's own records."
+                : partner.stale
+                  ? `AgroConnect isn't answering — showing the grower list we saved on ${savedAt(
+                      partner.asOf
+                    )}. The activities below are the club's own and are unaffected.`
+                  : "AgroConnect isn't answering and we have no saved grower list yet — showing the club's own activities."}
             </p>
-          )}
 
-          {status === "error" && (
-            <div className={styles.empty}>
-              <p>Opportunities didn&apos;t load: {error}</p>
+            <p className="visually-hidden" role="status">
+              {notice}
+            </p>
+
+            {showForm && managesClub && (
+              <form className={styles.form} onSubmit={handleAdd}>
+                <div className={styles.formRow}>
+                  <label className={styles.field}>
+                    <span>Type</span>
+                    <select
+                      value={form.kind}
+                      onChange={(e) => setForm({ ...form, kind: e.target.value })}
+                    >
+                      {OPPORTUNITY_KINDS.map((kind) => (
+                        <option key={kind.id} value={kind.id}>
+                          {kind.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={styles.field}>
+                    <span>Title</span>
+                    <input
+                      required
+                      maxLength={150}
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    />
+                  </label>
+                </div>
+
+                <div className={styles.formRow}>
+                  <label className={styles.field}>
+                    <span>Date</span>
+                    <input
+                      required
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Time</span>
+                    <input
+                      required
+                      type="time"
+                      value={form.time}
+                      onChange={(e) => setForm({ ...form, time: e.target.value })}
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Spaces</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10000"
+                      placeholder="No limit"
+                      value={form.capacity}
+                      onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+                    />
+                  </label>
+                </div>
+
+                <div className={styles.formRow}>
+                  <label className={styles.field}>
+                    <span>Where</span>
+                    <input
+                      required
+                      maxLength={150}
+                      value={form.location}
+                      onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    <span>County</span>
+                    <input
+                      maxLength={80}
+                      value={form.county}
+                      onChange={(e) => setForm({ ...form, county: e.target.value })}
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Host / grower</span>
+                    <input
+                      maxLength={120}
+                      value={form.hostName}
+                      onChange={(e) => setForm({ ...form, hostName: e.target.value })}
+                    />
+                  </label>
+                </div>
+
+                <label className={styles.field}>
+                  <span>What happens</span>
+                  <textarea
+                    rows={3}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  />
+                </label>
+
+                {formError && <p className={styles.error}>{formError}</p>}
+                <button
+                  type="submit"
+                  className={styles.primaryButton}
+                  disabled={formStatus === "saving"}
+                >
+                  {formStatus === "saving" ? "Publishing…" : "Publish activity"}
+                </button>
+              </form>
+            )}
+
+            {status === "loading" && (
+              <p className={styles.empty} aria-busy="true">
+                Loading opportunities…
+              </p>
+            )}
+
+            {status === "error" && (
+              <div className={styles.empty}>
+                <p>Opportunities didn&apos;t load: {error}</p>
+                <button type="button" className={styles.ghostButton} onClick={load}>
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {status === "ok" && opportunities.length === 0 && (
+              <p className={styles.empty}>
+                No activities are scheduled right now. Check back after the next club meeting.
+              </p>
+            )}
+
+            {status === "ok" && opportunities.length > 0 && (
+              <>
+                {renderGroup(
+                  "Added by club admins",
+                  "Scheduled in CampusHub by this club's admins.",
+                  adminAdded
+                )}
+                {renderGroup(
+                  "CampusHub starter activities",
+                  "Seeded with the club when it joined CampusHub; admins can remove them.",
+                  seeded
+                )}
+              </>
+            )}
+          </div>
+
+          <div
+            className={styles.tabPanel}
+            id="agro-panel-partner"
+            role="tabpanel"
+            aria-labelledby="agro-tab-partner"
+            hidden={tab !== "partner"}
+          >
+            {/* When Team 6 exposes an opportunities feed, its rows arrive in
+                `partner.opportunities` and render here. Until then this is the
+                honest state: there is no feed, and nothing saved to fall
+                back on. */}
+            <div className={styles.alert} role="status">
+              <p className={styles.alertTitle}>
+                {partner.live
+                  ? "AgroConnect is reachable, but has no opportunities feed yet"
+                  : "AgroConnect's server is unavailable"}
+              </p>
+              <p className={styles.alertBody}>
+                {partner.live
+                  ? "We can read their growers, but they do not publish activities we can call."
+                  : "We asked the producer's API and got no answer."}{" "}
+                We have no saved opportunities from them to fall back on, so this tab stays empty
+                rather than inventing any. The club&apos;s own activities and your registrations are
+                unaffected, and this fills in once their feed is connected.
+              </p>
               <button type="button" className={styles.ghostButton} onClick={load}>
-                Try again
+                Ask again
               </button>
             </div>
-          )}
-
-          {status === "ok" && opportunities.length === 0 && (
-            <p className={styles.empty}>
-              No activities are scheduled right now. Check back after the next club meeting.
-            </p>
-          )}
-
-          {status === "ok" && opportunities.length > 0 && (
-            <>
-              {renderGroup(
-                "Added by club admins",
-                "Scheduled in CampusHub by this club's admins.",
-                adminAdded
-              )}
-              {renderGroup(
-                "CampusHub starter activities",
-                "Seeded with the club when it joined CampusHub; admins can remove them.",
-                seeded
-              )}
-            </>
-          )}
+          </div>
         </>
       )}
     </section>
