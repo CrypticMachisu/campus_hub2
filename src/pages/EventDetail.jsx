@@ -182,7 +182,7 @@ export default function EventDetail() {
   return (
     <div className={styles.page}>
       <Link to="/discover" className={styles.back}>
-        ← Discovery
+        ← This week
       </Link>
 
       {pageLoading ? (
@@ -200,7 +200,7 @@ export default function EventDetail() {
           <h1>Event not found</h1>
           <p>It may have been removed, or the link may be out of date.</p>
           <Link to="/discover" className={styles.missingLink}>
-            Back to discovery
+            Back to this week
           </Link>
         </div>
       ) : (

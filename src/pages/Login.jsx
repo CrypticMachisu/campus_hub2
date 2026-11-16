@@ -138,6 +138,7 @@ export default function Login() {
         <button
           type="button"
           className={mode === "login" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+          aria-pressed={mode === "login"}
           onClick={() => setMode("login")}
         >
           Log In
@@ -145,6 +146,7 @@ export default function Login() {
         <button
           type="button"
           className={mode === "signup" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+          aria-pressed={mode === "signup"}
           onClick={() => setMode("signup")}
         >
           Sign Up
@@ -165,6 +167,7 @@ export default function Login() {
                     ? `${styles.rolePathButton} ${styles.rolePathButtonActive}`
                     : styles.rolePathButton
                 }
+                aria-pressed={rolePath === "user"}
                 onClick={() => setRolePath("user")}
               >
                 User
@@ -176,6 +179,7 @@ export default function Login() {
                     ? `${styles.rolePathButton} ${styles.rolePathButtonActive}`
                     : styles.rolePathButton
                 }
+                aria-pressed={rolePath === "admin"}
                 onClick={() => setRolePath("admin")}
               >
                 Admin

@@ -1,26 +1,25 @@
 /*
-  Design direction: "Corkboard" — a campus bulletin board, digitized.
-  Cards read like pinned index cards/flyers: warm paper, a little tilt,
-  a visible pin dot, torn/taped edges implied through dashed borders.
-  Not cream-SaaS, not dark-mode-neon: warm ink-on-paper with two
-  marker-bright accents (red for primary actions, teal for secondary/tags),
-  and a mono face for anything scannable — times, locations, dates.
+  Design direction: "Signal" — a campus daily edition.
+  Newsprint paper, near-black ink, one vermilion signal colour, hairline
+  rules instead of cards, and mono for anything a reader scans (times,
+  places, counts). Display type is Anton; reading and UI use Archivo.
+  Full system: .agents/skills/kesho-design/SKILL.md
 */
 
 /* Self-hosted so the design renders offline and without Google Fonts.
-   Space Grotesk and IBM Plex Sans are variable files covering the weights
-   the app uses; Plex Mono ships as two static weights. */
+   Anton is a single display weight; Archivo is a variable file 400–700.
+   Plex Mono stays as two static weights for data. */
 @font-face {
-  font-family: "Space Grotesk";
-  src: url("/fonts/space-grotesk.woff2") format("woff2");
-  font-weight: 300 700;
+  font-family: "Anton";
+  src: url("/fonts/anton-400.woff2") format("woff2");
+  font-weight: 400;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "IBM Plex Sans";
-  src: url("/fonts/ibm-plex-sans.woff2") format("woff2");
-  font-weight: 400 600;
+  font-family: "Archivo";
+  src: url("/fonts/archivo-var.woff2") format("woff2");
+  font-weight: 400 700;
   font-display: swap;
 }
 
@@ -39,38 +38,66 @@
 }
 
 :root {
-  /* Color */
-  --color-bg: #f3ecd9;
-  --color-bg-alt: #eae0c7;
-  --color-card-bg: #fbf6e9;
-  --color-text: #24211d;
-  --color-text-muted: #6b6457;
-  --color-primary: #c1432e;
-  --color-primary-dark: #8f2e1d;
-  --color-secondary: #2f6e64;
-  --color-secondary-light: #e3ede9;
-  --color-accent: #f5c344;
-  --color-border: #d8cba9;
-  --color-danger: #b3261e;
-  --color-white: #ffffff;
+  /* Signal palette */
+  --paper: #f4f2ec;
+  --paper-2: #eae7dd;
+  --card: #fffef9;
+  --ink: #0e0f0c;
+  --ink-2: #33352c;
+  --muted: #5c5e52;
+  --signal: #c63312;
+  --signal-deep: #8f2209;
+  --tint: #f8e4de;
+  --rule: #c9c6b8;
+  --rule-soft: #dedbcc;
 
   /* Type */
-  --font-heading: "Space Grotesk", sans-serif;
-  --font-body: "IBM Plex Sans", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --font-display: "Anton", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  /* Spacing */
-  --space-xs: 0.25rem;
-  --space-sm: 0.5rem;
-  --space-md: 1rem;
-  --space-lg: 2rem;
-  --space-xl: 4rem;
+  /* Spacing (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
 
   /* Shape */
-  --radius: 6px;
-  --radius-lg: 10px;
-  --shadow-card: 0 3px 0 rgba(36, 33, 29, 0.08), 0 8px 16px rgba(36, 33, 29, 0.08);
-  --shadow-card-hover: 0 5px 0 rgba(36, 33, 29, 0.1), 0 14px 24px rgba(36, 33, 29, 0.14);
+  --radius: 2px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* ------------------------------------------------------------------
+     Legacy aliases. Pages not yet rebuilt on Signal read these names;
+     mapping them here keeps the whole app in one palette while the
+     migration continues. New code should use the tokens above.
+     ------------------------------------------------------------------ */
+  --color-bg: var(--paper);
+  --color-bg-alt: var(--paper-2);
+  --color-card-bg: var(--card);
+  --color-text: var(--ink);
+  --color-text-muted: var(--muted);
+  --color-primary: var(--signal);
+  --color-primary-dark: var(--signal-deep);
+  --color-secondary: var(--ink-2);
+  --color-secondary-light: var(--paper-2);
+  --color-accent: var(--tint);
+  --color-border: var(--rule);
+  --color-danger: #a3200f;
+  --color-white: #ffffff;
+
+  --font-heading: var(--font-body);
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-4);
+  --space-lg: var(--space-8);
+  --space-xl: var(--space-12);
+  --radius-lg: 4px;
+  --shadow-card: none;
+  --shadow-card-hover: none;
 }
 
 * {
@@ -84,12 +111,11 @@ body {
 }
 
 body {
-  background-color: var(--color-bg);
-  background-image: radial-gradient(var(--color-border) 0.6px, transparent 0.6px);
-  background-size: 18px 18px;
-  color: var(--color-text);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-body);
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -97,14 +123,14 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-weight: 700;
-  margin: 0 0 var(--space-sm);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-2);
 }
 
 p {
-  margin: 0 0 var(--space-sm);
+  margin: 0 0 var(--space-2);
 }
 
 a {
@@ -113,12 +139,57 @@ a {
 }
 
 button {
-  font-family: var(--font-body);
+  font-family: inherit;
   cursor: pointer;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* Type utilities used across pages. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .mono {
   font-family: var(--font-mono);
+}
+
+/* Skip link: hidden until focused, then pinned to the top-left. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 50;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  padding: 0.7rem 1rem;
+}
+
+.skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+/* The routed-content wrapper is a skip target, not an interactive control. */
+#main:focus {
+  outline: none;
 }
 
 /* Visible to screen readers only (live-region announcements, labels). */
@@ -134,20 +205,32 @@ button {
   border: 0;
 }
 
-/* A visible focus ring everywhere — no invisible-outline defaults */
+/* A visible focus ring everywhere — 3px vermilion, offset so it reads
+   against rules and filled buttons alike. */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
-select:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 3px;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
 }
 
 .container {
-  max-width: 1080px;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 0 var(--space-lg);
+  padding: 0 1.625rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -160,6 +243,6 @@ select:focus-visible {
 
 @media (max-width: 640px) {
   .container {
-    padding: 0 var(--space-md);
+    padding: 0 1rem;
   }
 }

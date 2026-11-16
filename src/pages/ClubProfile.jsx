@@ -66,7 +66,7 @@ export default function ClubProfile() {
         <h2>Club Not Found</h2>
         <p>The club profile you are trying to visit does not exist.</p>
         <Link to="/" className={styles.backLink}>
-          Return to Feed Discovery
+          Back to this week
         </Link>
       </div>
     );
@@ -121,7 +121,7 @@ export default function ClubProfile() {
       {/* Target Club Scheduled Events Segment */}
 
       <section id="events" className={styles.eventsSection}>
-        <h2>Upcoming Events</h2>
+        <h2>Next on the programme</h2>
         {eventsError ? (
           <ErrorState
             title="Events didn't load"
@@ -146,7 +146,7 @@ export default function ClubProfile() {
 
       {/* Rule 2: Contoured, distinct background tint wrapper isolating conversation tree */}
       <section className={styles.commentsWrapper}>
-        <h2>Club Discussion</h2>
+        <h2>Club discussion</h2>
         <CommentSection targetType="club" targetId={club.id} />
       </section>
     </div>

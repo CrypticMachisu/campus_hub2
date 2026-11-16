@@ -22,6 +22,15 @@ function firstManageableClubId(user, clubs) {
   return clubs.find((c) => canManageClub(user, c.id))?.id ?? null;
 }
 
+/** "Sat 22 Nov" — the edition date, fixed to the campus wall clock. */
+function editionDate() {
+  return new Date().toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { clubs } = useClubs();
@@ -31,9 +40,7 @@ export default function Navbar() {
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
   // Admins who signed in through the ordinary consumer flow (the login
-  // page's "user path") get an explicit button to jump to the dashboard
-  // — the Dashboard link in the nav doubles as their route, but this
-  // makes the affordance obvious without re-running the admin login.
+  // page's "user path") get an explicit button to jump to the desk.
   const loggedViaUserPath = Boolean(user) && getRememberedLoginPath(user.email) === "user";
 
   // Tier1 only. Re-checks on every navigation (rather than polling) so the
@@ -57,37 +64,60 @@ export default function Navbar() {
   }, [user, location.pathname]);
 
   return (
-    <header className={styles.nav}>
+    <header className={styles.masthead}>
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
+      <div className={styles.edition}>
+        <div className={`container ${styles.editionInner}`}>
+          <span>Vol. 01 · Nairobi · Main campus</span>
+          <span className={styles.editionDate}>{editionDate()}</span>
+          <span className={styles.live}>
+            <i aria-hidden="true" /> Campus live
+          </span>
+        </div>
+      </div>
+
       <div className={`container ${styles.inner}`}>
-        <NavLink to="/" className={styles.brand}>
-          Campus<span className={styles.brandAccent}>Hub</span>
+        <NavLink to="/" className={styles.brand} aria-label="Kesho — this week">
+          kesho
+          <span className={styles.brandDot} aria-hidden="true">
+            .
+          </span>
         </NavLink>
-        <nav className={styles.links}>
+
+        <nav className={styles.links} aria-label="Primary">
           <NavLink to="/" end className={linkClass}>
-            Discover
+            This week
           </NavLink>
           {user && (
             <NavLink to="/my-events" className={linkClass}>
-              My Events
+              Commitments
             </NavLink>
           )}
           {dashboardClubId && (
             <NavLink to={`/dashboard/${dashboardClubId}`} className={linkClass}>
-              Dashboard
+              The desk
               {pendingRequestCount > 0 && (
                 <span className={styles.badge}>{pendingRequestCount}</span>
               )}
             </NavLink>
           )}
+        </nav>
+
+        <div className={styles.tools}>
           {user ? (
-            <span className={styles.authGroup}>
+            <>
+              <span className={styles.userInfo}>
+                {user.name} · {ROLE_LABELS[user.role]}
+              </span>
               {dashboardClubId && loggedViaUserPath && (
                 <button
                   type="button"
-                  className={styles.dashboardButton}
+                  className={styles.deskButton}
                   onClick={() => navigate(`/dashboard/${dashboardClubId}`)}
                 >
-                  Go to dashboard
+                  Open the desk
                   {pendingRequestCount > 0 && (
                     <span className={`${styles.badge} ${styles.buttonBadge}`}>
                       {pendingRequestCount}
@@ -95,19 +125,16 @@ export default function Navbar() {
                   )}
                 </button>
               )}
-              <span className={styles.userInfo}>
-                {user.name} ({ROLE_LABELS[user.role]})
-              </span>
               <button type="button" className={styles.logoutButton} onClick={logout}>
                 Log out
               </button>
-            </span>
+            </>
           ) : (
-            <NavLink to="/login" className={linkClass}>
+            <NavLink to="/login" className={styles.loginLink}>
               Log in
             </NavLink>
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );
