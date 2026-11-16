@@ -180,12 +180,12 @@ design-taste-frontend, and the project's component conventions.
 
 ## 8. Decisions locked — 16 November 2026
 
-| Question     | Decision                                                                                  |
-| ------------ | ----------------------------------------------------------------------------------------- |
-| Direction    | **Field Ledger**, with **Campus Press**'s dense table language for officer and data views |
-| Capabilities | All four tracks, phased (below)                                                           |
-| Motion       | **Confident**: sparse reveals, one hero transition per page, state motion only            |
-| Naming       | **Rename as part of the work**                                                            |
+| Question     | Decision                                                                                              |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| Direction    | **Signal** — the campus daily edition (chosen 16 Nov 2026); Field Ledger and Orbit kept as references |
+| Capabilities | All four tracks, phased (below)                                                                       |
+| Motion       | **Confident**: sparse reveals, one hero transition per page, state motion only                        |
+| Naming       | **Rename as part of the work**                                                                        |
 
 ### Name candidates
 
@@ -229,12 +229,12 @@ for any UI work on this branch.
 
 ---
 
-## 9. Alternatives explored — 16 November 2026
+## 9. Directions explored — Signal chosen
 
-Kesho remains the chosen direction. Two further boards were built so the
-choice is a comparison rather than a default, each with the same four screens,
-the same seed data and an explicit accessibility mechanism. Neither is
-implemented and neither replaces Kesho.
+**Signal was chosen on 16 November 2026.** The Field Ledger board (Kesho) and
+Orbit were built as genuine alternatives — same four screens, same seed data,
+an explicit accessibility mechanism each — and are kept on disk as references.
+Neither is implemented.
 
 | Board                            | Organising idea                                | Type                           | Colour                                        | The bet                                                        |
 | -------------------------------- | ---------------------------------------------- | ------------------------------ | --------------------------------------------- | -------------------------------------------------------------- |
@@ -271,18 +271,33 @@ skip link, 2px focus rings, 42–44px targets, decorative QR with a text code, a
 if the toggle is missed, and spatial layouts invite keyboard hostility if the
 list path is ever dropped.
 
-### What to borrow if Kesho stays
+### What carries over
 
-- **Signal:** the wire strip for campus-wide notices on the home page, and
-  numbered bulletins wherever a member scans four or five things quickly.
-- **Orbit:** the ticket treatment for commitment detail and confirmation, and the
-  map/list pairing as the accessible pattern for the multi-campus phase.
-- **Both:** the pause-control, theme-toggle and list-alternative patterns are
+- **Signal (chosen):** the wire strip, numbered bulletins, masthead, notice stub
+  and inverted desk tables become the product shell.
+- **Field Ledger (kept):** its reading order for club and commitment pages
+  (next event → term → dispatches → people) and its capacity/table density
+  remain good content structure; only its palette and type are retired.
+- **Orbit (kept):** the ticket treatment for commitment detail and the map/list
+  pairing as the accessible pattern for the multi-campus phase.
+- **All three:** the pause control, static duplicate and list alternative are
   reusable accessibility primitives, independent of visual direction.
 
-### Open decision
+### Decision — Signal chosen (16 November 2026)
 
-Pick the direction to implement in Phase 1. Staying with Kesho means the
-`kesho-design` skill applies as written; choosing Signal or Orbit means rewriting
-the tokens and component sections of that skill first, and re-checking every
-contrast pair in the chosen palette.
+What changed, and what did not:
+
+- The `kesho-design` skill was rewritten around Signal's newsprint tokens,
+  Anton/Archivo/IBM Plex Mono type, masthead and wire rules, and desk tables.
+  Its accessibility contract now includes the wire rules: explicit pause with
+  `aria-pressed`, a static duplicate, and no information that exists only in
+  motion.
+- The product name remains **Kesho**. The trademark/domain check is still
+  outstanding; nothing is renamed in code, packages or the database yet.
+- The build order is unchanged: Phase 1 foundation, Phase 2 commitments, Phase 3
+  social, Phase 4 multi-campus. Motion stays "confident", with the wire as the
+  only continuous animation.
+
+`broadcast.html` is the visual source of truth for Phase 1. `field-ledger.html`
+and `orbit.html` stay in the repository as references, not as implementation
+guides.
