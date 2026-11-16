@@ -4,7 +4,9 @@ Working notes for the independent build. This is the "dissect first" pass: what
 the current app looks like, what it could become, and the three directions worth
 prototyping before any component is touched.
 
-Mockup board: `docs/standalone/mockups/directions.html` (open in a browser).
+Mockup boards: `docs/standalone/mockups/directions.html` (the three options)
+and `docs/standalone/mockups/field-ledger.html` (the chosen direction, four
+screens). Open either directly in a browser.
 
 ---
 
@@ -173,3 +175,52 @@ design-taste-frontend, and the project's component conventions.
    or a social layer?
 3. Motion appetite: quiet, confident, or expressive?
 4. Name: keep CampusHub, or rename as part of this work?
+
+---
+
+## 8. Decisions locked — 16 November 2026
+
+| Question     | Decision                                                                                  |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| Direction    | **Field Ledger**, with **Campus Press**'s dense table language for officer and data views |
+| Capabilities | All four tracks, phased (below)                                                           |
+| Motion       | **Confident**: sparse reveals, one hero transition per page, state motion only            |
+| Naming       | **Rename as part of the work**                                                            |
+
+### Name candidates
+
+| Name       | Meaning              | Why it works                                                                                                   | Risk                                                                          |
+| ---------- | -------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Kesho**  | Swahili, "tomorrow"  | Short, sayable, forward-looking without being a cliché; works for events and commitments; reads well lowercase | Common word — check trademark and `.ke`/`.app` availability before committing |
+| **Pamoja** | Swahili, "together"  | Leads with community, fits clubs and belonging                                                                 | Heavily used by NGOs and community organisations                              |
+| **Mwanzo** | Swahili, "beginning" | A fresh-start story, good for a student audience                                                               | Longer, less immediate as a wordmark                                          |
+
+**Recommendation: Kesho**, used as the working name in the mockups. Tagline:
+_Show up tomorrow._ The rename should not touch code, the database or the
+package name until the name clears a trademark and domain check.
+
+### Build order for all four capability tracks
+
+| Phase               | Scope                                                                                                          | Data work                                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **1. Foundation**   | Brand, tokens, shell/nav, this-week home, club page, event page, auth screens                                  | None — current schema is enough                                                                         |
+| **2. Commitments**  | Opportunities become commitments with spots, hosts and attendance; officer view gains capacity/waitlist tables | Rename `agro_opportunities`/`agro_interest` conceptually; migrate to `commitments`/`commitment_signups` |
+| **3. Social**       | Club feed, threaded comments, photo posts, moderation flags                                                    | Posts, media and moderation tables                                                                      |
+| **4. Multi-campus** | Campus entity, switcher, per-campus discovery, cross-campus commitments                                        | `campuses` table, `campus_id` on clubs, events and memberships                                          |
+
+Phases 3 and 4 need their own design passes; they are named here so the
+foundation doesn't paint us into a single-campus, single-feed corner.
+
+### Skills for the build
+
+- `elite-brand-design` — naming, personality, voice (now)
+- `elite-design-core` — tokens and type/spacing scale (now)
+- `elite-layouts` — page structure once components start
+- `elite-accessibility` — required alongside any motion work
+- `design-taste-frontend` — coding-time rule enforcer (metric rules, AI-slop bans)
+
+After the mockups are approved, merge the chosen tokens and the enforcement
+rules into one project-local skill, `kesho-design`, with `skill-creator`: the
+palette and type scale from brand design, the spacing/metric rules and bans from
+design-taste-frontend, and this project's component conventions. It does not
+exist yet.

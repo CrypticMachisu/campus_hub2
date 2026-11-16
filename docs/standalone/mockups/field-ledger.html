@@ -1,0 +1,2321 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kesho — Field Ledger mockups</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,600&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #faf7f0;
+        --paper-2: #f3eee2;
+        --card: #fffdf8;
+        --ink: #16170f;
+        --ink-2: #4a4638;
+        --muted: #6b6455;
+        --leaf: #204c3a;
+        --leaf-dark: #183a2c;
+        --leaf-tint: #e6ede8;
+        --clay: #c2542f;
+        --sun: #e9b44c;
+        --rule: #dfd8c8;
+        --font-display: "Fraunces", Georgia, serif;
+        --font-body: "Instrument Sans", system-ui, sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, monospace;
+        --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: #e7e1d4;
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 15px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      p {
+        margin: 0;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+
+      .mono {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+      }
+
+      /* ---------- Page intro ---------- */
+      .intro {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 54px 24px 26px;
+      }
+
+      .intro .kicker {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .intro h1 {
+        font-family: var(--font-display);
+        font-size: clamp(32px, 4.4vw, 52px);
+        font-weight: 600;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        max-width: 21ch;
+        margin: 14px 0 12px;
+      }
+
+      .intro .lede {
+        max-width: 66ch;
+        color: var(--ink-2);
+      }
+
+      .tags {
+        display: flex;
+        gap: 8px;
+        margin-top: 18px;
+        flex-wrap: wrap;
+      }
+
+      .tag {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border: 1px solid var(--rule);
+        background: var(--paper);
+        padding: 5px 9px;
+      }
+
+      /* ---------- Browser frame ---------- */
+      .screen {
+        max-width: 1180px;
+        margin: 0 auto 36px;
+        background: var(--paper);
+        border: 1px solid #d9d2c2;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 24px 50px -28px rgba(22, 23, 15, 0.35);
+      }
+
+      .chrome {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #efe9dc;
+        border-bottom: 1px solid var(--rule);
+        padding: 7px 12px;
+      }
+
+      .chrome i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #c9c1ae;
+        display: block;
+      }
+
+      .chrome span {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        color: var(--muted);
+        margin-left: 6px;
+      }
+
+      /* ---------- Navigation ---------- */
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+        padding: 15px 26px;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--font-display);
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .brand svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 20px;
+        font-size: 12.5px;
+        color: var(--ink-2);
+        margin-left: 6px;
+      }
+
+      .nav-links a {
+        padding: 3px 0;
+        border-bottom: 1px solid transparent;
+        transition:
+          color 0.18s var(--ease),
+          border-color 0.18s var(--ease);
+      }
+
+      .nav-links a:hover {
+        color: var(--ink);
+      }
+
+      .nav-links a[aria-current] {
+        color: var(--leaf);
+        border-color: var(--leaf);
+      }
+
+      .nav-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .campus {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.04em;
+        border: 1px solid var(--rule);
+        padding: 5px 8px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--leaf);
+        color: var(--paper);
+        display: grid;
+        place-items: center;
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+      }
+
+      /* ---------- Home hero ---------- */
+      .hero {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 38px;
+        padding: 40px 26px 32px;
+        align-items: end;
+      }
+
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--leaf);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 18px;
+        height: 1px;
+        background: var(--leaf);
+      }
+
+      .hero h2 {
+        font-family: var(--font-display);
+        font-size: clamp(34px, 4.2vw, 52px);
+        line-height: 1.04;
+        letter-spacing: -0.025em;
+        font-weight: 600;
+        max-width: 16ch;
+        margin-bottom: 14px;
+      }
+
+      .hero h2 em {
+        font-style: italic;
+        color: var(--leaf);
+      }
+
+      .hero .lede {
+        max-width: 45ch;
+        color: var(--ink-2);
+        margin-bottom: 16px;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        color: var(--muted);
+        margin-bottom: 20px;
+      }
+
+      .cta-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 18px;
+      }
+
+      .btn {
+        background: var(--leaf);
+        color: var(--paper);
+        border: 1px solid var(--leaf);
+        padding: 11px 16px;
+        font-size: 12.5px;
+        font-weight: 600;
+        border-radius: 2px;
+        transition:
+          background 0.18s var(--ease),
+          transform 0.18s var(--ease);
+      }
+
+      .btn:hover {
+        background: var(--leaf-dark);
+        transform: translateY(-1px);
+      }
+
+      .btn--ghost {
+        background: transparent;
+        color: var(--ink);
+        border-color: var(--rule);
+      }
+
+      .btn--ghost:hover {
+        background: var(--paper-2);
+      }
+
+      .capacity {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .bar {
+        width: 110px;
+        height: 4px;
+        background: var(--rule);
+        display: block;
+        overflow: hidden;
+      }
+
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--leaf);
+      }
+
+      .capacity .mono {
+        color: var(--ink-2);
+      }
+
+      .hero-photo {
+        position: relative;
+        margin: 0;
+      }
+
+      .photo {
+        height: 248px;
+        position: relative;
+        overflow: hidden;
+        background:
+          repeating-linear-gradient(112deg, rgba(32, 76, 58, 0.18) 0 2px, transparent 2px 15px),
+          radial-gradient(120% 100% at 15% 0%, #e9b44c 0, rgba(233, 180, 76, 0) 58%),
+          linear-gradient(180deg, #dad3c1, #c6bca4);
+      }
+
+      .photo::after {
+        content: "PHOTO SLOT — hands, seedlings, morning light";
+        position: absolute;
+        left: 10px;
+        bottom: 8px;
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        color: rgba(22, 23, 15, 0.55);
+        text-transform: uppercase;
+      }
+
+      .hero-photo figcaption {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: var(--muted);
+        padding-top: 7px;
+        letter-spacing: 0.04em;
+      }
+
+      .date-card {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: var(--paper);
+        border: 1px solid var(--rule);
+        padding: 8px 10px;
+        text-align: center;
+        min-width: 58px;
+      }
+
+      .date-card strong {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 600;
+      }
+
+      .date-card .mono {
+        font-size: 8.5px;
+        color: var(--muted);
+      }
+
+      /* ---------- Week rail ---------- */
+      .week {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        border-top: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        margin: 0 26px;
+      }
+
+      .day {
+        padding: 12px 10px;
+        border-left: 1px solid var(--rule);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        background: transparent;
+        text-align: left;
+        transition: background 0.18s var(--ease);
+      }
+
+      .day:first-child {
+        border-left: 0;
+      }
+
+      .day:hover {
+        background: var(--paper-2);
+      }
+
+      .day[aria-current] {
+        background: var(--leaf-tint);
+      }
+
+      .day .w {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .day .n {
+        font-family: var(--font-display);
+        font-size: 19px;
+        line-height: 1;
+      }
+
+      .day .dots {
+        display: flex;
+        gap: 3px;
+        margin-top: 4px;
+        min-height: 5px;
+      }
+
+      .day .dots i {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--leaf);
+      }
+
+      .day[aria-current] .dots i {
+        background: var(--ink);
+      }
+
+      /* ---------- Home body ---------- */
+      .split {
+        display: grid;
+        grid-template-columns: 1.55fr 0.8fr;
+        padding: 0 26px 34px;
+      }
+
+      .week-list {
+        padding: 22px 30px 0 0;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 6px;
+      }
+
+      .section-head h3 {
+        font-family: var(--font-display);
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .section-head a {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--leaf);
+        transition: transform 0.18s var(--ease);
+      }
+
+      .section-head a:hover {
+        transform: translateX(2px);
+      }
+
+      .event-row {
+        display: grid;
+        grid-template-columns: 74px 1fr auto 18px;
+        gap: 14px;
+        align-items: center;
+        padding: 14px 6px 14px 0;
+        border-top: 1px solid var(--rule);
+        transition:
+          background 0.18s var(--ease),
+          padding-left 0.18s var(--ease);
+      }
+
+      .event-row:hover {
+        background: var(--paper-2);
+        padding-left: 8px;
+      }
+
+      .event-row:last-child {
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .event-date {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      .event-date b {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 17px;
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .event-title {
+        font-family: var(--font-display);
+        font-size: 17px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+
+      .event-club {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+
+      .event-spots {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--clay);
+        white-space: nowrap;
+      }
+
+      .event-spots.ok {
+        color: var(--leaf);
+      }
+
+      .arrow {
+        color: var(--muted);
+        transition:
+          transform 0.18s var(--ease),
+          color 0.18s var(--ease);
+      }
+
+      .event-row:hover .arrow {
+        transform: translateX(3px);
+        color: var(--leaf);
+      }
+
+      .rail {
+        border-left: 1px solid var(--rule);
+        padding: 22px 0 0 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+
+      .rail h4 {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .post {
+        display: flex;
+        gap: 10px;
+        padding: 10px 0;
+        border-top: 1px solid var(--rule);
+      }
+
+      .post .avatar {
+        width: 24px;
+        height: 24px;
+        font-size: 8px;
+        background: var(--paper-2);
+        color: var(--leaf);
+        border: 1px solid var(--rule);
+        flex: none;
+      }
+
+      .post p {
+        font-size: 12.5px;
+        line-height: 1.45;
+      }
+
+      .post .who {
+        font-weight: 600;
+      }
+
+      .post .when {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+
+      .commit {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 9px 0;
+        border-top: 1px solid var(--rule);
+      }
+
+      .tick {
+        width: 16px;
+        height: 16px;
+        border: 1px solid var(--leaf);
+        display: grid;
+        place-items: center;
+        color: var(--leaf);
+        font-size: 9px;
+        flex: none;
+      }
+
+      .commit .t {
+        font-size: 12.5px;
+        line-height: 1.3;
+      }
+
+      .commit .s {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      /* ---------- Club page ---------- */
+      .club-head {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        padding: 28px 26px 22px;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .emblem {
+        width: 72px;
+        height: 72px;
+        border: 1px solid var(--rule);
+        background: var(--leaf-tint);
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+
+      .emblem svg {
+        width: 32px;
+        height: 32px;
+        color: var(--leaf);
+      }
+
+      .club-head h2 {
+        font-family: var(--font-display);
+        font-size: 40px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1;
+      }
+
+      .club-meta {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.04em;
+        margin-top: 8px;
+      }
+
+      .club-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 8px;
+      }
+
+      .chip {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 4px 7px;
+        border: 1px solid var(--rule);
+        color: var(--ink-2);
+        display: inline-block;
+      }
+
+      .chip--leaf {
+        border-color: var(--leaf);
+        color: var(--leaf);
+        background: var(--leaf-tint);
+      }
+
+      .chip--clay {
+        border-color: var(--clay);
+        color: var(--clay);
+      }
+
+      .chip--sun {
+        border-color: var(--sun);
+        color: #8a5b00;
+        background: #fcf2dc;
+      }
+
+      .photo-strip {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 3px;
+        padding: 3px;
+        background: var(--rule);
+      }
+
+      .strip {
+        height: 150px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .strip--a {
+        background: linear-gradient(160deg, #c8bea6, #a79c82);
+      }
+
+      .strip--b {
+        background: linear-gradient(160deg, #c9d6c6, #93af9a);
+      }
+
+      .strip--c {
+        background: linear-gradient(160deg, #e3c9a8, #c79a6e);
+      }
+
+      .strip span {
+        position: absolute;
+        left: 8px;
+        bottom: 6px;
+        font-family: var(--font-mono);
+        font-size: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(22, 23, 15, 0.55);
+      }
+
+      .club-body {
+        display: grid;
+        grid-template-columns: 1.5fr 0.85fr;
+        padding: 26px;
+      }
+
+      .club-main {
+        padding-right: 30px;
+      }
+
+      .next-card {
+        border: 1px solid var(--rule);
+        background: var(--card);
+        padding: 18px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        margin-bottom: 26px;
+      }
+
+      .next-date {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        border-right: 1px solid var(--rule);
+        padding-right: 14px;
+        text-align: center;
+        min-width: 54px;
+      }
+
+      .next-date b {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 26px;
+        color: var(--ink);
+        line-height: 1.1;
+        margin: 2px 0;
+      }
+
+      .next-card h3 {
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1.2;
+        margin-bottom: 4px;
+      }
+
+      .next-card p {
+        font-size: 12.5px;
+        color: var(--ink-2);
+        margin-bottom: 8px;
+      }
+
+      .subhead {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .plan-row {
+        display: grid;
+        grid-template-columns: 78px 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 11px 0;
+        border-top: 1px solid var(--rule);
+      }
+
+      .plan-row .d {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: var(--muted);
+      }
+
+      .plan-row .t {
+        font-size: 13px;
+      }
+
+      .announce {
+        padding: 12px 0;
+        border-top: 1px solid var(--rule);
+      }
+
+      .announce .top {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 3px;
+      }
+
+      .announce h4 {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .announce p {
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+
+      .club-side {
+        border-left: 1px solid var(--rule);
+        padding-left: 22px;
+      }
+
+      .officers {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        margin-bottom: 22px;
+      }
+
+      .officer {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .officer .avatar {
+        background: var(--paper-2);
+        color: var(--leaf);
+        border: 1px solid var(--rule);
+      }
+
+      .officer .name {
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .officer .role {
+        font-family: var(--font-mono);
+        font-size: 8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .disc {
+        border-top: 1px solid var(--rule);
+        padding-top: 10px;
+        margin-top: 4px;
+      }
+
+      .disc p {
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+
+      .disc .mono {
+        color: var(--leaf);
+        display: inline-block;
+        margin-top: 6px;
+        font-size: 9px;
+      }
+
+      /* ---------- Commitment detail ---------- */
+      .back {
+        display: inline-flex;
+        gap: 6px;
+        padding: 16px 26px 0;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+
+      .detail {
+        display: grid;
+        grid-template-columns: 1.45fr 0.8fr;
+        gap: 38px;
+        padding: 16px 26px 34px;
+      }
+
+      .detail h2 {
+        font-family: var(--font-display);
+        font-size: clamp(30px, 3.6vw, 44px);
+        line-height: 1.06;
+        letter-spacing: -0.02em;
+        font-weight: 600;
+        margin-bottom: 12px;
+        max-width: 18ch;
+      }
+
+      .detail .lede {
+        color: var(--ink-2);
+        max-width: 56ch;
+        margin-bottom: 18px;
+      }
+
+      .bring {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 20px;
+        max-width: 52ch;
+      }
+
+      .bring li {
+        display: flex;
+        gap: 9px;
+        padding: 8px 0;
+        border-top: 1px solid var(--rule);
+        font-size: 13px;
+      }
+
+      .bring li::before {
+        content: "—";
+        color: var(--leaf);
+      }
+
+      .host {
+        display: flex;
+        gap: 11px;
+        align-items: center;
+        padding: 14px 0;
+        border-top: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        margin-bottom: 20px;
+      }
+
+      .host .avatar {
+        background: var(--paper-2);
+        color: var(--leaf);
+        border: 1px solid var(--rule);
+        width: 34px;
+        height: 34px;
+        font-size: 10px;
+      }
+
+      .host .n {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .host .r {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        color: var(--muted);
+      }
+
+      .updates h3 {
+        font-family: var(--font-display);
+        font-size: 20px;
+        margin-bottom: 4px;
+      }
+
+      .update {
+        padding: 12px 0;
+        border-top: 1px solid var(--rule);
+      }
+
+      .update p {
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+
+      .signup {
+        border: 1px solid var(--rule);
+        background: var(--card);
+        padding: 18px;
+        align-self: start;
+        position: sticky;
+        top: 16px;
+      }
+
+      .signup .spots {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 8px;
+      }
+
+      .signup .spots b {
+        font-family: var(--font-display);
+        font-size: 28px;
+        font-weight: 600;
+      }
+
+      .signup .spots .mono {
+        color: var(--muted);
+      }
+
+      .signup .bar {
+        width: 100%;
+        margin-bottom: 14px;
+      }
+
+      .faces {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .face {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--paper-2);
+        border: 2px solid var(--card);
+        display: grid;
+        place-items: center;
+        font-family: var(--font-mono);
+        font-size: 8px;
+        color: var(--ink-2);
+        margin-left: -6px;
+      }
+
+      .face:first-child {
+        margin-left: 0;
+      }
+
+      .faces .more {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        margin-left: 8px;
+      }
+
+      .signup .btn {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 8px;
+      }
+
+      .signup .note {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        text-align: center;
+        line-height: 1.5;
+      }
+
+      .host-mini {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        border-top: 1px solid var(--rule);
+        margin-top: 14px;
+        padding-top: 12px;
+      }
+
+      /* ---------- Officer ledger ---------- */
+      .ws-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 24px 26px 0;
+      }
+
+      .ws-head .eyebrow {
+        margin-bottom: 6px;
+      }
+
+      .ws-head h2 {
+        font-family: var(--font-display);
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+      }
+
+      .ws-head .mono {
+        color: var(--muted);
+      }
+
+      .tabs {
+        display: flex;
+        gap: 20px;
+        padding: 16px 26px 0;
+        border-bottom: 1px solid var(--ink);
+      }
+
+      .tab {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0 0 9px;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .tab[aria-current] {
+        color: var(--ink);
+        border-color: var(--ink);
+      }
+
+      .tab:hover {
+        color: var(--ink);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-bottom: 1px solid var(--rule);
+        margin: 0 26px;
+      }
+
+      .stat {
+        padding: 16px 16px 16px 0;
+        border-right: 1px solid var(--rule);
+      }
+
+      .stat:last-child {
+        border-right: 0;
+        padding-left: 16px;
+      }
+
+      .stat .v {
+        font-family: var(--font-display);
+        font-size: 30px;
+        font-weight: 600;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .stat .l {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 5px;
+      }
+
+      .ws-body {
+        padding: 22px 26px 30px;
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 34px;
+      }
+
+      .ledger {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 26px;
+      }
+
+      .ledger th {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-align: left;
+        padding: 0 8px 7px 0;
+        border-bottom: 1px solid var(--ink);
+        font-weight: 500;
+      }
+
+      .ledger td {
+        font-size: 12.5px;
+        padding: 10px 8px 10px 0;
+        border-bottom: 1px solid var(--rule);
+        vertical-align: middle;
+      }
+
+      .ledger td.name {
+        font-weight: 600;
+      }
+
+      .ledger .num {
+        font-variant-numeric: tabular-nums;
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+      }
+
+      .link-btn {
+        background: none;
+        border: 0;
+        padding: 0;
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--leaf);
+        border-bottom: 1px solid var(--leaf);
+        transition: opacity 0.18s var(--ease);
+      }
+
+      .link-btn:hover {
+        opacity: 0.65;
+      }
+
+      .ledger-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 6px;
+      }
+
+      .ledger-title h3 {
+        font-family: var(--font-display);
+        font-size: 20px;
+      }
+
+      .ledger-title .mono {
+        color: var(--muted);
+        font-size: 8.5px;
+      }
+
+      .ws-rail {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .req {
+        border: 1px solid var(--rule);
+        padding: 11px;
+        margin-bottom: 8px;
+        background: var(--card);
+      }
+
+      .req p {
+        font-size: 12px;
+        line-height: 1.35;
+        margin-bottom: 6px;
+      }
+
+      .req .mono {
+        color: var(--muted);
+        font-size: 8px;
+      }
+
+      .req-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .mini {
+        font-family: var(--font-mono);
+        font-size: 8px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        border: 1px solid var(--rule);
+        background: transparent;
+        padding: 4px 7px;
+        transition: background 0.18s var(--ease);
+      }
+
+      .mini:hover {
+        background: var(--paper-2);
+      }
+
+      .mini--ok {
+        border-color: var(--leaf);
+        color: var(--leaf);
+      }
+
+      .audit {
+        border-top: 1px solid var(--rule);
+        padding-top: 6px;
+      }
+
+      .audit p {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        padding: 5px 0;
+        border-bottom: 1px solid var(--paper-2);
+        line-height: 1.5;
+      }
+
+      .audit p b {
+        color: var(--ink-2);
+        font-weight: 500;
+      }
+
+      /* ---------- System panel ---------- */
+      .system {
+        max-width: 1180px;
+        margin: 0 auto 72px;
+        background: var(--ink);
+        color: #ede8da;
+        padding: 30px;
+        border-radius: 4px;
+      }
+
+      .system h2 {
+        font-family: var(--font-display);
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .system > p {
+        color: #b9b2a0;
+        font-size: 13px;
+        margin-bottom: 22px;
+        max-width: 62ch;
+      }
+
+      .sys-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 24px;
+      }
+
+      .sys h3 {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #a39c88;
+        margin-bottom: 10px;
+      }
+
+      .sw {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 0;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: #c9c2b0;
+      }
+
+      .sw i {
+        width: 16px;
+        height: 16px;
+        display: block;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        flex: none;
+      }
+
+      .sys p {
+        font-size: 12px;
+        color: #c9c2b0;
+        line-height: 1.6;
+      }
+
+      .sys ul {
+        padding-left: 14px;
+        margin: 0;
+        font-size: 12px;
+        color: #c9c2b0;
+        line-height: 1.65;
+      }
+
+      /* ---------- Motion ---------- */
+      .reveal {
+        opacity: 0;
+        transform: translateY(12px);
+        transition:
+          opacity 0.5s var(--ease),
+          transform 0.5s var(--ease);
+        transition-delay: calc(var(--i, 0) * 45ms);
+      }
+
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      .hero-photo .photo {
+        clip-path: inset(0 100% 0 0);
+        animation: wipe 0.9s var(--ease) 0.15s forwards;
+      }
+
+      @keyframes wipe {
+        to {
+          clip-path: inset(0 0 0 0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        .reveal {
+          opacity: 1;
+          transform: none;
+          transition: none;
+        }
+
+        .hero-photo .photo {
+          animation: none;
+          clip-path: none;
+        }
+
+        * {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+        }
+      }
+
+      /* ---------- Responsive ---------- */
+      @media (max-width: 900px) {
+        .hero,
+        .split,
+        .club-body,
+        .detail,
+        .ws-body {
+          grid-template-columns: 1fr;
+        }
+
+        .week-list {
+          padding-right: 0;
+        }
+
+        .rail,
+        .club-side {
+          border-left: 0;
+          border-top: 1px solid var(--rule);
+          padding-left: 0;
+          padding-top: 18px;
+          margin-top: 18px;
+        }
+
+        .signup {
+          position: static;
+        }
+
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .stat:nth-child(2) {
+          border-right: 0;
+        }
+
+        .stat:nth-child(3),
+        .stat:nth-child(4) {
+          border-top: 1px solid var(--rule);
+        }
+
+        .club-actions {
+          margin-left: 0;
+          width: 100%;
+        }
+
+        .club-head {
+          flex-wrap: wrap;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .nav {
+          gap: 12px;
+          padding: 12px 16px;
+        }
+
+        .nav-links {
+          display: none;
+        }
+
+        .nav-right {
+          gap: 6px;
+        }
+
+        .hero,
+        .club-body,
+        .detail,
+        .ws-body,
+        .intro {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        .week {
+          margin: 0 16px;
+          overflow-x: auto;
+          grid-template-columns: repeat(7, minmax(54px, 1fr));
+        }
+
+        .split {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        .photo-strip {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .strip--a {
+          grid-column: 1 / -1;
+        }
+
+        .club-head,
+        .tabs,
+        .ws-head {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        .stats {
+          margin: 0 16px;
+        }
+
+        .ledger {
+          display: block;
+          overflow-x: auto;
+        }
+
+        .system {
+          margin-left: 12px;
+          margin-right: 12px;
+          padding: 20px;
+        }
+
+        .hero .lede {
+          max-width: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="intro">
+      <p class="kicker">Kesho · standalone edition · 16 November 2026</p>
+      <h1>Field Ledger, with Campus Press for the data.</h1>
+      <p class="lede">
+        Working name: <strong>Kesho</strong> (Swahili, “tomorrow”). Four screens of the chosen
+        direction: this-week discovery, a living club page, a commitment, and the officer ledger.
+        Confident motion, one accent per screen, rules instead of shadows.
+      </p>
+      <div class="tags">
+        <span class="tag">Field Ledger</span>
+        <span class="tag">Campus Press tables</span>
+        <span class="tag">Confident motion</span>
+        <span class="tag">Kesho — working name</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- 1. This week -->
+      <section class="screen" aria-label="Discover — this week">
+        <div class="chrome"><i></i><i></i><i></i><span>kesho.app / this week</span></div>
+        <nav class="nav" aria-label="Primary">
+          <span class="brand">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 18h18" stroke="currentColor" stroke-width="2" />
+              <path d="M7 18a5 5 0 0 1 10 0" fill="currentColor" />
+              <circle cx="12" cy="5" r="1.7" fill="#e9b44c" />
+            </svg>
+            kesho
+          </span>
+          <div class="nav-links">
+            <a href="#week" aria-current="page">This week</a>
+            <a href="#club">Clubs</a>
+            <a href="#commitment">Commitments</a>
+            <a href="#workspace">My stuff</a>
+          </div>
+          <div class="nav-right">
+            <span class="campus">Nairobi · Main ▾</span>
+            <span class="avatar">SR</span>
+          </div>
+        </nav>
+
+        <div class="hero" id="week">
+          <div class="reveal" style="--i: 0">
+            <p class="eyebrow">Agri Club · Saturday 22 Nov</p>
+            <h2>The planting day is <em>Saturday.</em></h2>
+            <p class="lede">
+              Sixty indigenous seedlings, one riverbank, and a bus leaving at 7:30. Closed shoes, a
+              water bottle, and two hours of your morning.
+            </p>
+            <p class="meta mono">07:30–13:00 · Ngong river bank · Kajiado</p>
+            <div class="cta-row">
+              <button class="btn">Join the work day</button>
+              <button class="btn btn--ghost">See the term</button>
+            </div>
+            <div class="capacity">
+              <span class="bar"><i style="width: 63%"></i></span>
+              <span class="mono">38 of 60 going · 6 on the waitlist</span>
+            </div>
+          </div>
+          <figure class="hero-photo reveal" style="--i: 1">
+            <div class="photo"></div>
+            <figcaption>Bus leaves main gate, 07:30 sharp.</figcaption>
+            <div class="date-card">
+              <span class="mono">SAT</span>
+              <strong>22</strong>
+              <span class="mono">NOV</span>
+            </div>
+          </figure>
+        </div>
+
+        <div class="week" role="group" aria-label="Week of 17 November">
+          <button class="day">
+            <span class="w">Mon</span><span class="n">17</span><span class="dots"><i></i></span>
+          </button>
+          <button class="day">
+            <span class="w">Tue</span><span class="n">18</span
+            ><span class="dots"><i></i><i></i></span>
+          </button>
+          <button class="day">
+            <span class="w">Wed</span><span class="n">19</span><span class="dots"></span>
+          </button>
+          <button class="day">
+            <span class="w">Thu</span><span class="n">20</span><span class="dots"><i></i></span>
+          </button>
+          <button class="day">
+            <span class="w">Fri</span><span class="n">21</span><span class="dots"></span>
+          </button>
+          <button class="day" aria-current="date">
+            <span class="w">Sat</span><span class="n">22</span
+            ><span class="dots"><i></i><i></i></span>
+          </button>
+          <button class="day">
+            <span class="w">Sun</span><span class="n">23</span><span class="dots"><i></i></span>
+          </button>
+        </div>
+
+        <div class="split">
+          <section class="week-list" aria-labelledby="this-week">
+            <div class="section-head">
+              <h3 id="this-week">This week</h3>
+              <a href="#week">All events →</a>
+            </div>
+            <a class="event-row reveal" style="--i: 0" href="#commitment">
+              <span class="event-date"><b>22</b>Sat · 07:30</span>
+              <span>
+                <span class="event-title">Planting day</span>
+                <span class="event-club">Agri Club · Ngong river bank</span>
+              </span>
+              <span class="event-spots">38 / 60</span>
+              <span class="arrow">→</span>
+            </a>
+            <a class="event-row reveal" style="--i: 1" href="#week">
+              <span class="event-date"><b>22</b>Sat · 14:00</span>
+              <span>
+                <span class="event-title">Debate finals</span>
+                <span class="event-club">Debate Society · Lecture Theatre 2</span>
+              </span>
+              <span class="event-spots ok">Seats left</span>
+              <span class="arrow">→</span>
+            </a>
+            <a class="event-row reveal" style="--i: 2" href="#week">
+              <span class="event-date"><b>23</b>Sun · 06:45</span>
+              <span>
+                <span class="event-title">Long run, Karura</span>
+                <span class="event-club">Athletics · Karura Forest</span>
+              </span>
+              <span class="event-spots">14 / 40</span>
+              <span class="arrow">→</span>
+            </a>
+            <a class="event-row reveal" style="--i: 3" href="#week">
+              <span class="event-date"><b>25</b>Tue · 18:00</span>
+              <span>
+                <span class="event-title">Portfolio night</span>
+                <span class="event-club">Design Collective · Westlands campus</span>
+              </span>
+              <span class="event-spots">26 / 50</span>
+              <span class="arrow">→</span>
+            </a>
+          </section>
+
+          <aside class="rail" aria-label="Your clubs and commitments">
+            <div>
+              <h4><span>From your clubs</span><span>3</span></h4>
+              <div class="post">
+                <span class="avatar">AO</span>
+                <div>
+                  <p>
+                    <span class="who">Amara</span> pinned the term plan — planting day, harvest,
+                    market stall.
+                  </p>
+                  <p class="when">2 hours ago · Agri Club</p>
+                </div>
+              </div>
+              <div class="post">
+                <span class="avatar">YT</span>
+                <div>
+                  <p><span class="who">Yuki</span> asked about space for a bike on the bus.</p>
+                  <p class="when">4 hours ago · 3 replies</p>
+                </div>
+              </div>
+              <div class="post">
+                <span class="avatar">AO</span>
+                <div>
+                  <p><span class="who">Amara</span> posted 12 photos from nursery day.</p>
+                  <p class="when">Yesterday · Agri Club</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4><span>Your commitments</span><span>2</span></h4>
+              <div class="commit">
+                <span class="tick">✓</span>
+                <div>
+                  <p class="t">Planting day</p>
+                  <p class="s">SAT 22 · 07:30 · BUS CONFIRMED</p>
+                </div>
+              </div>
+              <div class="commit">
+                <span class="tick">✓</span>
+                <div>
+                  <p class="t">Harvest morning</p>
+                  <p class="s">SAT 29 · 06:30 · KAREN</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- 2. Club -->
+      <section class="screen" id="club" aria-label="Club page — Agri Club">
+        <div class="chrome"><i></i><i></i><i></i><span>kesho.app / clubs / agri</span></div>
+        <nav class="nav" aria-label="Primary">
+          <span class="brand">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 18h18" stroke="currentColor" stroke-width="2" />
+              <path d="M7 18a5 5 0 0 1 10 0" fill="currentColor" />
+              <circle cx="12" cy="5" r="1.7" fill="#e9b44c" />
+            </svg>
+            kesho
+          </span>
+          <div class="nav-links">
+            <a href="#week">This week</a>
+            <a href="#club" aria-current="page">Clubs</a>
+            <a href="#commitment">Commitments</a>
+            <a href="#workspace">My stuff</a>
+          </div>
+          <div class="nav-right">
+            <span class="campus">Nairobi · Main ▾</span>
+            <span class="avatar">SR</span>
+          </div>
+        </nav>
+
+        <div class="club-head">
+          <span class="emblem">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21V9" stroke="currentColor" stroke-width="1.6" />
+              <path d="M12 13c-4 0-6-2.2-6-6 4 0 6 2.2 6 6Z" fill="currentColor" />
+              <path d="M12 10c4 0 6-2.2 6-6-4 0-6 2.2-6 6Z" fill="currentColor" opacity=".55" />
+            </svg>
+          </span>
+          <div>
+            <h2>Agri Club</h2>
+            <p class="club-meta">
+              <span>86 members</span>
+              <span>Founded 2019</span>
+              <span>Thursdays · 17:00 · Block C</span>
+            </p>
+          </div>
+          <div class="club-actions">
+            <span class="chip chip--leaf">You're a member</span>
+            <button class="btn btn--ghost">Open workspace</button>
+          </div>
+        </div>
+
+        <div class="photo-strip" aria-label="Club photos">
+          <div class="strip strip--a"><span>Nursery day · October</span></div>
+          <div class="strip strip--b"><span>Seedling trays</span></div>
+          <div class="strip strip--c"><span>Market stall</span></div>
+        </div>
+
+        <div class="club-body">
+          <div class="club-main">
+            <div class="next-card">
+              <div class="next-date">NEXT<b>22</b>NOV</div>
+              <div>
+                <h3>Planting day at Ngong river bank</h3>
+                <p>60 seedlings with the county environment office. Bus at 07:30, back by 13:00.</p>
+                <span class="chip chip--clay">38 / 60 · 6 waitlist</span>
+              </div>
+            </div>
+
+            <p class="subhead">Term 2 plan</p>
+            <div class="plan-row">
+              <span class="d">05 OCT</span>
+              <span class="t">Nursery day · Karen plot</span>
+              <span class="chip">Done</span>
+            </div>
+            <div class="plan-row">
+              <span class="d">22 NOV</span>
+              <span class="t">Planting day · Ngong river bank</span>
+              <span class="chip chip--leaf">Open</span>
+            </div>
+            <div class="plan-row">
+              <span class="d">29 NOV</span>
+              <span class="t">Harvest morning · Karen greens</span>
+              <span class="chip chip--leaf">Open</span>
+            </div>
+            <div class="plan-row">
+              <span class="d">06 DEC</span>
+              <span class="t">Market stall · City market</span>
+              <span class="chip chip--sun">Waitlist</span>
+            </div>
+
+            <p class="subhead" style="margin-top: 22px">Announcements</p>
+            <div class="announce">
+              <div class="top">
+                <h4>Bus leaves at 7:30 sharp</h4>
+                <span class="mono" style="color: var(--muted); font-size: 8.5px">2H AGO</span>
+              </div>
+              <p>
+                If you're on the waitlist, come to the gate anyway — two seats opened last year at
+                the last minute.
+              </p>
+            </div>
+            <div class="announce">
+              <div class="top">
+                <h4>Photos from nursery day</h4>
+                <span class="mono" style="color: var(--muted); font-size: 8.5px">YESTERDAY</span>
+              </div>
+              <p>
+                Twelve frames from the Karen plot, uploaded to the club gallery. Tag yourself if you
+                were there.
+              </p>
+            </div>
+          </div>
+
+          <aside class="club-side" aria-label="Officers and discussion">
+            <p class="subhead">Officers</p>
+            <div class="officers">
+              <div class="officer">
+                <span class="avatar">KK</span>
+                <div>
+                  <p class="name">Kemboi Kirui</p>
+                  <p class="role">Chair</p>
+                </div>
+              </div>
+              <div class="officer">
+                <span class="avatar">AO</span>
+                <div>
+                  <p class="name">Amara Okafor</p>
+                  <p class="role">Secretary</p>
+                </div>
+              </div>
+              <div class="officer">
+                <span class="avatar">MK</span>
+                <div>
+                  <p class="name">Mark Kage</p>
+                  <p class="role">Grower liaison</p>
+                </div>
+              </div>
+            </div>
+
+            <p class="subhead">Discussion</p>
+            <div class="disc">
+              <p><strong>Yuki:</strong> Is there space for a bike on the bus?</p>
+              <p style="color: var(--muted); margin-top: 4px">
+                Kemboi: Yes, two slots under the back seats — add your name to the list.
+              </p>
+              <a class="mono" href="#club">4 replies →</a>
+            </div>
+
+            <div style="margin-top: 22px; border-top: 1px solid var(--rule); padding-top: 12px">
+              <p class="subhead">Your membership</p>
+              <p style="font-size: 12.5px; color: var(--ink-2)">
+                Member since March 2026. You've shown up to 4 of 6 commitments this term.
+              </p>
+              <div class="bar" style="width: 100%; margin-top: 10px">
+                <i style="width: 66%"></i>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- 3. Commitment -->
+      <section class="screen" id="commitment" aria-label="Commitment — harvest morning">
+        <div class="chrome">
+          <i></i><i></i><i></i><span>kesho.app / commitments / harvest-morning</span>
+        </div>
+        <nav class="nav" aria-label="Primary">
+          <span class="brand">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 18h18" stroke="currentColor" stroke-width="2" />
+              <path d="M7 18a5 5 0 0 1 10 0" fill="currentColor" />
+              <circle cx="12" cy="5" r="1.7" fill="#e9b44c" />
+            </svg>
+            kesho
+          </span>
+          <div class="nav-links">
+            <a href="#week">This week</a>
+            <a href="#club">Clubs</a>
+            <a href="#commitment" aria-current="page">Commitments</a>
+            <a href="#workspace">My stuff</a>
+          </div>
+          <div class="nav-right">
+            <span class="campus">Nairobi · Main ▾</span>
+            <span class="avatar">SR</span>
+          </div>
+        </nav>
+
+        <a class="back" href="#club">← Agri Club · commitments</a>
+
+        <div class="detail">
+          <div class="reveal">
+            <p class="eyebrow">Harvest · Saturday 29 Nov</p>
+            <h2>Harvest morning at Karen greens.</h2>
+            <p class="lede">
+              Help bring in a leafy-greens crop, then sort and pack it for the Saturday market. No
+              experience needed — Mark walks everyone through the harvesting.
+            </p>
+            <p class="meta mono">06:30–11:00 · Karen, Nairobi · Host: Mark Kage</p>
+
+            <p class="subhead">What to bring</p>
+            <ul class="bring">
+              <li>Closed shoes and clothes you don't mind staining.</li>
+              <li>A water bottle — the tap is 200m from the plot.</li>
+              <li>Gloves are provided, but bring your own if you have them.</li>
+            </ul>
+
+            <div class="host">
+              <span class="avatar">MK</span>
+              <div>
+                <p class="n">Mark Kage</p>
+                <p class="r">Grower liaison · hosts this plot</p>
+              </div>
+              <span class="chip" style="margin-left: auto">Replies same day</span>
+            </div>
+
+            <div class="updates">
+              <h3>Updates</h3>
+              <div class="update">
+                <p>
+                  <strong>Mark:</strong> The crop is ready a little earlier than planned. We start
+                  at 06:30, not 07:00.
+                </p>
+                <p class="mono" style="color: var(--muted); font-size: 8.5px; margin-top: 5px">
+                  2 DAYS AGO
+                </p>
+              </div>
+              <div class="update">
+                <p>
+                  <strong>Amara:</strong> I'll bring the crates from the storage room. Can someone
+                  meet me at the gate?
+                </p>
+                <p class="mono" style="color: var(--muted); font-size: 8.5px; margin-top: 5px">
+                  YESTERDAY · 3 REPLIES
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <aside class="signup reveal" style="--i: 1" aria-label="Sign up">
+            <div class="spots">
+              <b
+                >9<span style="font-size: 15px; font-family: var(--font-body); font-weight: 400">
+                  / 30</span
+                ></b
+              >
+              <span class="mono">GOING</span>
+            </div>
+            <span class="bar"><i style="width: 30%"></i></span>
+            <div class="faces">
+              <span class="face">SR</span>
+              <span class="face">AO</span>
+              <span class="face">YT</span>
+              <span class="face">KK</span>
+              <span class="face">+5</span>
+            </div>
+            <button class="btn">You're in — bring a friend</button>
+            <p class="note">Cancel by Thu 27 Nov, 18:00 so the spot can pass to the waitlist.</p>
+            <div class="host-mini">
+              <span
+                class="avatar"
+                style="
+                  width: 30px;
+                  height: 30px;
+                  background: var(--paper-2);
+                  color: var(--leaf);
+                  border: 1px solid var(--rule);
+                "
+                >AO</span
+              >
+              <div>
+                <p style="font-size: 12px; font-weight: 600">Amara is going</p>
+                <p class="mono" style="font-size: 8.5px; color: var(--muted)">
+                  SECRETARY · 3 COMMITMENTS THIS TERM
+                </p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- 4. Officer workspace -->
+      <section class="screen" id="workspace" aria-label="Officer workspace">
+        <div class="chrome"><i></i><i></i><i></i><span>kesho.app / workspace / agri</span></div>
+        <nav class="nav" aria-label="Primary">
+          <span class="brand">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 18h18" stroke="currentColor" stroke-width="2" />
+              <path d="M7 18a5 5 0 0 1 10 0" fill="currentColor" />
+              <circle cx="12" cy="5" r="1.7" fill="#e9b44c" />
+            </svg>
+            kesho
+          </span>
+          <div class="nav-links">
+            <a href="#week">This week</a>
+            <a href="#club">Clubs</a>
+            <a href="#commitment">Commitments</a>
+            <a href="#workspace" aria-current="page">My stuff</a>
+          </div>
+          <div class="nav-right">
+            <span class="campus">Nairobi · Main ▾</span>
+            <span class="avatar">KK</span>
+          </div>
+        </nav>
+
+        <div class="ws-head">
+          <div>
+            <p class="eyebrow">Officer · Agri Club</p>
+            <h2>Workspace</h2>
+          </div>
+          <p class="mono">TERM 2 · 8 OCT – 12 DEC</p>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Workspace sections">
+          <button class="tab" role="tab">Overview</button>
+          <button class="tab" role="tab" aria-current="page">Events</button>
+          <button class="tab" role="tab">Commitments</button>
+          <button class="tab" role="tab">Messages</button>
+          <button class="tab" role="tab">Requests</button>
+          <button class="tab" role="tab">Audit</button>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <p class="v">38</p>
+            <p class="l">Going · planting day</p>
+          </div>
+          <div class="stat">
+            <p class="v">6</p>
+            <p class="l">On the waitlist</p>
+          </div>
+          <div class="stat">
+            <p class="v">2</p>
+            <p class="l">Open requests</p>
+          </div>
+          <div class="stat">
+            <p class="v">86</p>
+            <p class="l">Members</p>
+          </div>
+        </div>
+
+        <div class="ws-body">
+          <div>
+            <div class="ledger-title">
+              <h3>Events this term</h3>
+              <span class="mono">4 EVENTS · 2 OPEN</span>
+            </div>
+            <table class="ledger">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Date</th>
+                  <th>Going</th>
+                  <th>Waitlist</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="name">Nursery day</td>
+                  <td class="num">05 Oct</td>
+                  <td class="num">22 / 25</td>
+                  <td class="num">—</td>
+                  <td><span class="chip">Done</span></td>
+                  <td><button class="link-btn">Report</button></td>
+                </tr>
+                <tr>
+                  <td class="name">Planting day</td>
+                  <td class="num">22 Nov</td>
+                  <td class="num">38 / 60</td>
+                  <td class="num">6</td>
+                  <td><span class="chip chip--leaf">Open</span></td>
+                  <td><button class="link-btn">Manage</button></td>
+                </tr>
+                <tr>
+                  <td class="name">Harvest morning</td>
+                  <td class="num">29 Nov</td>
+                  <td class="num">9 / 30</td>
+                  <td class="num">—</td>
+                  <td><span class="chip chip--leaf">Open</span></td>
+                  <td><button class="link-btn">Manage</button></td>
+                </tr>
+                <tr>
+                  <td class="name">Market stall</td>
+                  <td class="num">06 Dec</td>
+                  <td class="num">12 / 12</td>
+                  <td class="num">4</td>
+                  <td><span class="chip chip--clay">Full</span></td>
+                  <td><button class="link-btn">Waitlist</button></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="ledger-title">
+              <h3>Waitlist · planting day</h3>
+              <span class="mono">FIRST COME, FIRST SERVED</span>
+            </div>
+            <table class="ledger">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Requested</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="num">1</td>
+                  <td class="name">Yuki Tanaka</td>
+                  <td class="num">2 days ago</td>
+                  <td style="text-align: right"><button class="link-btn">Promote</button></td>
+                </tr>
+                <tr>
+                  <td class="num">2</td>
+                  <td class="name">Brian Otieno</td>
+                  <td class="num">2 days ago</td>
+                  <td style="text-align: right"><button class="link-btn">Promote</button></td>
+                </tr>
+                <tr>
+                  <td class="num">3</td>
+                  <td class="name">Fatima Noor</td>
+                  <td class="num">Yesterday</td>
+                  <td style="text-align: right"><button class="link-btn">Promote</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="ws-rail">
+            <div>
+              <p class="subhead">Open requests</p>
+              <div class="req">
+                <p>New commitment: seed-sorting evening</p>
+                <p class="mono">YUKI TANAKA · 2H AGO</p>
+                <div class="req-actions">
+                  <button class="mini mini--ok">Approve</button>
+                  <button class="mini">Decline</button>
+                </div>
+              </div>
+              <div class="req">
+                <p>Room change: Thursday meeting to Block C</p>
+                <p class="mono">AMARA OKAFOR · YESTERDAY</p>
+                <div class="req-actions">
+                  <button class="mini mini--ok">Approve</button>
+                  <button class="mini">Decline</button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p class="subhead">Recent activity</p>
+              <div class="audit">
+                <p><b>KK</b> promoted Sofia to planting day · 2h</p>
+                <p><b>AO</b> posted 12 photos · yesterday</p>
+                <p><b>MK</b> updated harvest start to 06:30 · 2d</p>
+                <p><b>KK</b> opened planting day · 5d</p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <aside class="system" aria-label="Design system notes">
+      <h2>System notes</h2>
+      <p>
+        The rules the screens are built from. Field Ledger sets the tone; Campus Press sets the
+        discipline for data. Everything below is a token, not a one-off value.
+      </p>
+      <div class="sys-grid">
+        <div class="sys">
+          <h3>Palette</h3>
+          <div class="sw"><i style="background: #faf7f0"></i>Paper · #FAF7F0</div>
+          <div class="sw"><i style="background: #16170f"></i>Ink · #16170F</div>
+          <div class="sw"><i style="background: #204c3a"></i>Leaf · #204C3A</div>
+          <div class="sw"><i style="background: #c2542f"></i>Clay · #C2542F · pressure</div>
+          <div class="sw"><i style="background: #e9b44c"></i>Sun · #E9B44C · highlight</div>
+          <div class="sw"><i style="background: #dfd8c8"></i>Rule · #DFD8C8</div>
+        </div>
+        <div class="sys">
+          <h3>Type</h3>
+          <p>
+            <strong style="font-family: var(--font-display); font-size: 20px">Fraunces</strong>
+            — statements only, 400/600, italic for emphasis.<br />
+            <strong>Instrument Sans</strong> — body, 15px/1.55.<br />
+            <strong style="font-family: var(--font-mono); font-size: 12px">JetBrains Mono</strong>
+            — times, counts, labels, 8.5–11px, uppercase labels.
+          </p>
+        </div>
+        <div class="sys">
+          <h3>Motion</h3>
+          <p>
+            Enter 480–520ms, 12px rise, 45ms stagger. Hover 180ms. Ease
+            <span style="font-family: var(--font-mono); font-size: 10px"
+              >cubic-bezier(.2,.7,.2,1)</span
+            >. No parallax, no loops, nothing moves twice. Reduced motion removes all of it.
+          </p>
+        </div>
+        <div class="sys">
+          <h3>Non-negotiables</h3>
+          <ul>
+            <li>No shadows. 1px rules and paper tone separate surfaces.</li>
+            <li>One accent per screen: leaf. Clay means time pressure.</li>
+            <li>Serif never carries body copy.</li>
+            <li>Data views: zero radius, mono heads, tabular numbers.</li>
+            <li>44px minimum tap target on phones.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+
+    <script>
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const items = document.querySelectorAll(".reveal");
+      if (reduce || !("IntersectionObserver" in window)) {
+        items.forEach((el) => el.classList.add("in"));
+      } else {
+        const io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("in");
+                io.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.12 }
+        );
+        items.forEach((el) => io.observe(el));
+      }
+    </script>
+  </body>
+</html>
