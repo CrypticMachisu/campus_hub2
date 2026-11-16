@@ -400,7 +400,7 @@ export default function CommitmentsSection({ clubId, heading = "Commitments" }) 
                   {managesClub && (
                     <button
                       type="button"
-                      className={styles.removeButton}
+                      className={styles.rosterButton}
                       onClick={() => toggleRoster(row)}
                       aria-expanded={Boolean(rosters[row.id]?.data)}
                     >

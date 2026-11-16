@@ -202,7 +202,7 @@ CREATE TABLE event_signups (
 -- ----------------------------------------------------------------------------
 CREATE TABLE comments (
     comment_id      VARCHAR(30) PRIMARY KEY,       -- e.g. 'comment-<timestamp>'
-    target_type     ENUM('event', 'club') NOT NULL,
+    target_type     ENUM('event', 'club', 'commitment') NOT NULL,
     target_id       VARCHAR(30) NOT NULL,
     user_id         VARCHAR(30) NOT NULL,
     user_name_snapshot VARCHAR(100) NOT NULL,       -- mirrors the snapshot pattern used for signups

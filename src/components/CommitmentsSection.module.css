@@ -174,6 +174,24 @@
   white-space: nowrap;
 }
 
+.rosterButton {
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.rosterButton:hover {
+  color: var(--signal-deep);
+  border-color: var(--signal);
+}
+
 .noticeLink:hover {
   color: var(--signal-deep);
   border-color: var(--signal);

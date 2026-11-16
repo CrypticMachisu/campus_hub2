@@ -12,7 +12,57 @@ import {
 } from "../utils/commitmentsStore";
 import { SkeletonGroup } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
+import CommentSection from "../components/CommentSection";
 import styles from "./CommitmentDetail.module.css";
+
+/** Builds and downloads a one-commitment .ics file (no dependency needed). */
+function downloadCommitmentIcs(commitment, clubName) {
+  const start = new Date(`${commitment.date}T${commitment.time || "00:00"}:00`);
+  if (Number.isNaN(start.getTime())) return;
+  const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);
+  const stamp = (date) =>
+    date
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace(/\.\d{3}/, "");
+  const escape = (value = "") =>
+    value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+
+  const description = [
+    commitment.description,
+    commitment.hostName ? `Host: ${commitment.hostName}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Kesho//Commitments//EN",
+    "BEGIN:VEVENT",
+    `UID:${commitment.id}@kesho`,
+    `DTSTAMP:${stamp(new Date())}`,
+    `DTSTART:${stamp(start)}`,
+    `DTEND:${stamp(end)}`,
+    `SUMMARY:${escape(commitment.title)}`,
+    `LOCATION:${escape(
+      `${commitment.location}${commitment.county ? `, ${commitment.county}` : ""}`
+    )}`,
+    `DESCRIPTION:${escape(description)}${clubName ? `\\nHosted by ${escape(clubName)}` : ""}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ];
+
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${commitment.id}.ics`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 /**
  * The commitment notice: where, when, who is hosting, and how many seats are
@@ -276,6 +326,14 @@ export default function CommitmentDetail() {
               </p>
             )}
 
+            <button
+              type="button"
+              className={styles.calendarButton}
+              onClick={() => downloadCommitmentIcs(commitment, club?.name)}
+            >
+              Add to calendar
+            </button>
+
             {notice && <p className={styles.noticeLine}>{notice}</p>}
 
             <p className={styles.finePrint}>
@@ -285,6 +343,10 @@ export default function CommitmentDetail() {
           </aside>
         </div>
       </article>
+
+      <section className={styles.discussion} aria-label="Commitment discussion">
+        <CommentSection targetType="commitment" targetId={commitment.id} />
+      </section>
     </div>
   );
 }

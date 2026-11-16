@@ -269,6 +269,94 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
   res.status(201).json({ commitment: rowToCommitment(rows[0]) });
 });
 
+/**
+ * PATCH /commitments/:id — managers can change the seat count.
+ * Lowering it below the current list moves the newest signups to the waitlist,
+ * which is exactly what the member ticket will then show; nothing is deleted.
+ */
+commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT commitment_id, club_id, title, capacity FROM commitments WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+  const commitment = rows[0];
+  if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (!canManageClub(req.user, commitment.club_id)) {
+    return res.status(403).json({ error: "You don't have admin access to that club." });
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(req.body || {}, "capacity")) {
+    return res.status(400).json({ error: "Send capacity (blank or null for no limit)." });
+  }
+
+  const raw = req.body.capacity;
+  let capacity = null;
+  if (raw !== null && raw !== "" && raw !== undefined) {
+    const parsed = Number(raw);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
+      return res
+        .status(400)
+        .json({ error: "capacity must be a whole number between 1 and 10000." });
+    }
+    capacity = parsed;
+  }
+
+  await pool.query("UPDATE commitments SET capacity = :capacity WHERE commitment_id = :id", {
+    capacity,
+    id: req.params.id,
+  });
+  const [updatedRows] = await pool.query(`${COMMITMENT_QUERY} WHERE c.commitment_id = :id`, {
+    id: req.params.id,
+  });
+
+  await recordAudit(req, {
+    action: "commitment.capacity",
+    targetType: "commitment",
+    targetId: req.params.id,
+    detail: { clubId: commitment.club_id, from: commitment.capacity, to: capacity },
+  });
+  res.json({ commitment: rowToCommitment(updatedRows[0]) });
+});
+
+/**
+ * DELETE /commitments/:id/signups/:signupId — a manager removes one person
+ * (withdrawal by phone, duplicate, no-show). The remaining order, and so the
+ * waitlist, closes up automatically on the next read.
+ */
+commitmentsRouter.delete("/:id/signups/:signupId", requireAuth, async (req, res) => {
+  const [commitmentRows] = await pool.query(
+    "SELECT commitment_id, club_id, title FROM commitments WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+  const commitment = commitmentRows[0];
+  if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (!canManageClub(req.user, commitment.club_id)) {
+    return res.status(403).json({ error: "You don't have admin access to that club." });
+  }
+
+  const [signupRows] = await pool.query(
+    "SELECT signup_id, user_id FROM commitment_signups WHERE signup_id = :signupId AND commitment_id = :id",
+    { signupId: req.params.signupId, id: req.params.id }
+  );
+  if (!signupRows[0]) return res.status(404).json({ error: "Signup not found." });
+
+  await pool.query("DELETE FROM commitment_signups WHERE signup_id = :signupId", {
+    signupId: req.params.signupId,
+  });
+  const [[{ count }]] = await pool.query(
+    "SELECT COUNT(*) AS count FROM commitment_signups WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+
+  await recordAudit(req, {
+    action: "commitment.signup.remove",
+    targetType: "commitment",
+    targetId: req.params.id,
+    detail: { clubId: commitment.club_id, removedUserId: signupRows[0].user_id },
+  });
+  res.json({ signupCount: Number(count) });
+});
+
 /** DELETE /commitments/:id — managers only; signups cascade. */
 commitmentsRouter.delete("/:id", requireAuth, async (req, res) => {
   const [rows] = await pool.query(

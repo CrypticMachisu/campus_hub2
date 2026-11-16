@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useEffect, useState, useCallback } from "react";
+import { Fragment, useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { CATEGORIES, createClub, updateClub } from "../utils/clubsStore";
 import { useClubs } from "../context/ClubsContext";
@@ -7,7 +7,13 @@ import { useAuth } from "../context/AuthContext";
 import { getAllEvents, saveCustomEvent, deleteCustomEvent } from "../utils/eventsStore";
 import { getSignupsByEvent } from "../utils/storage";
 import { getAnnouncements, saveAnnouncement } from "../utils/dashboardStorage";
-import { formatDateTime } from "../utils/dateTime";
+import { formatDateTime, formatEventDate } from "../utils/dateTime";
+import {
+  getCommitments,
+  getCommitmentRoster,
+  updateCommitmentCapacity,
+  removeCommitmentSignup,
+} from "../utils/commitmentsStore";
 import {
   getPendingAdminRequests,
   getAllUsers,
@@ -473,7 +479,13 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* 4. Announcements ----------------------------------------------- */}
+        {/* 4. Commitments -------------------------------------------------- */}
+        <section className={`${styles.section} ${styles.commitmentsSection}`}>
+          <h2>Commitments</h2>
+          <CommitmentsDesk clubId={club.id} />
+        </section>
+
+        {/* 5. Announcements ----------------------------------------------- */}
         <section className={`${styles.section} ${styles.announcementsSection}`}>
           <h2>Announcements</h2>
           <form className={styles.announcementForm} onSubmit={handlePostAnnouncement}>
@@ -503,10 +515,10 @@ export default function Dashboard() {
           </ul>
         </section>
 
-        {/* 5. Playbook — the club-specific bits members see ------------------- */}
+        {/* 6. Playbook — the club-specific bits members see ------------------- */}
         <ClubFocusSection club={club} className={styles.focusSection} />
 
-        {/* 6. Stats ----------------------------------------------------------- */}
+        {/* 7. Stats ----------------------------------------------------------- */}
         <section className={`${styles.section} ${styles.statsSection}`}>
           <h2>Stats</h2>
           <table className={styles.statsTable}>
@@ -552,6 +564,347 @@ function StatsRow({ event }) {
       <td>{event.title}</td>
       <td>{count === null ? "—" : count}</td>
     </tr>
+  );
+}
+
+/**
+ * Officer desk for commitments: seats, the waitlist and the roster in one
+ * place. Capacity is editable per row; lowering it never deletes anyone, the
+ * newest signups simply become waitlisted, which the member ticket reflects on
+ * its next read. Roster removal is for withdrawals taken by phone.
+ */
+function CommitmentsDesk({ clubId }) {
+  const [rows, setRows] = useState(null); // null = loading
+  const [failed, setFailed] = useState("");
+  const [notice, setNotice] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [capacityDraft, setCapacityDraft] = useState("");
+  const [savingId, setSavingId] = useState(null);
+  const [rosters, setRosters] = useState({});
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+
+  const load = useCallback(async () => {
+    setFailed("");
+    try {
+      setRows(await getCommitments({ clubId }));
+    } catch (err) {
+      setFailed(err.message);
+      setRows([]);
+    }
+  }, [clubId]);
+
+  useEffect(() => {
+    setRows(null);
+    setRosters({});
+    setEditingId(null);
+    setNotice("");
+    load();
+  }, [clubId, load]);
+
+  async function loadRoster(commitmentId) {
+    setRosters((current) => ({
+      ...current,
+      [commitmentId]: { loading: true, error: "" },
+    }));
+    try {
+      const data = await getCommitmentRoster(commitmentId);
+      setRosters((current) => ({ ...current, [commitmentId]: { data } }));
+    } catch (err) {
+      setRosters((current) => ({
+        ...current,
+        [commitmentId]: { error: err.message },
+      }));
+    }
+  }
+
+  function toggleRoster(row) {
+    if (rosters[row.id]?.data) {
+      setRosters((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+      return;
+    }
+    loadRoster(row.id);
+  }
+
+  async function saveCapacity(row) {
+    setSavingId(row.id);
+    setNotice("");
+    try {
+      const updated = await updateCommitmentCapacity(
+        row.id,
+        capacityDraft === "" ? null : Number(capacityDraft)
+      );
+      setRows((current) =>
+        current.map((entry) =>
+          entry.id === row.id ? { ...entry, capacity: updated.capacity } : entry
+        )
+      );
+      setEditingId(null);
+      setNotice(
+        updated.capacity == null
+          ? `${row.title} now has no seat limit.`
+          : `${row.title} now has ${updated.capacity} ${updated.capacity === 1 ? "place" : "places"}.`
+      );
+      if (rosters[row.id]) loadRoster(row.id);
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  async function removePerson(row, person) {
+    setRemovingId(person.id);
+    setNotice("");
+    try {
+      const result = await removeCommitmentSignup(row.id, person.id);
+      setRows((current) =>
+        current.map((entry) =>
+          entry.id === row.id ? { ...entry, signupCount: result.signupCount } : entry
+        )
+      );
+      setConfirmRemoveId(null);
+      setNotice(`${person.name} was removed from ${row.title}.`);
+      loadRoster(row.id);
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  if (failed) {
+    return (
+      <div>
+        <p className={styles.emptyState}>Commitments didn&apos;t load: {failed}</p>
+        <button type="button" onClick={load}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (rows === null) {
+    return (
+      <SkeletonGroup label="Loading commitments…">
+        <CardStackSkeleton count={2} />
+      </SkeletonGroup>
+    );
+  }
+
+  return (
+    <>
+      <p className={styles.deskNote}>
+        Seats changed here apply immediately; lowering a capacity moves the newest signups to the
+        waitlist instead of deleting them. Publish new commitments from the{" "}
+        <Link to={`/clubs/${clubId}`}>club page</Link>.
+      </p>
+
+      {notice && (
+        <p className={styles.deskNotice} role="status">
+          {notice}
+        </p>
+      )}
+
+      {rows.length === 0 ? (
+        <p className={styles.emptyState}>No upcoming commitments for this club.</p>
+      ) : (
+        <table className={`${styles.signupsTable} ${styles.commitmentsTable}`}>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Commitment</th>
+              <th scope="col">Places</th>
+              <th scope="col">Waitlist</th>
+              <th scope="col">Roster</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const going =
+                row.capacity == null ? row.signupCount : Math.min(row.signupCount, row.capacity);
+              const waiting =
+                row.capacity == null ? 0 : Math.max(0, row.signupCount - row.capacity);
+              const rosterState = rosters[row.id];
+              const isEditing = editingId === row.id;
+
+              return (
+                <Fragment key={row.id}>
+                  <tr>
+                    <td>
+                      <time dateTime={`${row.date}T${row.time}`}>{formatEventDate(row.date)}</time>
+                      <br />
+                      <span className={styles.cellNote}>{row.time}</span>
+                    </td>
+                    <td>
+                      <strong>{row.title}</strong>
+                      <br />
+                      <span className={styles.cellNote}>
+                        {row.kindLabel} · {row.location}
+                      </span>
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <span className={styles.capacityEditor}>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10000"
+                            value={capacityDraft}
+                            placeholder="No limit"
+                            aria-label={`Spaces for ${row.title}`}
+                            onChange={(e) => setCapacityDraft(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className={styles.smallButton}
+                            onClick={() => saveCapacity(row)}
+                            disabled={savingId === row.id}
+                          >
+                            {savingId === row.id ? "Saving…" : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.smallButton}
+                            onClick={() => setEditingId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <span>
+                          {going}
+                          {row.capacity == null ? " · no limit" : ` / ${row.capacity}`}
+                          <br />
+                          <button
+                            type="button"
+                            className={styles.smallButton}
+                            onClick={() => {
+                              setEditingId(row.id);
+                              setCapacityDraft(row.capacity == null ? "" : String(row.capacity));
+                            }}
+                          >
+                            Edit seats
+                          </button>
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {waiting > 0 ? (
+                        <span className={styles.waitBadge}>{waiting} waiting</span>
+                      ) : (
+                        <span className={styles.cellNote}>None</span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.smallButton}
+                        onClick={() => toggleRoster(row)}
+                        aria-expanded={Boolean(rosterState?.data)}
+                      >
+                        {rosterState?.data ? "Hide" : `View (${row.signupCount})`}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {rosterState && (
+                    <tr key={`${row.id}-roster`}>
+                      <td colSpan={5} className={styles.rosterCell}>
+                        {rosterState.loading && (
+                          <p className={styles.emptyState}>Loading roster…</p>
+                        )}
+                        {rosterState.error && (
+                          <p className={styles.emptyState}>
+                            Roster didn&apos;t load: {rosterState.error}
+                          </p>
+                        )}
+                        {rosterState.data && (
+                          <>
+                            <p className={styles.rosterSummary}>
+                              Going {rosterState.data.summary.going}
+                              {rosterState.data.summary.capacity != null
+                                ? ` of ${rosterState.data.summary.capacity}`
+                                : ""}{" "}
+                              · Waitlist {rosterState.data.summary.waitlisted}
+                            </p>
+                            {rosterState.data.roster.length === 0 ? (
+                              <p className={styles.emptyState}>Nobody has committed yet.</p>
+                            ) : (
+                              <table className={styles.rosterTable}>
+                                <thead>
+                                  <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Signed up</th>
+                                    <th scope="col">State</th>
+                                    <th scope="col">Remove</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {rosterState.data.roster.map((person) => (
+                                    <tr key={person.id}>
+                                      <td>{person.position}</td>
+                                      <td>{person.name}</td>
+                                      <td>{person.email}</td>
+                                      <td>{formatDateTime(person.signedUpAt)}</td>
+                                      <td>
+                                        {person.waitlisted ? (
+                                          <span className={styles.waitBadge}>Waitlist</span>
+                                        ) : (
+                                          "Going"
+                                        )}
+                                      </td>
+                                      <td>
+                                        {confirmRemoveId === person.id ? (
+                                          <span className={styles.confirmInline}>
+                                            <button
+                                              type="button"
+                                              className={styles.dangerButton}
+                                              onClick={() => removePerson(row, person)}
+                                              disabled={removingId === person.id}
+                                            >
+                                              {removingId === person.id ? "Removing…" : "Yes"}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setConfirmRemoveId(null)}
+                                            >
+                                              No
+                                            </button>
+                                          </span>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            className={styles.smallButton}
+                                            onClick={() => setConfirmRemoveId(person.id)}
+                                          >
+                                            Remove
+                                          </button>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </>
   );
 }
 

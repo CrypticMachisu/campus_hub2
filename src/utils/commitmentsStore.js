@@ -73,6 +73,23 @@ export async function withdrawCommitment(commitmentId) {
   });
 }
 
+/** Club managers only: change the seat count (null or "" = no limit). */
+export async function updateCommitmentCapacity(commitmentId, capacity) {
+  const { commitment } = await apiFetch(`/commitments/${encodeURIComponent(commitmentId)}`, {
+    method: "PATCH",
+    body: { capacity },
+  });
+  return toUiCommitment(commitment);
+}
+
+/** Club managers only: remove one person's signup from the roster. */
+export async function removeCommitmentSignup(commitmentId, signupId) {
+  return apiFetch(
+    `/commitments/${encodeURIComponent(commitmentId)}/signups/${encodeURIComponent(signupId)}`,
+    { method: "DELETE" }
+  );
+}
+
 /** Club managers only: going + waitlisted, in arrival order. */
 export async function getCommitmentRoster(commitmentId) {
   return apiFetch(`/commitments/${encodeURIComponent(commitmentId)}/roster`);

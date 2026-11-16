@@ -322,6 +322,8 @@ commitment: a dated activity with a host, a place and an optional capacity.
 - Waitlist position is computed on read from `(created_at, signup_id)`, so a
   withdrawal promotes the next person immediately and the member, the roster
   and the club page always agree. Existing event RSVPs use the same rule.
+- Migration `014_comments_commitment_target.sql` widens the comments target
+  enum so a commitment has its own discussion thread, like clubs and events.
 
 ### Surface
 
@@ -330,8 +332,13 @@ commitment: a dated activity with a host, a place and an optional capacity.
   publish form, a remove control and a roster panel with going/waitlisted
   counts and emails.
 - `/commitments/:id` is the notice page: where and when, host, capacity meter,
-  waitlist state and a withdraw control. It is public; signing up requires a
-  session and returns to login otherwise.
+  waitlist state, a withdraw control, a `Comments` thread and a one-way
+  `Add to calendar` (.ics) download. It is public; signing up and commenting
+  require a session and return to login otherwise.
+- The officer **Desk** now carries a Commitments table: date, places, waitlist,
+  an inline seat editor and an expandable roster with positions, emails,
+  waitlist state and a remove control for withdrawals taken by phone. Lowering
+  a capacity moves the newest signups to the waitlist; nobody is deleted.
 - "My commitments" merges event RSVPs and commitment signups into one stack,
   stamped `Going`, `Committed` or `Waitlist`, and withdraws through the right
   endpoint. The home rail mixes both, soonest first.
@@ -341,8 +348,10 @@ commitment: a dated activity with a host, a place and an optional capacity.
 
 ### Deferred
 
-- The officer dashboard still speaks only in events. Roster management lives on
-  the club page for now; moving capacity and waitlist tables into the officer
-  desk is the next Phase 2 slice.
-- Commitments have no comments or calendar export yet. Both are additive and do
-  not change the model.
+- Publishing a new commitment still happens on the club page; the Desk manages
+  existing commitments. A dashboard publish form is a convenience, not a model
+  change.
+- Calendar export is a one-way .ics download. Subscribing or two-way calendar
+  sync stays out of scope.
+- Commitment comments use the same thread component as clubs and events; there
+  is no separate moderation queue for them yet.
