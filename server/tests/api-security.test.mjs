@@ -64,7 +64,6 @@ test("Unknown API subpaths under known mounts return a JSON 404 without a key", 
     "/signups/not-a-route",
     "/comments/not-a-route",
     "/announcements/not-a-route",
-    "/partner/not-a-route",
     "/admin/not-a-route",
   ];
 
@@ -87,7 +86,6 @@ test("Every mounted API router still requires a key on its known routes", async 
     ["GET", "/signups/mine"],
     ["GET", "/comments?targetType=event&targetId=event-01"],
     ["GET", "/announcements?clubId=club-01"],
-    ["GET", "/partner/produce"],
     ["GET", "/v2/agro/opportunities"],
     ["GET", "/admin"],
   ];

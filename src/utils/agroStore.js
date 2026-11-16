@@ -23,13 +23,10 @@ export function toUiOpportunity(opportunity) {
   return { ...rest, date, time: clock.slice(0, 5) };
 }
 
-/** Upcoming opportunities + the freshness of the grower details beside them. */
+/** Upcoming opportunities from the club's own records. */
 export async function getAgroOpportunities() {
   const data = await apiFetch("/agro/opportunities");
-  return {
-    opportunities: (data.opportunities || []).map(toUiOpportunity),
-    partner: data.partner || { live: false, asOf: null, stale: false },
-  };
+  return (data.opportunities || []).map(toUiOpportunity);
 }
 
 export async function registerOpportunityInterest(opportunityId) {
@@ -46,15 +43,6 @@ export async function withdrawOpportunityInterest(opportunityId) {
     { method: "DELETE" }
   );
   return interest;
-}
-
-/**
- * The partner's grower list, for the admin's grower picker. This is the
- * existing /partner proxy, so it carries its own stale flag and asOf.
- */
-export async function getPartnerFarmers() {
-  const { data, stale, asOf } = await apiFetch("/partner/farmers");
-  return { farmers: Array.isArray(data) ? data : [], stale, asOf };
 }
 
 /** Admin only: the members who registered interest, with contact details. */

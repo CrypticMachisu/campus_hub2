@@ -12,7 +12,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm, 0.5rem);
-  margin: var(--space-md, 1rem) 0;
+  margin: var(--space-md, 1rem) 0 0;
 }
 .primary,
 .secondary {
@@ -31,44 +31,4 @@
 .secondary {
   border: 1px solid var(--color-secondary, #2f6e64);
   color: var(--color-secondary, #2f6e64);
-}
-.stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-lg, 2rem);
-  list-style: none;
-  padding: 0;
-  margin: var(--space-md, 1rem) 0;
-  font-family: var(--font-mono, monospace);
-}
-.stats strong {
-  font-size: 1.6rem;
-  color: var(--color-primary, #c1432e);
-}
-.grid {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 var(--space-md, 1rem);
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-md, 1rem);
-}
-.card {
-  padding: var(--space-md, 1rem);
-  background: var(--color-card-bg, #fbf6e9);
-  border: 1px solid var(--color-border, #d8cba9);
-  border-radius: var(--radius, 6px);
-}
-.card h4 {
-  margin: 0 0 0.25rem;
-}
-.card p {
-  margin: 0.15rem 0;
-}
-.meta {
-  color: var(--color-text-muted, #6b6457);
-  font-size: 0.9rem;
-}
-.error {
-  color: var(--color-danger, #b3261e);
 }

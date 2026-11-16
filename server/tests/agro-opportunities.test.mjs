@@ -1,4 +1,4 @@
-// Route-level tests for the AgroConnect opportunities surface.
+// Route-level tests for the Agri club's opportunities surface.
 //
 // Run from server/ with the API already running:  npm test
 // Like the other suites, this uses seed accounts and skips quietly when
@@ -83,20 +83,8 @@ test(
     const seeded = body.opportunities[0];
     assert.match(seeded.startsAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\+03:00$/);
     assert.equal(typeof seeded.interestCount, "number");
-    assert.ok(body.partner && typeof body.partner.live === "boolean");
-    assert.ok(
-      body.partner.live || body.partner.asOf === null || body.partner.stale,
-      "partner block should describe live, saved, or missing data"
-    );
-    // The partner has no opportunities resource, so that feed is reported as
-    // unavailable and empty — never filled with guessed rows.
-    assert.equal(body.partner.opportunitiesAvailable, false);
-    assert.deepEqual(body.partner.opportunities, []);
-    // The produce feed is reported separately from the grower list, so the
-    // card can say which of the two is live and which is the saved copy.
-    assert.equal(typeof body.partner.produce.live, "boolean");
-    assert.equal(typeof body.partner.produce.count, "number");
-    // Every activity is a local record; none is pulled from the partner.
+    assert.equal("partner" in body, false, "the standalone API has no partner feed");
+    // Every activity is a local record, seeded or admin-created.
     for (const opportunity of body.opportunities) {
       assert.ok(
         ["seed", "admin"].includes(opportunity.source),
@@ -189,7 +177,6 @@ test(
         time: "09:00",
         capacity: 10,
         hostName: "Route Test Grower",
-        farmerId: 1,
       },
     });
     const opportunity = (await expectJson(created, 201, "create opportunity")).opportunity;
@@ -200,7 +187,7 @@ test(
     assert.equal(opportunity.kind, "tree_planting");
     assert.equal(opportunity.capacity, 10);
     assert.equal(opportunity.source, "admin");
-    assert.equal(opportunity.farmerId, 1, "the admin's grower choice should round-trip");
+    assert.equal(opportunity.hostName, "Route Test Grower");
     assert.equal(opportunity.startsAt, "2030-05-01T09:00:00+03:00");
 
     const afterCreate = await api("/v2/agro/opportunities", { token: agriMember });

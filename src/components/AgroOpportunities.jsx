@@ -10,7 +10,6 @@ import {
   deleteAgroOpportunity,
   getAgroOpportunities,
   getOpportunityInterested,
-  getPartnerFarmers,
   kindLabel,
   registerOpportunityInterest,
   withdrawOpportunityInterest,
@@ -41,18 +40,15 @@ const EMPTY_FORM = {
   county: "",
   capacity: "",
   hostName: "",
-  farmerId: "",
 };
 
 /**
  * Upcoming opportunities for the Agri club: farm visits, tree-planting days,
  * harvest mornings and volunteering shifts.
  *
- * Nothing here is derived from the partner. Every activity is a local record,
- * either seeded with the club or published by one of its admins — that is what
- * `source` says, and the two are listed separately rather than blended.
- * AgroConnect only supplies the matched grower's details and stall beside a
- * card, so the list renders whether or not Team 6's API is answering.
+ * Every activity is a local record, either seeded with the club or published
+ * by one of its admins — that is what `source` says, and the two are listed
+ * separately rather than blended. There is no external feed behind this list.
  *
  * Members see the list and register interest; club admins also get the form to
  * publish and remove activities. Everyone else gets a members-only note.
@@ -63,7 +59,6 @@ export default function AgroOpportunities({ heading = "Farm visits and volunteer
   const member = Boolean(user) && (isClubMember(user, AGRI_CLUB_ID) || managesClub);
 
   const [opportunities, setOpportunities] = useState([]);
-  const [partner, setPartner] = useState({ live: false, asOf: null, stale: false });
   const [status, setStatus] = useState(member ? "loading" : "locked"); // locked | loading | ok | error
   const [error, setError] = useState("");
   const [pendingIds, setPendingIds] = useState(() => new Set());
@@ -78,16 +73,13 @@ export default function AgroOpportunities({ heading = "Farm visits and volunteer
   const [form, setForm] = useState(EMPTY_FORM);
   const [formStatus, setFormStatus] = useState("idle"); // idle | saving | error
   const [formError, setFormError] = useState("");
-  const [growers, setGrowers] = useState([]);
-  const [growersStatus, setGrowersStatus] = useState("idle"); // idle | loading | ok | error
 
   const load = useCallback(() => {
     setStatus("loading");
     setError("");
     getAgroOpportunities()
-      .then((data) => {
-        setOpportunities(data.opportunities);
-        setPartner(data.partner);
+      .then((rows) => {
+        setOpportunities(rows);
         setStatus("ok");
       })
       .catch((err) => {
@@ -128,24 +120,6 @@ export default function AgroOpportunities({ heading = "Farm visits and volunteer
       cancelled = true;
     };
   }, [openRosterId, rosterRefresh]);
-
-  // The admin's grower list comes from the partner proxy (or its saved copy),
-  // so an activity can point at a real grower instead of a typed name.
-  useEffect(() => {
-    if (!managesClub) return undefined;
-    let cancelled = false;
-    setGrowersStatus("loading");
-    getPartnerFarmers()
-      .then(({ farmers }) => {
-        if (cancelled) return;
-        setGrowers(farmers);
-        setGrowersStatus("ok");
-      })
-      .catch(() => !cancelled && setGrowersStatus("error"));
-    return () => {
-      cancelled = true;
-    };
-  }, [managesClub]);
 
   /** Optimistic interest toggle, rolled back if the API refuses. */
   async function toggleInterest(opportunity) {
@@ -212,7 +186,6 @@ export default function AgroOpportunities({ heading = "Farm visits and volunteer
       const created = await addAgroOpportunity({
         ...form,
         capacity: form.capacity === "" ? null : Number(form.capacity),
-        farmerId: form.farmerId === "" ? null : Number(form.farmerId),
       });
       setOpportunities((current) =>
         [...current, created].sort((a, b) =>
@@ -261,13 +234,7 @@ export default function AgroOpportunities({ heading = "Farm visits and volunteer
           {opportunity.county ? ` · ${opportunity.county}` : ""}
         </p>
         <p className={styles.meta}>
-          {opportunity.grower
-            ? opportunity.grower.county
-              ? `Hosted by a grower in ${opportunity.grower.county}`
-              : "Hosted by an AgroConnect grower"
-            : opportunity.hostName
-              ? `Host: ${opportunity.hostName}`
-              : "Hosted by the Agro club"}
+          {opportunity.hostName ? `Host: ${opportunity.hostName}` : "Hosted by the club"}
           {opportunity.capacity != null
             ? ` · ${Math.min(
                 opportunity.interestCount,
@@ -275,32 +242,6 @@ export default function AgroOpportunities({ heading = "Farm visits and volunteer
               )}/${opportunity.capacity} spaces`
             : ""}
         </p>
-
-        {opportunity.grower && (
-          <div className={styles.grower}>
-            <p className={styles.growerName}>
-              {opportunity.grower.name}
-              <span className={styles.growerTag}>AgroConnect</span>
-            </p>
-            {opportunity.grower.focus && <p className={styles.meta}>{opportunity.grower.focus}</p>}
-            {opportunity.grower.listings?.length > 0 && (
-              <>
-                <p className={styles.stall}>At their stall</p>
-                <ul className={styles.listings}>
-                  {opportunity.grower.listings.map((listing) => (
-                    <li key={listing.id} className={styles.listing}>
-                      <span>{listing.title}</span>
-                      <span className={styles.listingMeta}>
-                        KES {listing.price}/{listing.unit}
-                        {listing.quantity ? ` · ${listing.quantity} available` : ""}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
-        )}
 
         <p className={styles.count}>
           {opportunity.interestCount}{" "}
@@ -470,16 +411,8 @@ export default function AgroOpportunities({ heading = "Farm visits and volunteer
         <>
           <div>
             <p className={styles.freshness}>
-              {partner.live
-                ? "Growers and their produce come live from AgroConnect. The activities below are the club's own."
-                : partner.stale
-                  ? `AgroConnect isn't answering, so grower details come from the list we saved on ${savedAt(
-                      partner.asOf
-                    )}. The activities below are the club's own.`
-                  : "AgroConnect isn't answering and we have no saved grower list, so these are the club's own activities without a stall."}
-              {partner.produce?.stale
-                ? ` Their produce is the copy we saved on ${savedAt(partner.produce.asOf)}.`
-                : ""}
+              Club activities, planned and published by the club. Every place, host and time here
+              comes from the club&apos;s own records.
             </p>
 
             <p className="visually-hidden" role="status">
@@ -564,41 +497,13 @@ export default function AgroOpportunities({ heading = "Farm visits and volunteer
                     />
                   </label>
                   <label className={styles.field}>
-                    <span>Grower (AgroConnect)</span>
-                    {growers.length > 0 ? (
-                      <select
-                        value={form.farmerId}
-                        onChange={(e) => {
-                          const chosen = growers.find(
-                            (grower) => String(grower.id) === e.target.value
-                          );
-                          setForm({
-                            ...form,
-                            farmerId: e.target.value,
-                            hostName: chosen ? chosen.fullName : "",
-                          });
-                        }}
-                      >
-                        <option value="">Not linked to a grower</option>
-                        {growers.map((grower) => (
-                          <option key={grower.id} value={grower.id}>
-                            {grower.fullName}
-                            {grower.county ? ` · ${grower.county}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        maxLength={120}
-                        placeholder={
-                          growersStatus === "loading"
-                            ? "Loading growers…"
-                            : "Host name (grower list unavailable)"
-                        }
-                        value={form.hostName}
-                        onChange={(e) => setForm({ ...form, hostName: e.target.value })}
-                      />
-                    )}
+                    <span>Host</span>
+                    <input
+                      maxLength={120}
+                      placeholder="Who is hosting?"
+                      value={form.hostName}
+                      onChange={(e) => setForm({ ...form, hostName: e.target.value })}
+                    />
                   </label>
                 </div>
 

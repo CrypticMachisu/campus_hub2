@@ -112,11 +112,10 @@ export default function ClubProfile() {
 
       {user && club && !canManageClub(user, club.id) && <AdminRequestButton clubId={club.id} />}
 
-      {/* Agri club only: live AgroConnect data used to market the platform and recruit members */}
+      {/* Agri club only: the club's own recruitment block */}
       {club.id === AGRI_CLUB_ID && <AgriClubSpotlight />}
 
-      {/* Agri club only: farm visits, planting days and other grower activities.
-          These are our own records, so they render even when AgroConnect is down. */}
+      {/* Agri club only: the club's own activities and interest list. */}
       {club.id === AGRI_CLUB_ID && <AgroOpportunities />}
 
       {/* Target Club Scheduled Events Segment */}

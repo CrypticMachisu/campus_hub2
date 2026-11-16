@@ -81,7 +81,7 @@ cd server && npm install && npm run migrate:baseline
 
 **`server/campushub_database.sql` begins with `DROP DATABASE IF EXISTS campushub`** — loading it wipes and recreates the database. Never load it into a shared or scratch database name expecting a copy.
 
-The schema file already contains every migration, so a fresh install **baselines** them (records them as applied) rather than running them again. Windows PowerShell does not support `<`, so load the schema like this and then baseline:
+The schema file already contains every migration — including the Agro club's `agro_opportunities`, `agro_interest` and `partner_snapshots` tables and their seeded activities — so a fresh install **baselines** them (records them as applied) rather than running them again. The opportunities panel works straight after the import; no agro migration needs to run. Windows PowerShell does not support `<`, so load the schema like this and then baseline:
 
 ```powershell
 cmd /c "C:\xampp\mysql\bin\mysql.exe -u root campushub < server\campushub_database.sql"

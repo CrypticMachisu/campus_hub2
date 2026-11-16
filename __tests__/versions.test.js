@@ -153,7 +153,7 @@ describe("v2 needs an API key like every other endpoint", () => {
       ["get", "/v2/clubs"],
       ["post", "/v2/auth/login"],
       ["get", "/v2/users"],
-      ["get", "/v2/partner/produce"],
+      ["get", "/v2/agro/opportunities"],
     ];
     for (const [method, path] of checks) {
       const res = await request(app)[method](`/api${path}`);

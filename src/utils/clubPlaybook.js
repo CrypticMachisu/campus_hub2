@@ -98,7 +98,7 @@ export const CATEGORY_PLAYBOOKS = {
     focus: {
       kicker: "Market day",
       title: "What's in season",
-      body: "Growers list produce on AgroConnect ahead of the Saturday market stall.",
+      body: "Growers list their produce ahead of the Saturday market stall.",
       items: [
         "Check the new grower listings",
         "Bring cash for the market stall",
