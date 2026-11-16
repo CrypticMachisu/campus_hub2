@@ -12,6 +12,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import ClubProfile from "./pages/ClubProfile";
 import EventDetail from "./pages/EventDetail";
+import CommitmentDetail from "./pages/CommitmentDetail";
 import MyEvents from "./pages/MyEvents";
 import Dashboard from "./pages/Dashboard";
 import ClubWorkspace from "./pages/ClubWorkspace";
@@ -65,6 +66,7 @@ function AppRoutes() {
           <Route path="/discover" element={<Home />} />
           <Route path="/clubs/:clubId" element={<ClubProfile />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
+          <Route path="/commitments/:commitmentId" element={<CommitmentDetail />} />
           <Route path="/my-events" element={<MyEvents />} />
           <Route path="/dashboard/:clubId" element={<Dashboard />} />
           <Route
@@ -95,6 +97,7 @@ function AppRoutes() {
           <Route path="/discover" element={<Home />} />
           <Route path="/clubs/:clubId" element={<ClubProfile />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
+          <Route path="/commitments/:commitmentId" element={<CommitmentDetail />} />
           {/* Normally members get the member shell above. When the clubs request
             fails there is no shell to host this page, so keep the route here
             as well; ClubWorkspace can then show its own retry gate instead of

@@ -11,7 +11,7 @@ import { requestClubAdmin } from "../utils/adminStore";
 import { SkeletonGroup, ClubProfileSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
 import AgriClubSpotlight, { AGRI_CLUB_ID } from "../components/AgriClubSpotlight";
-import AgroOpportunities from "../components/AgroOpportunities";
+import CommitmentsSection from "../components/CommitmentsSection";
 import styles from "./ClubProfile.module.css";
 
 export default function ClubProfile() {
@@ -115,9 +115,6 @@ export default function ClubProfile() {
       {/* Agri club only: the club's own recruitment block */}
       {club.id === AGRI_CLUB_ID && <AgriClubSpotlight />}
 
-      {/* Agri club only: the club's own activities and interest list. */}
-      {club.id === AGRI_CLUB_ID && <AgroOpportunities />}
-
       {/* Target Club Scheduled Events Segment */}
 
       <section id="events" className={styles.eventsSection}>
@@ -140,6 +137,9 @@ export default function ClubProfile() {
           </div>
         )}
       </section>
+
+      {/* Every club's dated activities — the Agri-only panel is gone. */}
+      <CommitmentsSection clubId={club.id} />
 
       {/* Rule 2: Explicit semantic hr element divider separator */}
       <hr className={styles.sectionDivider} />

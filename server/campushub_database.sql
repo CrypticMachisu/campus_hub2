@@ -584,3 +584,69 @@ WHERE email = 'sofia.ramirez@campus.edu';
 INSERT IGNORE INTO agro_interest (opportunity_id, user_id)
 SELECT 'agro-opp-04', user_id FROM users
 WHERE email = 'blujohn01@campus.edu';
+
+-- ---------------------------------------------------------------------------
+-- commitments (migration 013)
+--
+-- The club-scoped successor to agro_opportunities: a dated activity with a
+-- host and an optional cap. Signups past the cap wait in arrival order. The
+-- agro rows above are copied in so a fresh install matches an upgraded one;
+-- the agro tables stay for the retired API routes.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS commitments (
+    commitment_id VARCHAR(60)  PRIMARY KEY,
+    club_id       VARCHAR(30)  NOT NULL,
+    kind          VARCHAR(24)  NOT NULL DEFAULT 'activity',
+    title         VARCHAR(150) NOT NULL,
+    description   TEXT,
+    location      VARCHAR(150) NOT NULL,
+    county        VARCHAR(80)  NULL,
+    starts_at     DATETIME     NOT NULL,
+    capacity      INT          NULL,
+    host_name     VARCHAR(120) NULL,
+    source        VARCHAR(12)  NOT NULL DEFAULT 'admin',
+    created_by    VARCHAR(30)  NULL,
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_commitments_club_start (club_id, starts_at),
+    CONSTRAINT fk_commitments_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_commitments_creator
+        FOREIGN KEY (created_by) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS commitment_signups (
+    signup_id        VARCHAR(80)  PRIMARY KEY,
+    commitment_id    VARCHAR(60)  NOT NULL,
+    user_id          VARCHAR(30)  NOT NULL,
+    name_snapshot    VARCHAR(120) NOT NULL,
+    email_snapshot   VARCHAR(160) NOT NULL,
+    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_commitment_user (commitment_id, user_id),
+    INDEX idx_commitment_signups_order (commitment_id, created_at, signup_id),
+    CONSTRAINT fk_commitment_signups_commitment
+        FOREIGN KEY (commitment_id) REFERENCES commitments(commitment_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_commitment_signups_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO commitments
+    (commitment_id, club_id, kind, title, description, location, county,
+     starts_at, capacity, host_name, source, created_at)
+SELECT
+    o.opportunity_id, 'club-07', o.kind, o.title, o.description, o.location,
+    o.county, o.starts_at, o.capacity, o.host_name, o.source, o.created_at
+FROM agro_opportunities o;
+
+INSERT IGNORE INTO commitment_signups
+    (signup_id, commitment_id, user_id, name_snapshot, email_snapshot, created_at)
+SELECT
+    CONCAT('cs-', i.opportunity_id, '-', i.user_id),
+    i.opportunity_id, i.user_id, u.name, u.email, i.created_at
+FROM agro_interest i
+JOIN users u ON u.user_id = i.user_id;

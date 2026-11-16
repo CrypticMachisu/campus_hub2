@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useClubs } from "../context/ClubsContext";
 import { getAllEvents } from "../utils/eventsStore";
 import { getSignups, deleteSignup } from "../utils/storage";
+import { getMyCommitments, withdrawCommitment } from "../utils/commitmentsStore";
 import { formatEventDate, getEventTimestamp } from "../utils/dateTime";
 import { SkeletonGroup, CardStackSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
@@ -49,19 +50,31 @@ export default function MyEvents() {
       setError("");
 
       try {
-        // Signups cascade with their event, so every signup has an event.
-        const [events, signups] = await Promise.all([getAllEvents(), getSignups()]);
+        // Event signups cascade with their event; commitment signups come
+        // back attached to the commitment, so both lists render directly.
+        const [events, signups, commitments] = await Promise.all([
+          getAllEvents(),
+          getSignups(),
+          getMyCommitments(),
+        ]);
         if (cancelled) return;
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const joined = signups
+        const eventItems = signups
           .map((signup) => {
             const event = events.find((candidate) => candidate.id === signup.eventId);
-            return event ? { ...event, signup } : null;
+            return event ? { ...event, type: "event", signup } : null;
           })
-          .filter(Boolean)
+          .filter(Boolean);
+
+        const commitmentItems = commitments.map((commitment) => ({
+          ...commitment,
+          type: "commitment",
+        }));
+
+        const joined = [...eventItems, ...commitmentItems]
           .filter((item) => new Date(`${item.date}T00:00:00`) >= today)
           .sort((a, b) => getEventTimestamp(a) - getEventTimestamp(b));
 
@@ -88,8 +101,13 @@ export default function MyEvents() {
     setCancelling((current) => new Set(current).add(item.id));
 
     try {
-      await deleteSignup(item.signup.id);
-      setNotice(`Cancelled your RSVP for ${item.title}.`);
+      if (item.type === "commitment") {
+        await withdrawCommitment(item.id);
+        setNotice(`Withdrew from ${item.title}. Your place is open for the next person.`);
+      } else {
+        await deleteSignup(item.signup.id);
+        setNotice(`Cancelled your RSVP for ${item.title}.`);
+      }
     } catch (err) {
       // Put the ticket back where it was rather than lying about the cancel.
       setItems(previous);
@@ -130,7 +148,7 @@ export default function MyEvents() {
         <h1>My commitments.</h1>
         <p className={styles.subtitle}>
           {items.length > 0
-            ? `${items.length} upcoming ${items.length === 1 ? "event" : "events"}`
+            ? `${items.length} upcoming ${items.length === 1 ? "commitment" : "commitments"}`
             : "Everything you've committed to, in one place"}
         </p>
       </header>
@@ -151,12 +169,12 @@ export default function MyEvents() {
       )}
 
       {loading ? (
-        <SkeletonGroup label="Loading your events…">
+        <SkeletonGroup label="Loading your commitments…">
           <CardStackSkeleton count={3} />
         </SkeletonGroup>
       ) : error && items.length === 0 ? (
         <ErrorState
-          title="Your events didn't load"
+          title="Your commitments didn't load"
           message={error}
           onRetry={() => setReloadKey((key) => key + 1)}
         />
@@ -164,7 +182,8 @@ export default function MyEvents() {
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>Nothing committed yet</p>
           <p className={styles.emptyBody}>
-            RSVP to something in this week&apos;s edition and it will appear here.
+            Join a commitment or RSVP to something in this week&apos;s edition and it will appear
+            here.
           </p>
           <Link to="/discover" className={styles.emptyLink}>
             Browse this week
@@ -180,7 +199,7 @@ export default function MyEvents() {
 
             return (
               <li
-                key={item.id}
+                key={`${item.type}-${item.id}`}
                 className={waitlisted ? `${styles.ticket} ${styles.waitlisted}` : styles.ticket}
               >
                 <div className={styles.dateBlock} aria-hidden="true">
@@ -190,12 +209,22 @@ export default function MyEvents() {
 
                 <div className={styles.ticketBody}>
                   <div className={styles.ticketTop}>
-                    <span className={styles.status}>{waitlisted ? "Waitlist" : "Going"}</span>
+                    <span className={styles.status}>
+                      {waitlisted ? "Waitlist" : item.type === "commitment" ? "Committed" : "Going"}
+                    </span>
                     {club && <span className={styles.club}>{club.name}</span>}
                   </div>
 
                   <h2 className={styles.title}>
-                    <Link to={`/events/${item.id}`}>{item.title}</Link>
+                    <Link
+                      to={
+                        item.type === "commitment"
+                          ? `/commitments/${item.id}`
+                          : `/events/${item.id}`
+                      }
+                    >
+                      {item.title}
+                    </Link>
                   </h2>
 
                   <p className={styles.meta}>
@@ -220,8 +249,13 @@ export default function MyEvents() {
                 </div>
 
                 <div className={styles.actions}>
-                  <Link to={`/events/${item.id}`} className={styles.viewLink}>
-                    View event
+                  <Link
+                    to={
+                      item.type === "commitment" ? `/commitments/${item.id}` : `/events/${item.id}`
+                    }
+                    className={styles.viewLink}
+                  >
+                    {item.type === "commitment" ? "View commitment" : "View event"}
                   </Link>
                   <button
                     type="button"
@@ -229,7 +263,13 @@ export default function MyEvents() {
                     onClick={() => handleCancel(item)}
                     disabled={isCancelling}
                   >
-                    {isCancelling ? "Cancelling…" : waitlisted ? "Leave waitlist" : "Cancel RSVP"}
+                    {isCancelling
+                      ? "Saving…"
+                      : waitlisted
+                        ? "Leave waitlist"
+                        : item.type === "commitment"
+                          ? "Withdraw"
+                          : "Cancel RSVP"}
                   </button>
                 </div>
               </li>

@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { clubsForUser } from "../utils/authStore";
 import { getAllEvents } from "../utils/eventsStore";
 import { getSignups } from "../utils/storage";
+import { getMyCommitments } from "../utils/commitmentsStore";
 import { isPastEvent } from "../utils/dateTime";
 import { SkeletonGroup, ClubSkeletonCard, EventSkeletonCard } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
@@ -70,6 +71,7 @@ export default function Home() {
   const [wirePaused, setWirePaused] = useState(false);
   const [leadImageFailed, setLeadImageFailed] = useState(false);
   const [mySignups, setMySignups] = useState([]);
+  const [myCommitments, setMyCommitments] = useState([]);
 
   // Rule 2: 300ms input debouncing execution
   const debouncedSearch = useDebounce(search, 300);
@@ -104,6 +106,24 @@ export default function Home() {
     getSignups()
       .then((rows) => {
         if (!cancelled) setMySignups(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // Commitment signups join the same rail. Kept separate so a commitments
+  // outage can't empty the event commitments beside it.
+  useEffect(() => {
+    if (!user) {
+      setMyCommitments([]);
+      return;
+    }
+    let cancelled = false;
+    getMyCommitments()
+      .then((rows) => {
+        if (!cancelled) setMyCommitments(Array.isArray(rows) ? rows : []);
       })
       .catch(() => {});
     return () => {
@@ -161,9 +181,16 @@ export default function Home() {
   const bulletins = filteredEvents.length > 0 ? filteredEvents : [];
   const loading = clubsLoading || eventsLoading;
 
-  const commitments = mySignups
-    .map((signup) => upcomingEvents.find((event) => event.id === signup.eventId))
-    .filter(Boolean)
+  const commitments = [
+    ...mySignups
+      .map((signup) => upcomingEvents.find((event) => event.id === signup.eventId))
+      .filter(Boolean)
+      .map((event) => ({ ...event, type: "event" })),
+    ...myCommitments
+      .filter((commitment) => commitment.date >= todayIso)
+      .map((commitment) => ({ ...commitment, type: "commitment" })),
+  ]
+    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
     .slice(0, 3);
 
   const clubName = (clubId) => clubs.find((club) => club.id === clubId)?.name || "Campus event";
@@ -523,12 +550,19 @@ export default function Home() {
               commitments.length > 0 ? (
                 <ul className={styles.commitList}>
                   {commitments.map((event) => (
-                    <li key={event.id}>
+                    <li key={`${event.type}-${event.id}`}>
                       <span className={styles.check} aria-hidden="true">
                         ✓
                       </span>
                       <span>
-                        <Link to={`/events/${event.id}`} className={styles.commitTitle}>
+                        <Link
+                          to={
+                            event.type === "commitment"
+                              ? `/commitments/${event.id}`
+                              : `/events/${event.id}`
+                          }
+                          className={styles.commitTitle}
+                        >
                           {event.title}
                         </Link>
                         <span className={styles.commitMeta}>
@@ -543,7 +577,8 @@ export default function Home() {
                 </ul>
               ) : (
                 <p className={styles.railEmpty}>
-                  Nothing yet. Open an event and choose “I&apos;m going” to put it here.
+                  Nothing yet. Join a club commitment or open an event and choose “I&apos;m going”
+                  to put it here.
                 </p>
               )
             ) : (
@@ -558,10 +593,7 @@ export default function Home() {
 
           <section className={styles.dispatchBlock}>
             <p className={styles.dispatchKicker}>The desk</p>
-            <p>
-              Officer? Capacity, the waitlist and requests live in the club workspace, not on this
-              page.
-            </p>
+            <p>Officer? Capacity and the waitlist live on your club page, under Commitments.</p>
           </section>
         </aside>
       </div>

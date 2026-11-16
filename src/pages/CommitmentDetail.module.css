@@ -1,0 +1,288 @@
+.page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 4rem;
+}
+
+.breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.9rem;
+}
+
+.breadcrumb a {
+  border-bottom: 1px solid transparent;
+}
+
+.breadcrumb a:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.notice {
+  border-top: 4px solid var(--ink);
+  padding-top: 1rem;
+}
+
+.header {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1rem;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+  margin: 0 0 0.35rem;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(2rem, 5.4vw, 3.4rem);
+  line-height: 0.98;
+  letter-spacing: 0.005em;
+  margin: 0 0 0.4rem;
+  max-width: 24ch;
+}
+
+.byline {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(250px, 0.85fr);
+  gap: 2rem;
+  margin-top: 1.2rem;
+}
+
+.sectionTitle {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.3rem;
+  margin: 1.3rem 0 0.55rem;
+}
+
+.mainColumn > .sectionTitle:first-child {
+  margin-top: 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1.2rem;
+  margin: 0;
+}
+
+.facts div {
+  border-left: 2px solid var(--rule);
+  padding-left: 0.6rem;
+}
+
+.facts dt {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.prose {
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 62ch;
+  margin: 0;
+  white-space: pre-line;
+}
+
+.stub {
+  align-self: start;
+  position: sticky;
+  top: 1rem;
+  border: 1px solid var(--ink);
+  background: var(--card);
+  padding: 0.9rem;
+  box-shadow: 6px 6px 0 var(--rule);
+}
+
+.stubLabel {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+  margin: 0 0 0.3rem;
+  border-bottom: 1px dashed var(--rule);
+  padding-bottom: 0.3rem;
+}
+
+.stubCount {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1;
+  margin: 0.35rem 0 0.45rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stubCount span {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.meter {
+  height: 8px;
+  border: 1px solid var(--ink);
+  background: var(--paper-2);
+  margin-bottom: 0.6rem;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  background: var(--signal);
+}
+
+.waitNote {
+  font-family: var(--font-mono);
+  font-size: 0.53rem;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  margin: 0 0 0.7rem;
+}
+
+.primaryButton,
+.ghostButton {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--signal);
+  background: var(--signal);
+  color: #fff;
+}
+
+.primaryButton:hover {
+  background: var(--signal-deep);
+  border-color: var(--signal-deep);
+}
+
+.ghostButton {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.ghostButton:hover {
+  background: var(--paper-2);
+}
+
+.primaryButton:disabled,
+.ghostButton:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.goingBadge,
+.waitingBadge {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  padding: 0.4rem 0.45rem;
+  margin: 0 0 0.5rem;
+  border-left: 3px solid var(--signal);
+  background: var(--paper-2);
+}
+
+.waitingBadge {
+  border-color: var(--ink);
+}
+
+.signInHint,
+.noticeLine,
+.finePrint {
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0.55rem 0 0;
+}
+
+.noticeLine {
+  color: var(--ink);
+}
+
+.finePrint {
+  border-top: 1px solid var(--rule);
+  padding-top: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.backLink {
+  display: inline-block;
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--ink);
+}
+
+.skeletonTitle {
+  height: 2.4rem;
+  width: 60%;
+  background: var(--paper-2);
+  margin-bottom: 1rem;
+}
+
+.skeletonLine {
+  height: 0.9rem;
+  width: 90%;
+  background: var(--paper-2);
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+
+  .stub {
+    position: static;
+    box-shadow: 4px 4px 0 var(--rule);
+  }
+
+  .facts {
+    grid-template-columns: 1fr;
+  }
+}

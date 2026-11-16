@@ -301,3 +301,48 @@ What changed, and what did not:
 `broadcast.html` is the visual source of truth for Phase 1. `field-ledger.html`
 and `orbit.html` stay in the repository as references, not as implementation
 guides.
+
+## Phase 2 — commitments (16 November 2026)
+
+Opportunities were Agri-only, and they asked members to _register interest_ —
+a soft signal the club then had to chase. Phase 2 replaces that with a
+commitment: a dated activity with a host, a place and an optional capacity.
+
+### Model
+
+- `commitments` — one club, one kind (`farm_visit`, `tree_planting`, `harvest`,
+  `volunteering`, `meeting`, `workshop`, `activity`), a start time in East Africa
+  Time, an optional capacity and a host. `source` distinguishes seed rows from
+  ones a club officer published.
+- `commitment_signups` — one row per member per commitment (unique key), with
+  name/email snapshots so the roster stays readable if a profile changes.
+- Migration `013_commitments.sql` copies `agro_opportunities` and
+  `agro_interest` into the new tables. The agro tables and `/api/v2/agro` routes
+  remain during migration; no UI calls them.
+- Waitlist position is computed on read from `(created_at, signup_id)`, so a
+  withdrawal promotes the next person immediately and the member, the roster
+  and the club page always agree. Existing event RSVPs use the same rule.
+
+### Surface
+
+- Every club page and the member workspace now carry **Commitments** — not just
+  the Agri club. Members join or join the waitlist inline; officers get a
+  publish form, a remove control and a roster panel with going/waitlisted
+  counts and emails.
+- `/commitments/:id` is the notice page: where and when, host, capacity meter,
+  waitlist state and a withdraw control. It is public; signing up requires a
+  session and returns to login otherwise.
+- "My commitments" merges event RSVPs and commitment signups into one stack,
+  stamped `Going`, `Committed` or `Waitlist`, and withdraws through the right
+  endpoint. The home rail mixes both, soonest first.
+- Signal treatment is unchanged: ruled rows, date stamps, a notice stub and
+  mono metadata. The waitlist is never conveyed by colour alone — the button
+  label, position and roster state all say it in words.
+
+### Deferred
+
+- The officer dashboard still speaks only in events. Roster management lives on
+  the club page for now; moving capacity and waitlist tables into the officer
+  desk is the next Phase 2 slice.
+- Commitments have no comments or calendar export yet. Both are additive and do
+  not change the model.
