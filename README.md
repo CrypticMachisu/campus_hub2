@@ -10,6 +10,26 @@ CampusHub is a REST API for a campus clubs-and-events app. It lets students list
 
 ---
 
+## Standalone edition
+
+This branch is the independent build. It has no partner integration and its own
+database, `campushub_standalone`, so the coursework database (`campushub`) is
+never read or written from here. `server/campushub_database.sql` creates and
+loads `campushub_standalone`.
+
+`server/.env` is shared with the coursework checkout, so point a standalone run
+at its own database and port on the command line — those values win over `.env`:
+
+```bash
+cd server
+DB_NAME=campushub_standalone PORT=5002 npm start
+```
+
+Its design direction and open questions live in
+[docs/standalone/design-direction.md](docs/standalone/design-direction.md).
+
+---
+
 ## Try it without installing anything (temporary live API)
 
 While the blind test is running, a copy of the API is reachable at:
@@ -74,21 +94,21 @@ cd campus_hub2
 **2. Create the database and load the schema + demo data.** Run these from the repo root. On macOS/Linux the `mysql` command is usually on your PATH. On Windows with XAMPP use `C:\xampp\mysql\bin\mysql.exe`.
 
 ```bash
-mysql -u root -e "CREATE DATABASE IF NOT EXISTS campushub"
-mysql -u root campushub < server/campushub_database.sql
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS campushub_standalone"
+mysql -u root campushub_standalone < server/campushub_database.sql
 cd server && npm install && npm run migrate:baseline
 ```
 
-**`server/campushub_database.sql` begins with `DROP DATABASE IF EXISTS campushub`** — loading it wipes and recreates the database. Never load it into a shared or scratch database name expecting a copy.
+**`server/campushub_database.sql` begins with `DROP DATABASE IF EXISTS campushub_standalone`** — loading it wipes and recreates the standalone database only. Never load it into a shared or scratch database name expecting a copy.
 
 The schema file already contains every migration — including the Agro club's `agro_opportunities`, `agro_interest` and `partner_snapshots` tables and their seeded activities — so a fresh install **baselines** them (records them as applied) rather than running them again. The opportunities panel works straight after the import; no agro migration needs to run. Windows PowerShell does not support `<`, so load the schema like this and then baseline:
 
 ```powershell
-cmd /c "C:\xampp\mysql\bin\mysql.exe -u root campushub < server\campushub_database.sql"
+cmd /c "C:\xampp\mysql\bin\mysql.exe -u root campushub_standalone < server\campushub_database.sql"
 cd server; npm run migrate:baseline
 ```
 
-(Alternative: in phpMyAdmin, select `campushub`, open the **Import** tab and import `server/campushub_database.sql`, then `cd server && npm run migrate:baseline`.)
+(Alternative: in phpMyAdmin, select `campushub_standalone`, open the **Import** tab and import `server/campushub_database.sql`, then `cd server && npm run migrate:baseline`.)
 
 If your MySQL root user has a password, add `-p` to the commands and set `DB_PASSWORD` in step 3.
 

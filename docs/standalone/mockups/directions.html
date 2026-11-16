@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CampusHub standalone — direction lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        background: #e9e5dc;
+        color: #1b1b18;
+        font-family: "Instrument Sans", system-ui, sans-serif;
+        line-height: 1.5;
+      }
+      .page-head {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 56px 24px 8px;
+      }
+      .kicker {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6a6458;
+        margin: 0 0 14px;
+      }
+      .page-head h1 {
+        font-family: "Fraunces", Georgia, serif;
+        font-weight: 600;
+        font-size: clamp(30px, 4vw, 46px);
+        line-height: 1.08;
+        letter-spacing: -0.015em;
+        margin: 0 0 12px;
+        max-width: 22ch;
+      }
+      .lede { margin: 0; max-width: 68ch; color: #4e4a41; }
+      .boards {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 32px 24px 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 22px;
+        align-items: start;
+      }
+      .board {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.10);
+        display: flex;
+        flex-direction: column;
+      }
+      .board-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: #1b1b18;
+        color: #f4f1e8;
+      }
+      .board-head .pick { color: #e9b44c; }
+      .screen { padding: 18px; flex: 1; }
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        margin-bottom: 22px;
+      }
+      .nav .brand { font-weight: 600; letter-spacing: -0.01em; }
+      .nav .links { display: flex; gap: 10px; font-size: 11px; opacity: .78; }
+      .eyebrow {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin: 0 0 10px;
+      }
+      h2.hero-title {
+        font-size: 26px;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        margin: 0 0 10px;
+        font-weight: 600;
+      }
+      .hero-copy { font-size: 12.5px; margin: 0 0 14px; max-width: 40ch; }
+      .meta {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.02em;
+        margin: 0 0 16px;
+      }
+      .actions { display: flex; gap: 8px; align-items: center; margin-bottom: 22px; }
+      .btn {
+        display: inline-block;
+        border: 0;
+        font: inherit;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 9px 13px;
+        cursor: pointer;
+      }
+      .btn-quiet { background: transparent; text-decoration: underline; text-underline-offset: 3px; padding: 9px 4px; }
+      .hero-art {
+        height: 96px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+      }
+      .hero-art span {
+        position: absolute;
+        left: 12px;
+        bottom: 10px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 9px;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+      .card { padding: 14px; margin-bottom: 18px; }
+      .card .row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+      .card h3 { font-size: 14px; margin: 0 0 6px; line-height: 1.25; }
+      .card p { font-size: 11.5px; margin: 0 0 10px; opacity: .78; }
+      .spots { font-family: "JetBrains Mono", monospace; font-size: 10px; }
+      .meta-block { border-top: 1px solid currentColor; padding-top: 12px; }
+      .meta-block h4 {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 9px;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        margin: 0 0 8px;
+        opacity: .6;
+        font-weight: 500;
+      }
+      .swatches { display: flex; gap: 6px; margin-bottom: 12px; }
+      .swatches i { width: 24px; height: 24px; display: block; border-radius: 50%; }
+      .type-spec { font-size: 11.5px; margin: 0 0 6px; }
+      .type-spec b { font-size: 15px; display: block; margin-bottom: 1px; }
+      .note { font-size: 11px; margin: 0; opacity: .72; }
+
+      /* ---------- A: Field Ledger ---------- */
+      .board-a { background: #faf7f0; color: #16170f; }
+      .board-a .screen { border-top: 0; }
+      .board-a .nav { color: #16170f; border-bottom: 1px solid #dfd8c8; padding-bottom: 10px; }
+      .board-a .nav .brand span { color: #204c3a; }
+      .board-a .eyebrow { color: #204c3a; }
+      .board-a h2.hero-title { font-family: "Fraunces", Georgia, serif; font-weight: 600; }
+      .board-a .hero-copy { color: #4a4638; }
+      .board-a .meta { color: #6b6455; }
+      .board-a .btn-solid { background: #204c3a; color: #faf7f0; }
+      .board-a .btn-quiet { color: #204c3a; }
+      .board-a .hero-art {
+        background:
+          repeating-linear-gradient(115deg, rgba(32,76,58,.16) 0 2px, transparent 2px 14px),
+          radial-gradient(120% 90% at 20% 10%, #e9b44c 0%, rgba(233,180,76,0) 55%),
+          linear-gradient(180deg, #d9d3c2 0%, #c7bda5 100%);
+      }
+      .board-a .hero-art span { color: #3c382c; }
+      .board-a .card { background: #fffdf8; border: 1px solid #dfd8c8; }
+      .board-a .card h3 { font-family: "Fraunces", Georgia, serif; font-weight: 600; }
+      .board-a .spots { color: #c2542f; }
+      .board-a .meta-block { border-color: #dfd8c8; }
+      .board-a .swatches i { border: 1px solid rgba(22,23,15,.12); }
+      .board-a .type-spec b { font-family: "Fraunces", Georgia, serif; font-weight: 600; }
+
+      /* ---------- B: Night Market ---------- */
+      .board-b { background: #0b0c0a; color: #f4f1e8; }
+      .board-b .board-head { background: #d9ff57; color: #0b0c0a; }
+      .board-b .board-head .pick { color: #0b0c0a; }
+      .board-b .nav { border-bottom: 1px solid #2a2c24; padding-bottom: 10px; }
+      .board-b .nav .brand { font-family: "Space Grotesk", sans-serif; }
+      .board-b .eyebrow { color: #d9ff57; }
+      .board-b h2.hero-title {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 30px;
+        text-transform: uppercase;
+        letter-spacing: -0.01em;
+        font-weight: 700;
+      }
+      .board-b .hero-copy { color: #b9b6aa; }
+      .board-b .meta { color: #8f8c80; }
+      .board-b .btn-solid { background: #d9ff57; color: #0b0c0a; text-transform: uppercase; letter-spacing: .04em; }
+      .board-b .btn-quiet { color: #ff6b4a; }
+      .board-b .hero-art {
+        background:
+          radial-gradient(90% 120% at 85% 20%, rgba(255,107,74,.55) 0%, rgba(255,107,74,0) 60%),
+          repeating-linear-gradient(90deg, rgba(217,255,87,.22) 0 1px, transparent 1px 22px),
+          #151711;
+        border: 1px solid #2a2c24;
+      }
+      .board-b .hero-art span { color: #d9ff57; }
+      .board-b .card { background: #151711; border: 1px solid #2a2c24; }
+      .board-b .card h3 { font-family: "Space Grotesk", sans-serif; }
+      .board-b .spots { color: #d9ff57; }
+      .board-b .meta-block { border-color: #2a2c24; }
+      .board-b .swatches i { border: 1px solid rgba(244,241,232,.18); }
+      .board-b .type-spec b { font-family: "Space Grotesk", sans-serif; }
+      .board-b .marquee {
+        margin: -4px -18px 16px;
+        padding: 7px 0;
+        background: #d9ff57;
+        color: #0b0c0a;
+        overflow: hidden;
+        white-space: nowrap;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        font-size: 11px;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+      }
+      .board-b .marquee span { display: inline-block; padding-left: 100%; animation: slide 14s linear infinite; }
+      @keyframes slide { to { transform: translateX(-100%); } }
+
+      /* ---------- C: Campus Press ---------- */
+      .board-c { background: #ffffff; color: #111111; }
+      .board-c .board-head { background: #1f3bff; color: #ffffff; }
+      .board-c .board-head .pick { color: #ffffff; }
+      .board-c .nav { border-bottom: 2px solid #111; padding-bottom: 8px; font-family: "Archivo", sans-serif; }
+      .board-c .nav .brand { text-transform: uppercase; letter-spacing: .06em; }
+      .board-c .nav .links { font-family: "Archivo", sans-serif; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+      .board-c .eyebrow { color: #1f3bff; }
+      .board-c h2.hero-title {
+        font-family: "Archivo", sans-serif;
+        font-weight: 700;
+        font-size: 30px;
+        text-transform: uppercase;
+        line-height: 1.02;
+        letter-spacing: -0.01em;
+        border-bottom: 1px solid #111;
+        padding-bottom: 12px;
+      }
+      .board-c .hero-copy { color: #444; }
+      .board-c .meta { color: #666; }
+      .board-c .btn-solid { background: #111; color: #fff; text-transform: uppercase; letter-spacing: .06em; font-family: "Archivo", sans-serif; }
+      .board-c .btn-quiet { color: #1f3bff; }
+      .board-c .hero-art { display: none; }
+      .board-c .card { border-top: 1px solid #111; border-bottom: 1px solid #111; padding: 12px 0; }
+      .board-c .card h3 { font-family: "Archivo", sans-serif; text-transform: uppercase; font-size: 13px; }
+      .board-c .spots { color: #1f3bff; }
+      .board-c .meta-block { border-color: #e4e4e4; }
+      .board-c .swatches i { border-radius: 0; border: 1px solid rgba(17,17,17,.16); }
+      .board-c .type-spec b { font-family: "Archivo", sans-serif; font-weight: 700; text-transform: uppercase; }
+      .board-c table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 0 0 14px; }
+      .board-c th, .board-c td { text-align: left; padding: 6px 0; border-bottom: 1px solid #e4e4e4; }
+      .board-c th { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #777; font-weight: 500; }
+
+      .compare {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 10px 24px 64px;
+      }
+      .compare table { width: 100%; border-collapse: collapse; font-size: 13px; background: rgba(255,255,255,.6); }
+      .compare th, .compare td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #d6d0c2; vertical-align: top; }
+      .compare th { font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #5e594e; }
+      @media (prefers-reduced-motion: reduce) {
+        .board-b .marquee span { animation: none; padding-left: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-head">
+      <p class="kicker">CampusHub standalone · direction lab</p>
+      <h1>Three ways this app could feel</h1>
+      <p class="lede">
+        Same club, same event, same data — rendered three ways. The content is
+        the Agri Club's planting day and harvest morning, taken from the seeded
+        standalone database. Pick the direction that should become the real
+        mockups, or name a hybrid.
+      </p>
+    </header>
+
+    <main class="boards">
+      <!-- A -->
+      <section class="board board-a" aria-labelledby="a-title">
+        <header class="board-head">
+          <span>A · Field Ledger</span>
+          <span class="pick">recommended</span>
+        </header>
+        <div class="screen">
+          <nav class="nav" aria-label="Sample navigation">
+            <span class="brand">Campus<span>Hub</span></span>
+            <span class="links"><span>Discover</span><span>My events</span><span>Agri Club</span></span>
+          </nav>
+          <p class="eyebrow">Agri Club · Week 8</p>
+          <h2 class="hero-title" id="a-title">The planting day is Saturday.</h2>
+          <p class="hero-copy">
+            Sixty indigenous seedlings, one riverbank, and a bus leaving at 7:30.
+            Closed shoes, a water bottle, and two hours of your morning.
+          </p>
+          <p class="meta">Sat 22 Nov · 07:30–13:00 · Ngong river bank</p>
+          <div class="actions">
+            <button class="btn btn-solid">Join the work day</button>
+            <button class="btn btn-quiet">See the term</button>
+          </div>
+          <div class="hero-art" role="img" aria-label="Abstract field rows at sunrise"><span>Photo: hands in soil, Karen plot</span></div>
+          <article class="card">
+            <div class="row">
+              <h3>Harvest morning at Karen greens</h3>
+              <span class="spots">9 / 30</span>
+            </div>
+            <p>Sort and pack leafy greens for the Saturday market. No experience needed.</p>
+            <div class="row">
+              <span class="spots">Sat 29 Nov · 06:30</span>
+              <span class="spots">I'm in →</span>
+            </div>
+          </article>
+          <div class="meta-block">
+            <h4>System</h4>
+            <div class="swatches">
+              <i style="background:#faf7f0"></i><i style="background:#16170f"></i>
+              <i style="background:#204c3a"></i><i style="background:#c2542f"></i>
+              <i style="background:#e9b44c"></i>
+            </div>
+            <p class="type-spec"><b>Fraunces</b>Instrument Sans for body, JetBrains Mono for times and counts.</p>
+            <p class="note">Motion: 8px rises, 320ms, one idea per screen. Rules instead of shadows.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- B -->
+      <section class="board board-b" aria-labelledby="b-title">
+        <header class="board-head">
+          <span>B · Night Market</span>
+          <span>campaign mode</span>
+        </header>
+        <div class="screen">
+          <nav class="nav" aria-label="Sample navigation">
+            <span class="brand">CAMPUSHUB</span>
+            <span class="links"><span>DISCOVER</span><span>EVENTS</span><span>CLUBS</span></span>
+          </nav>
+          <div class="marquee" aria-hidden="true"><span>SATURDAY · PLANTING DAY · 60 SEEDLINGS · BUS AT 7:30 · </span></div>
+          <p class="eyebrow">Agri Club / Week 08</p>
+          <h2 class="hero-title" id="b-title">Get your hands dirty.</h2>
+          <p class="hero-copy">
+            Sixty seedlings. One riverbank. A bus at 7:30 and a market stall at
+            noon. This is the term's biggest work day.
+          </p>
+          <p class="meta">SAT 22 NOV · 07:30 · NGONG RIVER BANK</p>
+          <div class="actions">
+            <button class="btn btn-solid">I'm coming</button>
+            <button class="btn btn-quiet">Full term →</button>
+          </div>
+          <div class="hero-art" role="img" aria-label="Abstract night market lights"><span>Photo: night market stall</span></div>
+          <article class="card">
+            <div class="row">
+              <h3>HARVEST MORNING</h3>
+              <span class="spots">9/30</span>
+            </div>
+            <p>Karen greens · 06:30 · sort and pack for market.</p>
+            <div class="row">
+              <span class="spots">SAT 29 NOV</span>
+              <span class="spots">JOIN +</span>
+            </div>
+          </article>
+          <div class="meta-block">
+            <h4>System</h4>
+            <div class="swatches">
+              <i style="background:#0b0c0a"></i><i style="background:#d9ff57"></i>
+              <i style="background:#ff6b4a"></i><i style="background:#f4f1e8"></i>
+            </div>
+            <p class="type-spec"><b>Space Grotesk</b>Inter for body, uppercase for structure.</p>
+            <p class="note">Motion: continuous ticker, magnetic buttons, reveal on scroll.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- C -->
+      <section class="board board-c" aria-labelledby="c-title">
+        <header class="board-head">
+          <span>C · Campus Press</span>
+          <span>data mode</span>
+        </header>
+        <div class="screen">
+          <nav class="nav" aria-label="Sample navigation">
+            <span class="brand">CampusHub</span>
+            <span class="links"><span>Discover</span><span>Events</span><span>Clubs</span></span>
+          </nav>
+          <p class="eyebrow">Agri Club / Notice 014</p>
+          <h2 class="hero-title" id="c-title">Planting day, Saturday</h2>
+          <p class="hero-copy">
+            Sixty indigenous seedlings at the Ngong river bank. Bus leaves the
+            main gate at 07:30. Bring closed shoes and water.
+          </p>
+          <p class="meta">22 NOV 2026 · 07:30–13:00 · KAJIADO</p>
+          <div class="actions">
+            <button class="btn btn-solid">Reserve a seat</button>
+            <button class="btn btn-quiet">Term schedule</button>
+          </div>
+          <table>
+            <thead><tr><th>This week</th><th>Where</th><th>Spots</th></tr></thead>
+            <tbody>
+              <tr><td>Planting day</td><td>Ngong</td><td>38 / 60</td></tr>
+              <tr><td>Harvest morning</td><td>Karen</td><td>9 / 30</td></tr>
+              <tr><td>Market stall</td><td>City market</td><td>4 / 12</td></tr>
+            </tbody>
+          </table>
+          <article class="card">
+            <div class="row">
+              <h3>Harvest morning at Karen greens</h3>
+              <span class="spots">9 / 30</span>
+            </div>
+            <p>Bring in a leafy-greens crop, then sort and pack it for the Saturday market.</p>
+          </article>
+          <div class="meta-block">
+            <h4>System</h4>
+            <div class="swatches">
+              <i style="background:#ffffff"></i><i style="background:#111111"></i>
+              <i style="background:#1f3bff"></i><i style="background:#e4e4e4"></i>
+            </div>
+            <p class="type-spec"><b>Archivo</b>One family, four weights, no radius.</p>
+            <p class="note">Motion: 120ms underline and colour changes. Nothing moves on load.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="compare">
+      <table>
+        <thead>
+          <tr><th>Direction</th><th>Best at</th><th>Watch out for</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Field Ledger</strong></td><td>Belonging, place, photography, an authored local feel</td><td>Warm-palette kitsch; keep serif for statements only</td></tr>
+          <tr><td><strong>Night Market</strong></td><td>Recruitment posters, fairs, social energy</td><td>Readability outdoors, fast ageing, clashes with 7:30am events</td></tr>
+          <tr><td><strong>Campus Press</strong></td><td>Timetables, waitlists, officer data, credibility</td><td>Cold for community; weak home for images</td></tr>
+        </tbody>
+      </table>
+    </footer>
+  </body>
+</html>

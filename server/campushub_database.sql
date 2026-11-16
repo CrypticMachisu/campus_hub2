@@ -21,9 +21,9 @@
 --   member -> no management rights
 -- ============================================================================
 
-DROP DATABASE IF EXISTS campushub;
-CREATE DATABASE campushub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE campushub;
+DROP DATABASE IF EXISTS campushub_standalone;
+CREATE DATABASE campushub_standalone CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE campushub_standalone;
 
 -- ----------------------------------------------------------------------------
 -- categories
