@@ -107,13 +107,13 @@ export default function MyEvents() {
     return (
       <div className={styles.page}>
         <header className={styles.header}>
-          <p className={styles.eyebrow}>Your calendar</p>
-          <h1>My Events</h1>
+          <p className={styles.eyebrow}>Commitments</p>
+          <h1>My commitments.</h1>
         </header>
         <div className={styles.empty}>
-          <p className={styles.emptyTitle}>Log in to see your events</p>
+          <p className={styles.emptyTitle}>Log in to see your commitments</p>
           <p className={styles.emptyBody}>
-            Your RSVPs are tied to your CampusHub account, so they follow you between devices.
+            Your commitments are tied to your Kesho account, so they follow you between devices.
           </p>
           <Link to="/login" className={styles.emptyLink}>
             Go to login
@@ -126,12 +126,12 @@ export default function MyEvents() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>Your calendar</p>
-        <h1>My Events</h1>
+        <p className={styles.eyebrow}>Commitments</p>
+        <h1>My commitments.</h1>
         <p className={styles.subtitle}>
           {items.length > 0
             ? `${items.length} upcoming ${items.length === 1 ? "event" : "events"}`
-            : "Everything you've RSVP'd to, in one place"}
+            : "Everything you've committed to, in one place"}
         </p>
       </header>
 
@@ -162,12 +162,12 @@ export default function MyEvents() {
         />
       ) : items.length === 0 ? (
         <div className={styles.empty}>
-          <p className={styles.emptyTitle}>No events on your calendar</p>
+          <p className={styles.emptyTitle}>Nothing committed yet</p>
           <p className={styles.emptyBody}>
-            RSVP to something on the discovery feed and it will appear here.
+            RSVP to something in this week&apos;s edition and it will appear here.
           </p>
           <Link to="/discover" className={styles.emptyLink}>
-            Browse events
+            Browse this week
           </Link>
         </div>
       ) : (

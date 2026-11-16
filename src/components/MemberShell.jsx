@@ -95,7 +95,7 @@ export default function MemberShell({ myClubs }) {
             <span className="visually-hidden">Hide sidebar</span>
           </button>
           <Link to="/" className={styles.brand}>
-            Campus<span className={styles.brandAccent}>Hub</span>
+            kesho<span className={styles.brandAccent}>.</span>
           </Link>
           <p className={styles.tagline}>Member workspace</p>
 
@@ -126,14 +126,14 @@ export default function MemberShell({ myClubs }) {
 
           <nav aria-label="Workspace" className={styles.utilityNav}>
             <NavLink to="/discover" className={utilityClass}>
-              Discover other clubs
+              This week&apos;s edition
             </NavLink>
             <NavLink to="/my-events" className={utilityClass}>
-              My events
+              My commitments
             </NavLink>
             {activeClub && canManageClub(user, activeClub.id) && (
               <NavLink to={`/dashboard/${activeClub.id}`} className={utilityClass}>
-                Manage {activeClub.name}
+                The desk
               </NavLink>
             )}
           </nav>
@@ -165,7 +165,7 @@ export default function MemberShell({ myClubs }) {
       <div className={styles.mainArea}>
         <header className={styles.mobileHeader}>
           <Link to="/" className={styles.brand}>
-            Campus<span className={styles.brandAccent}>Hub</span>
+            kesho<span className={styles.brandAccent}>.</span>
           </Link>
           <span className={styles.mobileContext}>{activeClub?.name || "Member workspace"}</span>
           <button type="button" className={styles.logout} onClick={logout}>
@@ -202,7 +202,7 @@ export default function MemberShell({ myClubs }) {
           className={styles.bottomDiscover}
           onClick={() => navigate("/discover")}
         >
-          Discover
+          This week
         </button>
       </nav>
 

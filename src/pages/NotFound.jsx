@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import styles from "./NotFound.module.css";
 
 // Peer review (00-shared-contracts.md): "Missing Fallback Route" —
 // without this, navigating to an unknown path (or a stale bookmark to
@@ -6,12 +7,15 @@ import { Link } from "react-router-dom";
 // something a user could recover from.
 export default function NotFound() {
   return (
-    <div className="container" style={{ paddingTop: "3rem", textAlign: "center" }}>
-      <h1>Page not found</h1>
-      <p>The page you're looking for doesn't exist or may have been removed.</p>
-      <p>
-        <Link to="/">Back to Discover</Link>
+    <div className={styles.page}>
+      <p className={styles.eyebrow}>Stop press</p>
+      <h1>Page not found.</h1>
+      <p className={styles.body}>
+        The page you're looking for doesn't exist, or it may have been removed.
       </p>
+      <Link to="/" className={styles.link}>
+        Back to this week
+      </Link>
     </div>
   );
 }

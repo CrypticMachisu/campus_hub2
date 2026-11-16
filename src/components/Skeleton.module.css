@@ -1,4 +1,4 @@
-/* Skeleton loaders — shimmer built from the corkboard theme tokens.
+/* Skeleton loaders — quiet paper blocks in the Signal system.
    The global prefers-reduced-motion rule in theme.css freezes the
    shimmer animation, leaving a calm static block. */
 
@@ -6,7 +6,7 @@
   position: relative;
   display: inline-block;
   vertical-align: middle;
-  background: var(--color-bg-alt);
+  background: var(--paper-2);
   overflow: hidden;
 }
 
@@ -16,12 +16,7 @@
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--color-card-bg) 75%, transparent),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--card), transparent);
   animation: sweep 1.4s ease-in-out infinite;
 }
 
@@ -43,87 +38,75 @@
   border: 0;
 }
 
-/* --- Frames mirroring the real cards ------------------------------------ */
+/* --- Frames mirroring the real surfaces -------------------------------- */
 
 .cardFrame {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--space-md);
-  box-shadow: var(--shadow-card);
+  gap: 0.5rem;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.7rem;
 }
 
-/* ClubCard's tighter open-card look (no tilt on placeholders). */
-.clubCard .stack {
+.clubCard .stack,
+.eventCard .stack,
+.profileHeader .stack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 0.35rem;
 }
 
-/* EventCard sits thumb-and-text side by side. */
 .eventCard {
   flex-direction: row;
-  gap: var(--space-md);
-  border-style: solid;
+  gap: 0.7rem;
 }
 
 .eventCard .stack {
   flex: 1;
-  display: flex;
-  flex-direction: column;
   justify-content: center;
-  gap: 4px;
   min-width: 0;
 }
 
 .partnerCard {
-  background: var(--color-white);
   min-height: 92px;
 }
 
-/* --- Dashboard list rows ------------------------------------------------- */
+/* --- Dashboard list rows ----------------------------------------------- */
 
 .listRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
   list-style: none;
 }
 
-/* --- Page-level compositions -------------------------------------------- */
+/* --- Page-level compositions ------------------------------------------- */
 
 .clubProfile,
 .eventDetail {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 0.5rem;
 }
 
 .profileHeader {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  margin-bottom: var(--space-md);
-}
-
-.profileHeader .stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .profileGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-md);
-  margin-top: var(--space-lg);
+  gap: 0.6rem;
+  margin-top: 1.4rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
