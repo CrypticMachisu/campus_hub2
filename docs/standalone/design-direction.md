@@ -219,8 +219,70 @@ foundation doesn't paint us into a single-campus, single-feed corner.
 - `elite-accessibility` — required alongside any motion work
 - `design-taste-frontend` — coding-time rule enforcer (metric rules, AI-slop bans)
 
-After the mockups are approved, merge the chosen tokens and the enforcement
-rules into one project-local skill, `kesho-design`, with `skill-creator`: the
-palette and type scale from brand design, the spacing/metric rules and bans from
-design-taste-frontend, and this project's component conventions. It does not
-exist yet.
+After the mockups were approved, the tokens and enforcement rules were merged
+into one project-local skill, `kesho-design`, with `skill-creator`: the palette,
+type scale and voice from brand design; the spacing/metric rules, component
+conventions and AI-slop bans from design-taste-frontend; and a written
+accessibility contract (contrast, focus, targets, semantics, reduced motion,
+reflow). It lives at `.agents/skills/kesho-design/SKILL.md` and should be loaded
+for any UI work on this branch.
+
+---
+
+## 9. Alternatives explored — 16 November 2026
+
+Kesho remains the chosen direction. Two further boards were built so the
+choice is a comparison rather than a default, each with the same four screens,
+the same seed data and an explicit accessibility mechanism. Neither is
+implemented and neither replaces Kesho.
+
+| Board                            | Organising idea                                | Type                           | Colour                                        | The bet                                                        |
+| -------------------------------- | ---------------------------------------------- | ------------------------------ | --------------------------------------------- | -------------------------------------------------------------- |
+| **Kesho** — `field-ledger.html`  | The week as an edited page, data as a ledger   | Fraunces / Instrument / Mono   | Paper `#FAF7F0`, leaf `#204C3A`, clay         | Warmth plus credibility; calm enough to live in every day      |
+| **D. Signal** — `broadcast.html` | The campus as a daily edition with a live wire | Anton / Archivo / Plex Mono    | Newsprint `#F4F2EC`, ink, vermilion `#C63312` | Public-information energy; a lead story and numbered bulletins |
+| **E. Orbit** — `orbit.html`      | The campus as a place; commitments as tickets  | Sora / Public Sans / Plex Mono | Night `#0B1020`, mint `#7CE0C3`, amber, rose  | Spatial memory and belonging; the officer view as a console    |
+
+### D. Signal
+
+Poster typography at the scale of a campus notice, a masthead with volume and
+edition, a wire strip that pauses on hover, focus or a labelled button, and an
+officer "desk" that inverts its table headers and stays quiet. It is the most
+social of the three and the most likely to be photographed or screenshared.
+
+Accessibility built into the board: 17.2:1 body text, a real pause control with
+`aria-pressed`, wire content duplicated in the static timetable so nothing is
+only-in-motion, 3px focus rings, written status ("waitlist open", "seats left"),
+table captions and `th scope`, and a reduced-motion path that turns the crawl
+into a wrapped list. Risk: the newsprint metaphor can read as pastiche, and
+poster headlines crowd a small screen.
+
+### E. Orbit
+
+A dark, spatial commons where clubs are nodes around "you", commitments are
+tickets with a tear-off stub, and the officer surface is a console with mini
+bars and keyboard shortcuts. It is the most experimental and the most novel for
+students.
+
+Accessibility built into the board: a real Map/List switch (`aria-pressed` plus a
+semantic table alternative, both visible without JS), a working Daylight theme
+with every pair re-checked for AA, nodes as buttons with full accessible names,
+skip link, 2px focus rings, 42–44px targets, decorative QR with a text code, and
+`prefers-reduced-motion` removing every reveal. Risk: dark-first fails outdoors
+if the toggle is missed, and spatial layouts invite keyboard hostility if the
+list path is ever dropped.
+
+### What to borrow if Kesho stays
+
+- **Signal:** the wire strip for campus-wide notices on the home page, and
+  numbered bulletins wherever a member scans four or five things quickly.
+- **Orbit:** the ticket treatment for commitment detail and confirmation, and the
+  map/list pairing as the accessible pattern for the multi-campus phase.
+- **Both:** the pause-control, theme-toggle and list-alternative patterns are
+  reusable accessibility primitives, independent of visual direction.
+
+### Open decision
+
+Pick the direction to implement in Phase 1. Staying with Kesho means the
+`kesho-design` skill applies as written; choosing Signal or Orbit means rewriting
+the tokens and component sections of that skill first, and re-checking every
+contrast pair in the chosen palette.

@@ -1,0 +1,2734 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kesho — Signal mockup (direction D)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f4f2ec;
+        --paper-2: #eae7dd;
+        --card: #fffef9;
+        --ink: #0e0f0c;
+        --ink-2: #33352c;
+        --muted: #5c5e52;
+        --signal: #c63312;
+        --signal-deep: #8f2209;
+        --tint: #f8e4de;
+        --rule: #c9c6b8;
+        --rule-soft: #dedbcc;
+        --display: "Anton", "Arial Narrow", Impact, sans-serif;
+        --body: "Archivo", system-ui, sans-serif;
+        --mono: "IBM Plex Mono", ui-monospace, monospace;
+        --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: #e4e1d7;
+        color: var(--ink);
+        font-family: var(--body);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      p,
+      dl,
+      dd,
+      figure {
+        margin: 0;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+
+      img,
+      svg {
+        display: block;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--signal);
+        outline-offset: 3px;
+      }
+
+      .mono {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .skip {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        background: var(--ink);
+        color: var(--paper);
+        padding: 12px 16px;
+        z-index: 20;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+
+      .skip:focus {
+        left: 8px;
+        top: 8px;
+      }
+
+      /* board intro */
+      .intro {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 54px 24px 24px;
+      }
+
+      .intro .kicker,
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .intro h1 {
+        font-family: var(--display);
+        font-size: clamp(40px, 5.6vw, 72px);
+        font-weight: 400;
+        line-height: 0.94;
+        letter-spacing: -0.01em;
+        text-transform: uppercase;
+        margin: 14px 0 14px;
+        max-width: 18ch;
+      }
+
+      .intro h1 em {
+        font-style: normal;
+        color: var(--signal);
+      }
+
+      .intro .lede {
+        max-width: 68ch;
+        color: var(--ink-2);
+      }
+
+      .tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+      }
+
+      .tag {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border: 1px solid var(--rule);
+        background: var(--paper);
+        padding: 5px 9px;
+      }
+
+      /* screen frame */
+      .screen {
+        max-width: 1180px;
+        margin: 0 auto 36px;
+        background: var(--paper);
+        border: 1px solid #d2cec0;
+        border-radius: 3px;
+        overflow: hidden;
+        box-shadow: 0 24px 50px -30px rgba(14, 15, 12, 0.4);
+      }
+
+      .chrome {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #dbd7cb;
+        border-bottom: 1px solid var(--rule);
+        padding: 7px 12px;
+      }
+
+      .chrome i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #b6b1a1;
+      }
+
+      .chrome span {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--muted);
+        margin-left: 6px;
+      }
+
+      /* masthead */
+      .edition {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 9px 26px;
+        border-bottom: 1px solid var(--ink);
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+      }
+
+      .live {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--signal-deep);
+      }
+
+      .live i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--signal);
+      }
+
+      .masthead {
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        padding: 16px 26px 12px;
+        border-bottom: 3px solid var(--ink);
+      }
+
+      .wordmark {
+        font-family: var(--display);
+        font-size: 42px;
+        line-height: 0.8;
+        letter-spacing: -0.015em;
+      }
+
+      .wordmark b {
+        color: var(--signal);
+        font-weight: 400;
+      }
+
+      .sections {
+        display: flex;
+        gap: 22px;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .sections a {
+        padding: 6px 0 6px;
+        border-bottom: 2px solid transparent;
+      }
+
+      .sections a[aria-current="page"] {
+        border-color: var(--signal);
+      }
+
+      .sections a:hover {
+        border-color: var(--ink);
+      }
+
+      .mast-tools {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .tool {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: transparent;
+        border: 1px solid var(--rule);
+        padding: 7px 10px;
+      }
+
+      .tool:hover {
+        border-color: var(--ink);
+      }
+
+      .avatar {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        background: var(--ink);
+        color: var(--paper);
+        font-family: var(--mono);
+        font-size: 9.5px;
+        border-radius: 50%;
+      }
+
+      /* ticker */
+      .ticker {
+        display: flex;
+        align-items: stretch;
+        background: var(--ink);
+        color: var(--paper);
+        overflow: hidden;
+      }
+
+      .ticker-label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--signal);
+        color: #fff;
+        padding: 8px 12px;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        flex: none;
+      }
+
+      .ticker-track {
+        display: flex;
+        align-items: center;
+        gap: 34px;
+        padding: 8px 18px;
+        white-space: nowrap;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .js .ticker-track {
+        animation: crawl 42s linear infinite;
+      }
+
+      .ticker:hover .ticker-track,
+      .ticker:focus-within .ticker-track,
+      .ticker.is-paused .ticker-track {
+        animation-play-state: paused;
+      }
+
+      @keyframes crawl {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-50%);
+        }
+      }
+
+      .ticker-toggle {
+        margin-left: auto;
+        flex: none;
+        background: transparent;
+        border: 0;
+        border-left: 1px solid #3a3c31;
+        color: var(--paper);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0 14px;
+      }
+
+      .ticker-toggle:hover {
+        background: #24261e;
+      }
+
+      /* lead */
+      .lead {
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        gap: 35px;
+        padding: 34px 26px 30px;
+        align-items: start;
+      }
+
+      .dateline {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--signal-deep);
+        margin-bottom: 10px;
+        display: inline-block;
+        border-bottom: 2px solid var(--signal);
+        padding-bottom: 4px;
+      }
+
+      .headline {
+        font-family: var(--display);
+        font-weight: 400;
+        text-transform: uppercase;
+        font-size: clamp(46px, 6.6vw, 82px);
+        line-height: 0.9;
+        letter-spacing: -0.015em;
+        margin-bottom: 16px;
+      }
+
+      .headline em {
+        font-style: normal;
+        color: var(--signal);
+      }
+
+      .standfirst {
+        font-size: 18px;
+        line-height: 1.45;
+        max-width: 48ch;
+        color: var(--ink-2);
+        margin-bottom: 15px;
+      }
+
+      .standfirst strong {
+        color: var(--ink);
+      }
+
+      .byline {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 18px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 9px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+
+      .btn {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 17px;
+        background: var(--signal);
+        color: #fff;
+        border: 1px solid var(--signal);
+        font-weight: 600;
+        font-size: 13.5px;
+        transition: background 0.18s var(--ease);
+      }
+
+      .btn:hover {
+        background: var(--signal-deep);
+        border-color: var(--signal-deep);
+      }
+
+      .btn--line {
+        background: transparent;
+        color: var(--ink);
+        border-color: var(--ink);
+      }
+
+      .btn--line:hover {
+        background: var(--ink);
+        color: var(--paper);
+      }
+
+      .facts {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        border-top: 2px solid var(--ink);
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .facts div {
+        padding: 9px 10px 9px 0;
+        border-right: 1px solid var(--rule);
+      }
+
+      .facts div:last-child {
+        border-right: 0;
+      }
+
+      .facts dt {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .facts dd {
+        font-family: var(--display);
+        font-size: 22px;
+        line-height: 1.1;
+        margin-top: 2px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .facts dd small {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--muted);
+        display: block;
+        letter-spacing: 0.04em;
+      }
+
+      .lead-art {
+        position: relative;
+        border: 1px solid var(--ink);
+        padding: 6px;
+        background: var(--card);
+      }
+
+      .art {
+        height: 330px;
+        position: relative;
+        overflow: hidden;
+        background:
+          repeating-linear-gradient(105deg, rgba(14, 15, 12, 0.22) 0 1px, transparent 1px 13px),
+          radial-gradient(110% 90% at 80% 0%, #e9b44c 0, rgba(233, 180, 76, 0) 55%),
+          linear-gradient(170deg, #cfc7b3, #a9a08a);
+        display: grid;
+        place-items: end start;
+      }
+
+      .art span {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: rgba(14, 15, 12, 0.6);
+        padding: 8px;
+      }
+
+      .stamp {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: var(--signal);
+        color: #fff;
+        font-family: var(--display);
+        font-size: 26px;
+        line-height: 1;
+        padding: 8px 10px 6px;
+        text-align: center;
+        transform: rotate(2deg);
+      }
+
+      .stamp small {
+        display: block;
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.12em;
+        margin-top: 2px;
+      }
+
+      .lead-art figcaption {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        padding: 7px 2px 1px;
+      }
+
+      /* lower page */
+      .band {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: baseline;
+        background: var(--ink);
+        color: var(--paper);
+        padding: 7px 26px;
+      }
+
+      .band h2 {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 500;
+      }
+
+      .band span {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        color: #b8b3a2;
+      }
+
+      .columns {
+        display: grid;
+        grid-template-columns: 1.55fr 0.85fr;
+        padding: 0 26px 30px;
+      }
+
+      .bulletins {
+        padding-right: 30px;
+      }
+
+      .bulletin {
+        display: grid;
+        grid-template-columns: 54px 1fr auto;
+        gap: 14px;
+        align-items: start;
+        padding: 15px 8px 15px 0;
+        border-bottom: 1px solid var(--rule);
+        transition:
+          background 0.18s var(--ease),
+          padding-left 0.18s var(--ease),
+          color 0.18s var(--ease);
+      }
+
+      .bulletin:hover,
+      .bulletin:focus-visible {
+        background: var(--ink);
+        color: var(--paper);
+        padding-left: 10px;
+      }
+
+      .bulletin:hover .b-num,
+      .bulletin:hover .b-meta,
+      .bulletin:hover .b-spots,
+      .bulletin:focus-visible .b-num,
+      .bulletin:focus-visible .b-meta,
+      .bulletin:focus-visible .b-spots {
+        color: #d8d3c2;
+      }
+
+      .b-num {
+        font-family: var(--display);
+        font-size: 34px;
+        line-height: 0.9;
+        color: var(--rule);
+        transition: color 0.18s var(--ease);
+      }
+
+      .b-title {
+        display: block;
+        font-family: var(--display);
+        font-size: 25px;
+        line-height: 1.02;
+        letter-spacing: 0.005em;
+        text-transform: uppercase;
+      }
+
+      .b-meta {
+        display: block;
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 5px;
+        transition: color 0.18s var(--ease);
+      }
+
+      .b-spots {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--signal-deep);
+        white-space: nowrap;
+        transition: color 0.18s var(--ease);
+        padding-top: 4px;
+      }
+
+      .b-spots.is-open {
+        color: #2c5a42;
+      }
+
+      .aside {
+        border-left: 1px solid var(--rule);
+        padding-left: 22px;
+      }
+
+      .aside h3 {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--ink);
+        padding-bottom: 5px;
+      }
+
+      .timetable {
+        list-style: none;
+        margin: 0 0 22px;
+        padding: 0;
+      }
+
+      .timetable li {
+        display: grid;
+        grid-template-columns: 50px 1fr;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--rule-soft);
+        font-size: 13px;
+      }
+
+      .timetable time {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        padding-top: 2px;
+      }
+
+      .timetable b {
+        font-family: var(--body);
+        font-size: 13px;
+        font-weight: 600;
+        display: block;
+        line-height: 1.3;
+      }
+
+      .timetable span {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .checklist {
+        list-style: none;
+        margin: 0 0 20px;
+        padding: 0;
+      }
+
+      .checklist li {
+        display: flex;
+        gap: 9px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--rule-soft);
+        font-size: 13px;
+        line-height: 1.3;
+      }
+
+      .check {
+        width: 15px;
+        height: 15px;
+        border: 1px solid var(--ink);
+        display: grid;
+        place-items: center;
+        font-size: 9px;
+        flex: none;
+        margin-top: 1px;
+      }
+
+      .checklist small {
+        display: block;
+        font-family: var(--mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        margin-top: 2px;
+        letter-spacing: 0.04em;
+      }
+
+      .dispatch {
+        background: var(--tint);
+        border-left: 3px solid var(--signal);
+        padding: 12px;
+      }
+
+      .dispatch p {
+        font-size: 12.5px;
+        line-height: 1.45;
+      }
+
+      .dispatch .mono {
+        color: var(--signal-deep);
+        font-size: 8.5px;
+        display: block;
+        margin-top: 6px;
+      }
+
+      /* club screen */
+      .club-front {
+        padding: 26px 26px 0;
+      }
+
+      .club-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 20px;
+        border-bottom: 3px solid var(--ink);
+        padding-bottom: 16px;
+      }
+
+      .club-title h1 {
+        font-family: var(--display);
+        font-size: clamp(52px, 8vw, 104px);
+        line-height: 0.84;
+        text-transform: uppercase;
+        letter-spacing: -0.01em;
+      }
+
+      .club-title h1 span {
+        display: block;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        font-weight: 400;
+      }
+
+      .club-glyph {
+        width: 64px;
+        height: 64px;
+        border: 2px solid var(--ink);
+        display: grid;
+        place-items: center;
+        flex: none;
+        margin-left: auto;
+      }
+
+      .club-glyph svg {
+        width: 34px;
+        height: 34px;
+      }
+
+      .club-deck {
+        display: grid;
+        grid-template-columns: 1.4fr 0.8fr;
+        gap: 30px;
+        padding: 16px 0;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .club-deck p {
+        font-size: 17px;
+        line-height: 1.45;
+        max-width: 54ch;
+        color: var(--ink-2);
+      }
+
+      .stat-strip {
+        display: grid;
+        grid-template-columns: repeat(4, auto);
+        gap: 18px;
+        align-items: start;
+        justify-content: end;
+      }
+
+      .stat-strip div {
+        border-left: 1px solid var(--rule);
+        padding-left: 12px;
+      }
+
+      .stat-strip b {
+        font-family: var(--display);
+        font-size: 28px;
+        line-height: 1;
+        display: block;
+        font-weight: 400;
+      }
+
+      .stat-strip span {
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .photo-band {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 4px;
+        padding: 16px 0;
+      }
+
+      .photo-band div {
+        height: 128px;
+        position: relative;
+        border: 1px solid var(--ink);
+      }
+
+      .photo-band div:nth-child(1) {
+        background: linear-gradient(165deg, #cbc3af, #a79d85);
+      }
+
+      .photo-band div:nth-child(2) {
+        background: linear-gradient(165deg, #bfcbbc, #91a691);
+      }
+
+      .photo-band div:nth-child(3) {
+        background: linear-gradient(165deg, #ddc3a3, #bd9268);
+      }
+
+      .photo-band span {
+        position: absolute;
+        bottom: 6px;
+        left: 7px;
+        font-family: var(--mono);
+        font-size: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(14, 15, 12, 0.62);
+      }
+
+      .club-body {
+        display: grid;
+        grid-template-columns: 1.5fr 0.85fr;
+        gap: 30px;
+        padding: 8px 26px 30px;
+      }
+
+      .notice {
+        border: 2px solid var(--ink);
+        display: grid;
+        grid-template-columns: 86px 1fr;
+        margin-bottom: 24px;
+        background: var(--card);
+      }
+
+      .notice-date {
+        background: var(--ink);
+        color: var(--paper);
+        padding: 12px 10px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .notice-date span {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #c1bcab;
+      }
+
+      .notice-date b {
+        font-family: var(--display);
+        font-size: 38px;
+        line-height: 1;
+        font-weight: 400;
+        margin: 2px 0;
+      }
+
+      .notice-body {
+        padding: 13px 15px;
+      }
+
+      .notice-body .eyebrow {
+        color: var(--signal-deep);
+        font-size: 8.5px;
+      }
+
+      .notice-body h3 {
+        font-family: var(--display);
+        font-size: 26px;
+        text-transform: uppercase;
+        line-height: 1.02;
+        margin: 3px 0 4px;
+      }
+
+      .notice-body p {
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+
+      .notice-body .row {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-top: 9px;
+        font-family: var(--mono);
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+
+      .subhead {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--ink);
+        padding-bottom: 5px;
+        margin-bottom: 4px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .term-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 22px;
+      }
+
+      .term-table th {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-align: left;
+        font-weight: 500;
+        padding: 7px 8px 6px 0;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .term-table td {
+        font-size: 13px;
+        padding: 10px 8px 10px 0;
+        border-bottom: 1px solid var(--rule-soft);
+        vertical-align: top;
+      }
+
+      .term-table td:first-child {
+        font-family: var(--mono);
+        font-size: 10px;
+        white-space: nowrap;
+        color: var(--ink-2);
+      }
+
+      .term-table .status {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+      }
+
+      .status--open {
+        color: #2c5a42;
+      }
+
+      .status--draft {
+        color: var(--muted);
+      }
+
+      .status--full {
+        color: var(--signal-deep);
+      }
+
+      .dispatches article {
+        padding: 11px 0;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .dispatches h4 {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+
+      .dispatches p {
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+
+      .dispatches time {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 4px;
+        display: block;
+      }
+
+      .side-block {
+        border-top: 3px solid var(--ink);
+        padding-top: 8px;
+        margin-bottom: 22px;
+      }
+
+      .people {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .people li {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--rule-soft);
+      }
+
+      .people .avatar {
+        width: 26px;
+        height: 26px;
+        font-size: 8px;
+        background: var(--paper-2);
+        color: var(--ink);
+        flex: none;
+      }
+
+      .people b {
+        font-size: 12.5px;
+        font-weight: 600;
+        display: block;
+      }
+
+      .people span {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .join {
+        background: var(--ink);
+        color: var(--paper);
+        padding: 16px;
+      }
+
+      .join h4 {
+        font-family: var(--display);
+        font-size: 24px;
+        text-transform: uppercase;
+        line-height: 1;
+        margin-bottom: 6px;
+      }
+
+      .join p {
+        font-size: 12.5px;
+        color: #cbc6b6;
+        margin-bottom: 12px;
+      }
+
+      .join .btn {
+        background: var(--signal);
+        border-color: var(--signal);
+        width: 100%;
+      }
+
+      .join .fine {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        color: #9d988a;
+        margin-top: 8px;
+        line-height: 1.5;
+      }
+
+      /* notice screen */
+      .notice-head {
+        border-bottom: 3px solid var(--ink);
+        padding: 18px 26px 14px;
+      }
+
+      .notice-head .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+
+      .notice-head h1 {
+        font-family: var(--display);
+        font-size: clamp(46px, 7vw, 90px);
+        line-height: 0.86;
+        text-transform: uppercase;
+      }
+
+      .notice-head h1 em {
+        font-style: normal;
+        color: var(--signal);
+      }
+
+      .notice-head .deck {
+        font-size: 17px;
+        max-width: 58ch;
+        color: var(--ink-2);
+        margin-top: 10px;
+      }
+
+      .detail {
+        display: grid;
+        grid-template-columns: 1.4fr 0.78fr;
+        gap: 34px;
+        padding: 22px 26px 30px;
+      }
+
+      .detail h2 {
+        font-family: var(--display);
+        font-size: 28px;
+        text-transform: uppercase;
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+
+      .run-sheet {
+        list-style: none;
+        margin: 0 0 22px;
+        padding: 0;
+      }
+
+      .run-sheet li {
+        display: grid;
+        grid-template-columns: 64px 1fr;
+        gap: 12px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--rule);
+        font-size: 13.5px;
+      }
+
+      .run-sheet time {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--signal-deep);
+        padding-top: 2px;
+      }
+
+      .bring {
+        list-style: none;
+        margin: 0 0 22px;
+        padding: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 24px;
+      }
+
+      .bring li {
+        padding: 8px 0;
+        border-bottom: 1px solid var(--rule-soft);
+        font-size: 13px;
+        display: flex;
+        gap: 8px;
+      }
+
+      .bring li::before {
+        content: "□";
+        color: var(--signal);
+      }
+
+      .host {
+        display: flex;
+        gap: 11px;
+        align-items: center;
+        border-top: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        padding: 12px 0;
+        margin-bottom: 18px;
+      }
+
+      .host .avatar {
+        width: 38px;
+        height: 38px;
+        background: var(--paper-2);
+        color: var(--ink);
+        font-size: 10px;
+      }
+
+      .host b {
+        font-size: 13.5px;
+        display: block;
+      }
+
+      .host span {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .updates article {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--rule-soft);
+      }
+
+      .updates p {
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+
+      .updates time {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .stub {
+        border: 2px solid var(--ink);
+        background: var(--card);
+        align-self: start;
+        position: sticky;
+        top: 16px;
+      }
+
+      .stub-top {
+        border-bottom: 2px dashed var(--ink);
+        padding: 14px 16px 16px;
+        position: relative;
+      }
+
+      .stub-top::before,
+      .stub-top::after {
+        content: "";
+        position: absolute;
+        bottom: -12px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--paper);
+        border: 2px solid var(--ink);
+      }
+
+      .stub-top::before {
+        left: -13px;
+      }
+
+      .stub-top::after {
+        right: -13px;
+      }
+
+      .stub-label {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .stub h3 {
+        font-family: var(--display);
+        font-size: 30px;
+        text-transform: uppercase;
+        line-height: 0.96;
+      }
+
+      .stub .stub-meta {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--ink-2);
+        margin-top: 6px;
+        line-height: 1.5;
+      }
+
+      .spots {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin: 14px 0 6px;
+      }
+
+      .spots b {
+        font-family: var(--display);
+        font-size: 30px;
+        font-weight: 400;
+        line-height: 1;
+      }
+
+      .spots span {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+
+      .meter {
+        height: 6px;
+        background: var(--rule);
+        margin-bottom: 6px;
+      }
+
+      .meter i {
+        display: block;
+        height: 100%;
+        background: var(--signal);
+        width: 63%;
+      }
+
+      .wait {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--signal-deep);
+        margin-bottom: 14px;
+      }
+
+      .stub .btn {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+
+      .stub .fine {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        color: var(--muted);
+        line-height: 1.6;
+        text-align: center;
+      }
+
+      .stub-bottom {
+        padding: 12px 16px 14px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        border-top: 2px dashed var(--ink);
+      }
+
+      .stub-bottom .avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 8px;
+        background: var(--paper-2);
+        color: var(--ink);
+      }
+
+      .stub-bottom p {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        line-height: 1.5;
+      }
+
+      /* desk */
+      .desk-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-end;
+        border-bottom: 3px solid var(--ink);
+        padding: 22px 26px 12px;
+      }
+
+      .desk-head h1 {
+        font-family: var(--display);
+        font-size: 44px;
+        text-transform: uppercase;
+        line-height: 0.9;
+      }
+
+      .desk-head .ed {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        text-align: right;
+        line-height: 1.6;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 20px;
+        padding: 0 26px;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .tab {
+        border: 0;
+        background: transparent;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 12px 0 10px;
+        border-bottom: 2px solid transparent;
+      }
+
+      .tab[aria-current] {
+        color: var(--ink);
+        border-color: var(--signal);
+      }
+
+      .tab:hover {
+        color: var(--ink);
+      }
+
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        margin: 0 26px;
+        border-bottom: 1px solid var(--ink);
+      }
+
+      .kpi {
+        padding: 13px 14px 13px 0;
+        border-right: 1px solid var(--rule);
+      }
+
+      .kpi:last-child {
+        border-right: 0;
+        padding-left: 14px;
+      }
+
+      .kpi b {
+        font-family: var(--display);
+        font-size: 36px;
+        line-height: 1;
+        font-weight: 400;
+        font-variant-numeric: tabular-nums;
+        display: block;
+      }
+
+      .kpi span {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .kpi em {
+        font-style: normal;
+        color: var(--signal-deep);
+      }
+
+      .desk-body {
+        display: grid;
+        grid-template-columns: 1fr 296px;
+        gap: 30px;
+        padding: 20px 26px 30px;
+      }
+
+      .desk-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 24px;
+      }
+
+      .desk-table caption {
+        text-align: left;
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        padding-bottom: 6px;
+      }
+
+      .desk-table th {
+        background: var(--ink);
+        color: var(--paper);
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 500;
+        text-align: left;
+        padding: 7px 8px;
+        white-space: nowrap;
+      }
+
+      .desk-table td {
+        font-size: 12.5px;
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--rule);
+        vertical-align: middle;
+      }
+
+      .desk-table td.num {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .desk-table tbody tr:hover {
+        background: var(--paper-2);
+      }
+
+      .desk-table .event-name {
+        font-weight: 600;
+      }
+
+      .pill {
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        border: 1px solid var(--rule);
+        padding: 3px 5px;
+        white-space: nowrap;
+      }
+
+      .pill--live {
+        border-color: #2c5a42;
+        color: #2c5a42;
+      }
+
+      .pill--wait {
+        border-color: var(--signal);
+        color: var(--signal-deep);
+      }
+
+      .text-btn {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: none;
+        border: 0;
+        border-bottom: 1px solid var(--ink);
+        padding: 2px 0;
+      }
+
+      .text-btn:hover {
+        border-color: var(--signal);
+        color: var(--signal-deep);
+      }
+
+      .aside-cards h3 {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--ink);
+        padding-bottom: 5px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .request {
+        border: 1px solid var(--rule);
+        background: var(--card);
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+
+      .request p {
+        font-size: 12px;
+        line-height: 1.4;
+        margin-bottom: 4px;
+      }
+
+      .request .who {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .request .acts {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .mini {
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border: 1px solid var(--rule);
+        background: transparent;
+        padding: 5px 7px;
+      }
+
+      .mini--go {
+        border-color: var(--ink);
+        background: var(--ink);
+        color: var(--paper);
+      }
+
+      .wire {
+        border-top: 1px solid var(--rule);
+        margin-top: 18px;
+        padding-top: 8px;
+      }
+
+      .wire h3 {
+        border-bottom: 0;
+      }
+
+      .wire p {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        line-height: 1.6;
+        color: var(--muted);
+        border-bottom: 1px solid var(--rule-soft);
+        padding: 5px 0;
+      }
+
+      .wire b {
+        color: var(--ink-2);
+        font-weight: 500;
+      }
+
+      /* system panel */
+      .system {
+        max-width: 1180px;
+        margin: 0 auto 72px;
+        background: var(--ink);
+        color: #f0ece0;
+        padding: 30px;
+        border-radius: 3px;
+      }
+
+      .system h2 {
+        font-family: var(--display);
+        font-size: 34px;
+        text-transform: uppercase;
+        line-height: 0.95;
+        margin-bottom: 6px;
+      }
+
+      .system > p {
+        color: #b9b3a2;
+        font-size: 13.5px;
+        max-width: 72ch;
+        margin-bottom: 24px;
+      }
+
+      .sys-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 26px;
+      }
+
+      .sys h3 {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #a8a291;
+        margin-bottom: 9px;
+      }
+
+      .sys p,
+      .sys li {
+        font-size: 12px;
+        color: #c9c3b2;
+        line-height: 1.65;
+      }
+
+      .sys ul {
+        margin: 0;
+        padding-left: 15px;
+      }
+
+      .sw {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: #c9c3b2;
+      }
+
+      .sw i {
+        width: 16px;
+        height: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        flex: none;
+      }
+
+      .specimen {
+        font-family: var(--display);
+        font-size: 34px;
+        line-height: 0.95;
+        text-transform: uppercase;
+        color: #f0ece0;
+        margin-bottom: 2px;
+      }
+
+      .specimen small {
+        display: block;
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        color: #a8a291;
+        margin-top: 4px;
+      }
+
+      /* motion */
+      .js .reveal {
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 0.5s var(--ease),
+          transform 0.5s var(--ease);
+        transition-delay: calc(var(--i, 0) * 45ms);
+      }
+
+      .js .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        .js .ticker-track {
+          animation: none;
+          white-space: normal;
+          flex-wrap: wrap;
+        }
+
+        .js .ticker-track .dup {
+          display: none;
+        }
+
+        .js .reveal {
+          opacity: 1;
+          transform: none;
+          transition: none;
+        }
+
+        * {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      @media (max-width: 940px) {
+        .lead,
+        .columns,
+        .club-deck,
+        .club-body,
+        .detail,
+        .desk-body {
+          grid-template-columns: 1fr;
+        }
+
+        .bulletins,
+        .aside {
+          padding-right: 0;
+          padding-left: 0;
+          border-left: 0;
+        }
+
+        .aside {
+          border-top: 1px solid var(--rule);
+          padding-top: 16px;
+        }
+
+        .stub {
+          position: static;
+        }
+
+        .stat-strip {
+          justify-content: start;
+        }
+
+        .kpis {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .kpi:nth-child(2) {
+          border-right: 0;
+        }
+
+        .kpi:nth-child(3),
+        .kpi:nth-child(4) {
+          border-top: 1px solid var(--rule);
+        }
+      }
+
+      @media (max-width: 700px) {
+        .edition,
+        .masthead,
+        .lead,
+        .band,
+        .club-front,
+        .club-body,
+        .notice-head,
+        .detail,
+        .desk-head,
+        .desk-body,
+        .tabs {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        .sections {
+          display: none;
+        }
+
+        .masthead {
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .wordmark {
+          font-size: 32px;
+        }
+
+        .headline {
+          font-size: clamp(40px, 12vw, 60px);
+        }
+
+        .facts {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .facts div:nth-child(2) {
+          border-right: 0;
+        }
+
+        .facts div:nth-child(3),
+        .facts div:nth-child(4) {
+          border-top: 1px solid var(--rule);
+        }
+
+        .photo-band {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .photo-band div:first-child {
+          grid-column: 1 / -1;
+        }
+
+        .notice {
+          grid-template-columns: 70px 1fr;
+        }
+
+        .bring {
+          grid-template-columns: 1fr;
+        }
+
+        .kpis {
+          margin: 0 16px;
+        }
+
+        .desk-table {
+          display: block;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+
+        .system {
+          margin-left: 12px;
+          margin-right: 12px;
+          padding: 20px;
+        }
+
+        .ticker-label {
+          display: none;
+        }
+
+        .ticker-track {
+          white-space: normal;
+          flex-wrap: wrap;
+          gap: 8px 18px;
+        }
+
+        .js .ticker-track .dup {
+          display: none;
+        }
+      }
+    </style>
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
+  </head>
+  <body>
+    <header class="intro">
+      <p class="kicker">Kesho · alternative D · 16 November 2026</p>
+      <h1>Signal — <em>the campus edition.</em></h1>
+      <p class="lede">
+        A broadcast/newsprint approach: the product is a daily edition with a lead story, numbered
+        bulletins, a live strip and a desk. Poster type carries the voice; the officer view becomes
+        a wire desk. Same four screens and the same data as Field Ledger, so the comparison is
+        honest. Accessibility is built in: the ticker pauses and is duplicated in the schedule, and
+        nothing relies on colour alone.
+      </p>
+      <div class="tags">
+        <span class="tag">Anton + Archivo + IBM Plex Mono</span>
+        <span class="tag">Newsprint + vermilion</span>
+        <span class="tag">Pausable ticker</span>
+        <span class="tag">17.2:1 body contrast</span>
+        <span class="tag">Alternative, not chosen</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- 1. Today -->
+      <section class="screen" aria-label="Today's edition">
+        <div class="chrome"><i></i><i></i><i></i><span>kesho.app / today</span></div>
+        <a class="skip" href="#today-main">Skip to the lead story</a>
+
+        <div class="edition">
+          <span>Vol. 02 · No. 112 · Nairobi</span>
+          <span>Saturday 22 November 2026</span>
+          <span class="live"><i></i> Live campus</span>
+        </div>
+
+        <div class="masthead">
+          <span class="wordmark">kesho<b>.</b></span>
+          <nav class="sections" aria-label="Sections">
+            <a href="#today-main" aria-current="page">Today</a>
+            <a href="#club-front">Clubs</a>
+            <a href="#notice-main">Commitments</a>
+            <a href="#desk-main">My desk</a>
+          </nav>
+          <div class="mast-tools">
+            <button class="tool" type="button">Search the edition</button>
+            <span class="avatar" aria-label="Signed in as Sofia Ramirez">SR</span>
+          </div>
+        </div>
+
+        <div class="ticker" role="group" aria-label="Campus wire">
+          <span class="ticker-label">Wire</span>
+          <div class="ticker-track">
+            <span>07:30 — Bus leaves main gate</span>
+            <span>38 of 60 spots taken for planting day</span>
+            <span>Debate finals 14:00, Lecture Theatre 2</span>
+            <span>Portfolio night 18:00, Westlands</span>
+            <span>Harvest morning 29 Nov, Karen</span>
+            <span aria-hidden="true" class="dup">07:30 — Bus leaves main gate</span>
+            <span aria-hidden="true" class="dup">38 of 60 spots taken for planting day</span>
+            <span aria-hidden="true" class="dup">Debate finals 14:00, Lecture Theatre 2</span>
+            <span aria-hidden="true" class="dup">Portfolio night 18:00, Westlands</span>
+            <span aria-hidden="true" class="dup">Harvest morning 29 Nov, Karen</span>
+          </div>
+          <button class="ticker-toggle" type="button" aria-pressed="false">Pause wire</button>
+        </div>
+
+        <div id="today-main" class="lead">
+          <div>
+            <p class="dateline">Agri Club · Kajiado · Saturday</p>
+            <h1 class="headline reveal" style="--i: 0">The planting day is <em>Saturday.</em></h1>
+            <p class="standfirst reveal" style="--i: 1">
+              Sixty indigenous seedlings, one riverbank, and a bus leaving at 7:30.
+              <strong>Closed shoes, a water bottle, and two hours of your morning.</strong>
+            </p>
+            <p class="byline">Words: Amara Otieno · Photographs: Agri Club</p>
+            <div class="actions reveal" style="--i: 2">
+              <button class="btn" type="button">Join the work day</button>
+              <a class="btn btn--line" href="#notice-main">Read the notice</a>
+            </div>
+            <dl class="facts reveal" style="--i: 3">
+              <div>
+                <dt>Date</dt>
+                <dd>22 <small>Sat · Nov</small></dd>
+              </div>
+              <div>
+                <dt>Departs</dt>
+                <dd>07:30 <small>Main gate</small></dd>
+              </div>
+              <div>
+                <dt>Going</dt>
+                <dd>38 <small>of 60 spots</small></dd>
+              </div>
+              <div>
+                <dt>Cost</dt>
+                <dd>Free <small>Bus included</small></dd>
+              </div>
+            </dl>
+          </div>
+          <figure class="lead-art reveal" style="--i: 1">
+            <div class="art"><span>Photo slot — hands, seedlings, morning light</span></div>
+            <span class="stamp">22<small>Nov</small></span>
+            <figcaption>Ngong river bank, 08:40. Last year's planting.</figcaption>
+          </figure>
+        </div>
+
+        <div class="band">
+          <h2>What else is on</h2>
+          <span>Four notices · updated 09:12</span>
+        </div>
+
+        <div class="columns">
+          <div class="bulletins">
+            <a class="bulletin reveal" style="--i: 0" href="#notice-main">
+              <span class="b-num">01</span>
+              <span>
+                <span class="b-title">Debate finals</span>
+                <span class="b-meta">Debate Society · 14:00 · Lecture Theatre 2</span>
+              </span>
+              <span class="b-spots is-open">Seats left</span>
+            </a>
+            <a class="bulletin reveal" style="--i: 1" href="#today-main">
+              <span class="b-num">02</span>
+              <span>
+                <span class="b-title">Long run, Karura</span>
+                <span class="b-meta">Athletics · Sun 06:45 · Karura Forest</span>
+              </span>
+              <span class="b-spots">14 / 40</span>
+            </a>
+            <a class="bulletin reveal" style="--i: 2" href="#today-main">
+              <span class="b-num">03</span>
+              <span>
+                <span class="b-title">Portfolio night</span>
+                <span class="b-meta">Design Collective · Tue 18:00 · Westlands</span>
+              </span>
+              <span class="b-spots">26 / 50</span>
+            </a>
+            <a class="bulletin reveal" style="--i: 3" href="#today-main">
+              <span class="b-num">04</span>
+              <span>
+                <span class="b-title">Harvest morning</span>
+                <span class="b-meta">Agri Club · Sat 29 Nov · Karen</span>
+              </span>
+              <span class="b-spots is-open">Opens Mon</span>
+            </a>
+          </div>
+
+          <aside class="aside" aria-label="On campus today and your commitments">
+            <h3><span>On campus today</span><span>Sat 22</span></h3>
+            <ol class="timetable">
+              <li>
+                <time datetime="2026-11-22T07:30+03:00">07:30</time
+                ><span><b>Bus departs</b><span>Main gate · Agri Club</span></span>
+              </li>
+              <li>
+                <time datetime="2026-11-22T10:00+03:00">10:00</time
+                ><span><b>Market stall</b><span>Student square · Agri Club</span></span>
+              </li>
+              <li>
+                <time datetime="2026-11-22T14:00+03:00">14:00</time
+                ><span><b>Debate finals</b><span>Lecture Theatre 2</span></span>
+              </li>
+              <li>
+                <time datetime="2026-11-22T18:00+03:00">18:00</time
+                ><span><b>Portfolio night</b><span>Westlands campus</span></span>
+              </li>
+            </ol>
+
+            <h3><span>Your commitments</span><span>2</span></h3>
+            <ul class="checklist">
+              <li>
+                <span class="check" aria-hidden="true">✓</span>
+                <span>Planting day<small>Sat 22 · 07:30 · bus confirmed</small></span>
+              </li>
+              <li>
+                <span class="check" aria-hidden="true">✓</span>
+                <span>Harvest morning<small>Sat 29 · 06:30 · Karen</small></span>
+              </li>
+            </ul>
+
+            <div class="dispatch">
+              <p><strong>Yuki asked:</strong> is there space for a bike on the bus?</p>
+              <span class="mono">3 replies · Agri Club</span>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- 2. Club -->
+      <section class="screen" id="club-front" aria-label="Club section front — Agri Club">
+        <div class="chrome"><i></i><i></i><i></i><span>kesho.app / clubs / agri</span></div>
+        <div class="edition">
+          <span>Section · Clubs</span>
+          <span>86 members · Nairobi</span>
+          <span class="live"><i></i> Open to join</span>
+        </div>
+        <div class="masthead">
+          <span class="wordmark">kesho<b>.</b></span>
+          <nav class="sections" aria-label="Sections">
+            <a href="#today-main">Today</a>
+            <a href="#club-front" aria-current="page">Clubs</a>
+            <a href="#notice-main">Commitments</a>
+            <a href="#desk-main">My desk</a>
+          </nav>
+          <div class="mast-tools">
+            <button class="tool" type="button">Search the edition</button>
+            <span class="avatar" aria-label="Signed in as Sofia Ramirez">SR</span>
+          </div>
+        </div>
+
+        <div class="club-front">
+          <div class="club-title">
+            <h1><span>Club section · founded 2019</span>Agri Club</h1>
+            <span class="club-glyph" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 21V9" stroke="currentColor" stroke-width="1.8" />
+                <path d="M12 13c-4 0-6-2.2-6-6 4 0 6 2.2 6 6Z" fill="currentColor" />
+                <path d="M12 10c4 0 6-2.2 6-6-4 0-6 2.2-6 6Z" fill="currentColor" opacity=".5" />
+              </svg>
+            </span>
+          </div>
+
+          <div class="club-deck">
+            <p>
+              Eighty-six members, one riverbank, and a standing Thursday. The club grows indigenous
+              seedlings on campus, plants them with the county, and sells the surplus at the student
+              market. New members are welcome at any point in the term.
+            </p>
+            <div class="stat-strip">
+              <div><b>86</b><span>Members</span></div>
+              <div><b>2019</b><span>Founded</span></div>
+              <div><b>Thu</b><span>17:00 · Block C</span></div>
+              <div><b>4</b><span>Events this term</span></div>
+            </div>
+          </div>
+
+          <div class="photo-band" aria-label="Club photographs">
+            <div><span>Nursery day · Oct</span></div>
+            <div><span>Planting · Aug</span></div>
+            <div><span>Market stall · Sep</span></div>
+          </div>
+        </div>
+
+        <div class="club-body">
+          <div>
+            <div class="notice">
+              <div class="notice-date">
+                <span>Sat</span>
+                <b>22</b>
+                <span>Nov</span>
+              </div>
+              <div class="notice-body">
+                <p class="eyebrow">Next on the programme</p>
+                <h3>Planting day</h3>
+                <p>
+                  60 seedlings, one riverbank. The bus leaves the main gate at 07:30 and returns by
+                  13:00.
+                </p>
+                <div class="row">
+                  <span>38 / 60 going</span>
+                  <span>6 on the waitlist</span>
+                  <span>Free · bus included</span>
+                </div>
+              </div>
+            </div>
+
+            <h2 class="subhead"><span>The term</span><span>4 notices</span></h2>
+            <table class="term-table">
+              <caption class="sr-only">
+                Agri Club term plan
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">What</th>
+                  <th scope="col">Where</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><time datetime="2026-11-22">Sat 22 Nov</time></td>
+                  <td>Planting day</td>
+                  <td>Ngong river bank</td>
+                  <td><span class="status status--full">38 / 60 · waitlist</span></td>
+                </tr>
+                <tr>
+                  <td><time datetime="2026-11-29">Sat 29 Nov</time></td>
+                  <td>Harvest morning</td>
+                  <td>Karen plot</td>
+                  <td><span class="status status--open">21 / 40 · open</span></td>
+                </tr>
+                <tr>
+                  <td><time datetime="2026-12-06">Sat 06 Dec</time></td>
+                  <td>Market stall</td>
+                  <td>Student square</td>
+                  <td><span class="status status--open">12 / 20 · open</span></td>
+                </tr>
+                <tr>
+                  <td><time datetime="2026-12-13">Sat 13 Dec</time></td>
+                  <td>Term close · seed swap</td>
+                  <td>Block C</td>
+                  <td><span class="status status--draft">Draft</span></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h2 class="subhead"><span>Dispatches</span><span>Updated today</span></h2>
+            <div class="dispatches">
+              <article>
+                <h4>Bus confirmed</h4>
+                <p>One 52-seater, leaving 07:30 sharp. Latecomers meet us at the site.</p>
+                <time datetime="2026-11-20">20 Nov</time>
+              </article>
+              <article>
+                <h4>Gloves</h4>
+                <p>Bring your own if you have them; the club has thirty pairs.</p>
+                <time datetime="2026-11-18">18 Nov</time>
+              </article>
+              <article>
+                <h4>Photos from nursery day</h4>
+                <p>Twelve photographs are up in the club gallery.</p>
+                <time datetime="2026-11-15">15 Nov</time>
+              </article>
+            </div>
+          </div>
+
+          <aside aria-label="Officers and membership">
+            <div class="side-block">
+              <h2 class="subhead"><span>Who runs it</span><span>4 officers</span></h2>
+              <ul class="people">
+                <li>
+                  <span class="avatar">AO</span><span><b>Amara Otieno</b><span>Chair</span></span>
+                </li>
+                <li>
+                  <span class="avatar">BW</span
+                  ><span><b>Brian Waweru</b><span>Vice chair</span></span>
+                </li>
+                <li>
+                  <span class="avatar">FN</span
+                  ><span><b>Faith Njeri</b><span>Secretary</span></span>
+                </li>
+                <li>
+                  <span class="avatar">MK</span
+                  ><span><b>Musa Kiptoo</b><span>Treasurer</span></span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="join">
+              <h4>Join the club</h4>
+              <p>
+                Membership is open all term. KES 200 covers seed, tools and the end-of-term swap.
+              </p>
+              <button class="btn" type="button">Join Agri Club</button>
+              <p class="fine">
+                You'll get the Thursday reminder and first refusal on planting trips.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- 3. Commitment -->
+      <section class="screen" id="notice-main" aria-label="Commitment — planting day">
+        <div class="chrome">
+          <i></i><i></i><i></i><span>kesho.app / commitments / planting-day</span>
+        </div>
+        <div class="notice-head">
+          <div class="row">
+            <span>Notice no. 042 · Agri Club</span>
+            <span>Posted 15 Nov · updated 20 Nov</span>
+            <span>Category · Field work</span>
+          </div>
+          <h1>Planting <em>day.</em></h1>
+          <p class="deck">
+            Sixty indigenous seedlings, one riverbank, and a bus at 7:30. Two hours of your morning
+            puts 60 trees in the ground before the rain.
+          </p>
+        </div>
+
+        <div class="detail">
+          <div>
+            <h2>The morning</h2>
+            <ol class="run-sheet">
+              <li>
+                <time datetime="2026-11-22T07:30+03:00">07:30</time
+                ><span>Bus leaves the main gate. Bring your student ID.</span>
+              </li>
+              <li>
+                <time datetime="2026-11-22T08:30+03:00">08:30</time
+                ><span>Site briefing with the county ranger at Ngong river bank.</span>
+              </li>
+              <li>
+                <time datetime="2026-11-22T09:00+03:00">09:00</time
+                ><span>Planting. Teams of four, one seedling tray each.</span>
+              </li>
+              <li>
+                <time datetime="2026-11-22T12:00+03:00">12:00</time
+                ><span>Lunch under the trees — provided by the club.</span>
+              </li>
+              <li>
+                <time datetime="2026-11-22T13:00+03:00">13:00</time
+                ><span>Bus returns to campus.</span>
+              </li>
+            </ol>
+
+            <h2>What to bring</h2>
+            <ul class="bring">
+              <li>Closed shoes</li>
+              <li>A water bottle</li>
+              <li>Gloves if you have them</li>
+              <li>A hat or cap</li>
+            </ul>
+
+            <div class="host">
+              <span class="avatar">AO</span>
+              <span>
+                <b>Hosted by Amara Otieno</b>
+                <span>Chair, Agri Club · replies within a day</span>
+              </span>
+            </div>
+
+            <h2>Updates</h2>
+            <div class="updates">
+              <article>
+                <time datetime="2026-11-20">20 Nov</time>
+                <p>
+                  Bus confirmed: one 52-seater from the main gate. If you're late, meet us on site.
+                </p>
+              </article>
+              <article>
+                <time datetime="2026-11-18">18 Nov</time>
+                <p>Thirty pairs of gloves are packed. Bring your own if you prefer.</p>
+              </article>
+              <article>
+                <time datetime="2026-11-15">15 Nov</time>
+                <p>Meeting point is the main gate, not the car park. Look for the green flag.</p>
+              </article>
+            </div>
+          </div>
+
+          <aside class="stub" aria-label="Sign up for planting day">
+            <div class="stub-top">
+              <div class="stub-label"><span>Admit one</span><span>042</span></div>
+              <h3>Planting day</h3>
+              <p class="stub-meta">
+                Sat 22 Nov · 07:30–13:00<br />
+                Main gate → Ngong river bank
+              </p>
+              <div class="spots"><b>38 / 60</b><span>Going</span></div>
+              <div class="meter" role="img" aria-label="38 of 60 spots taken, 63 percent">
+                <i></i>
+              </div>
+              <p class="wait">6 on the waitlist · free, bus included</p>
+              <button class="btn" type="button">Join the work day</button>
+              <p class="fine">
+                You'll get a reminder the night before. Cancel by Friday 18:00 to free your spot.
+              </p>
+            </div>
+            <div class="stub-bottom">
+              <span class="avatar">SR</span>
+              <p>Signed in as Sofia · your spot is held for 10 minutes</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- 4. Officer desk -->
+      <section class="screen" id="desk-main" aria-label="Officer desk">
+        <div class="chrome"><i></i><i></i><i></i><span>kesho.app / desk / agri / events</span></div>
+        <div class="desk-head">
+          <div>
+            <p class="kicker">Agri Club · officer desk</p>
+            <h1>The desk</h1>
+          </div>
+          <p class="ed">Edition closes 18:00<br />4 events · 2 requests</p>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Desk sections">
+          <button class="tab" type="button" role="tab" aria-selected="false">Today</button>
+          <button class="tab" type="button" role="tab" aria-selected="true" aria-current="page">
+            Events
+          </button>
+          <button class="tab" type="button" role="tab" aria-selected="false">People</button>
+          <button class="tab" type="button" role="tab" aria-selected="false">Requests</button>
+          <button class="tab" type="button" role="tab" aria-selected="false">Audit</button>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><b>86</b><span>Members</span></div>
+          <div class="kpi"><b>38</b><span>Going · planting day</span></div>
+          <div class="kpi">
+            <b><em>6</em></b
+            ><span>On the waitlist</span>
+          </div>
+          <div class="kpi"><b>2</b><span>Open requests</span></div>
+        </div>
+
+        <div class="desk-body">
+          <div>
+            <table class="desk-table">
+              <caption>
+                Term events · capacity and status
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Event</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Going</th>
+                  <th scope="col">Waitlist</th>
+                  <th scope="col">Status</th>
+                  <th scope="col"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="event-name">Planting day</td>
+                  <td class="num">Sat 22 Nov</td>
+                  <td class="num">38 / 60</td>
+                  <td class="num">6</td>
+                  <td><span class="pill pill--wait">Waitlist open</span></td>
+                  <td><button class="text-btn" type="button">Manage</button></td>
+                </tr>
+                <tr>
+                  <td class="event-name">Harvest morning</td>
+                  <td class="num">Sat 29 Nov</td>
+                  <td class="num">21 / 40</td>
+                  <td class="num">0</td>
+                  <td><span class="pill pill--live">Open</span></td>
+                  <td><button class="text-btn" type="button">Manage</button></td>
+                </tr>
+                <tr>
+                  <td class="event-name">Market stall</td>
+                  <td class="num">Sat 06 Dec</td>
+                  <td class="num">12 / 20</td>
+                  <td class="num">0</td>
+                  <td><span class="pill pill--live">Open</span></td>
+                  <td><button class="text-btn" type="button">Manage</button></td>
+                </tr>
+                <tr>
+                  <td class="event-name">Term close · seed swap</td>
+                  <td class="num">Sat 13 Dec</td>
+                  <td class="num">—</td>
+                  <td class="num">—</td>
+                  <td><span class="pill">Draft</span></td>
+                  <td><button class="text-btn" type="button">Finish draft</button></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table class="desk-table">
+              <caption>
+                Waitlist · planting day · first come, first served
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Requested</th>
+                  <th scope="col">Notified</th>
+                  <th scope="col"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="num">1</td>
+                  <td>Kevin Mwangi</td>
+                  <td class="num">18 Nov · 09:12</td>
+                  <td>Yes</td>
+                  <td><button class="text-btn" type="button">Offer spot</button></td>
+                </tr>
+                <tr>
+                  <td class="num">2</td>
+                  <td>Lynn Achieng</td>
+                  <td class="num">18 Nov · 11:40</td>
+                  <td>Yes</td>
+                  <td><button class="text-btn" type="button">Offer spot</button></td>
+                </tr>
+                <tr>
+                  <td class="num">3</td>
+                  <td>Peter Kamau</td>
+                  <td class="num">19 Nov · 16:05</td>
+                  <td>No</td>
+                  <td><button class="text-btn" type="button">Offer spot</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="aside-cards" aria-label="Requests and activity">
+            <h3><span>Requests</span><span>2 open</span></h3>
+            <div class="request">
+              <p>
+                <strong>Add a second bus.</strong> Six on the waitlist and the county can host 70.
+              </p>
+              <p class="who">Amara Otieno · 09:04</p>
+              <div class="acts">
+                <button class="mini mini--go" type="button">Approve</button>
+                <button class="mini" type="button">Reply</button>
+              </div>
+            </div>
+            <div class="request">
+              <p><strong>Move Thursday to Block C.</strong> The lab is booked for exams.</p>
+              <p class="who">Faith Njeri · 08:31</p>
+              <div class="acts">
+                <button class="mini mini--go" type="button">Approve</button>
+                <button class="mini" type="button">Reply</button>
+              </div>
+            </div>
+
+            <div class="wire">
+              <h3><span>Activity</span><span>Live</span></h3>
+              <p><b>09:12</b> Sofia joined the work day · 38/60</p>
+              <p><b>09:04</b> Amara requested a second bus</p>
+              <p><b>08:47</b> Kevin moved to the waitlist</p>
+              <p><b>08:31</b> Faith requested a room change</p>
+              <p><b>07:58</b> Reminder sent to 38 members</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <!-- System panel -->
+    <section class="system" aria-labelledby="signal-system">
+      <h2 id="signal-system">Signal — system and accessibility</h2>
+      <p>
+        The bet: a campus already reads notices, posters and papers, so a product that behaves like
+        a well-edited daily edition feels familiar and civic rather than corporate. The risk is
+        noise — poster type plus a moving wire can overwhelm — so the officer desk is deliberately
+        quiet and tabular, and the wire is the only thing that moves.
+      </p>
+      <div class="sys-grid">
+        <div class="sys">
+          <h3>Palette</h3>
+          <div class="sw"><i style="background: #f4f2ec"></i>Paper #F4F2EC</div>
+          <div class="sw"><i style="background: #0e0f0c"></i>Ink #0E0F0C · 17.2:1</div>
+          <div class="sw"><i style="background: #c63312"></i>Signal #C63312 · white 5.4:1</div>
+          <div class="sw"><i style="background: #8f2209"></i>Signal deep #8F2209 · 7.8:1</div>
+          <div class="sw"><i style="background: #5c5e52"></i>Muted #5C5E52 · 5.9:1</div>
+          <p style="margin-top: 8px">
+            Vermilion marks the live/urgent layer only: the wire label, the lead kicker, the primary
+            action. Never body text.
+          </p>
+        </div>
+        <div class="sys">
+          <h3>Type</h3>
+          <p class="specimen">Anton<small>Display · headlines, numerals, club names</small></p>
+          <p
+            class="specimen"
+            style="
+              font-family: var(--body);
+              font-weight: 600;
+              font-size: 20px;
+              text-transform: none;
+            "
+          >
+            Archivo<small>Body · 16px / 1.55 · labels 13px semibold</small>
+          </p>
+          <p
+            class="specimen"
+            style="
+              font-family: var(--mono);
+              font-size: 18px;
+              font-weight: 400;
+              text-transform: none;
+            "
+          >
+            IBM Plex Mono<small>Data · times, spots, table heads, wire</small>
+          </p>
+        </div>
+        <div class="sys">
+          <h3>Layout</h3>
+          <ul>
+            <li>12 columns, 1180px max, 26px page gutters.</li>
+            <li>Lead story 5/3 split; bulletins 3/2 with a ruled sidebar.</li>
+            <li>Rules do the dividing: 1px hairlines, 3px section rules.</li>
+            <li>No radius except the wire label and stamps (2px).</li>
+            <li>Tables invert their header row; the desk is the only dense screen.</li>
+          </ul>
+        </div>
+        <div class="sys">
+          <h3>Motion</h3>
+          <ul>
+            <li>One lead reveal: 10px rise, 500ms, stagger 45ms.</li>
+            <li>Wire crawls 42s, pauses on hover, focus and the explicit button.</li>
+            <li>Hover inverts a bulletin row instead of lifting it.</li>
+            <li>
+              Reduced motion: wire becomes a wrapped static list, reveals off, no transitions.
+            </li>
+            <li>No autoplay audio, nothing flashes, no scroll effects.</li>
+          </ul>
+        </div>
+        <div class="sys">
+          <h3>Accessibility in this board</h3>
+          <ul>
+            <li>Skip link, landmarks, one h1 per screen, ordered headings.</li>
+            <li>
+              All controls are buttons/links; the wire has a real pause control with aria-pressed.
+            </li>
+            <li>Wire content is repeated in "On campus today", so nothing is only-in-motion.</li>
+            <li>Status is written: "waitlist open", "38 / 60", "seats left" — not colour alone.</li>
+            <li>Focus ring 3px vermilion with 3px offset; 44px primary targets.</li>
+            <li>
+              Body 17.2:1, muted 5.9:1, white-on-signal 5.4:1; tables use th scope and captions.
+            </li>
+            <li>
+              Reduced-motion path removes the crawl and all reveals; content stays visible without
+              JS.
+            </li>
+          </ul>
+        </div>
+        <div class="sys">
+          <h3>Honest risks</h3>
+          <ul>
+            <li>
+              Poster type at 82px can push the lead below the fold on a phone — the clamp caps it.
+            </li>
+            <li>Newsprint metaphors age; the desk must stay a tool, not a pastiche.</li>
+            <li>Two type families plus mono is the ceiling; adding a fourth breaks the system.</li>
+            <li>Vermilion is assertive — the desk deliberately uses almost none of it.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      (function () {
+        var ticker = document.querySelector(".ticker");
+        var toggle = document.querySelector(".ticker-toggle");
+        if (ticker && toggle) {
+          toggle.addEventListener("click", function () {
+            var paused = ticker.classList.toggle("is-paused");
+            toggle.setAttribute("aria-pressed", String(paused));
+            toggle.textContent = paused ? "Play wire" : "Pause wire";
+          });
+        }
+
+        if ("IntersectionObserver" in window) {
+          var io = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                  entry.target.classList.add("in");
+                  io.unobserve(entry.target);
+                }
+              });
+            },
+            { rootMargin: "0px 0px -8% 0px" }
+          );
+          document.querySelectorAll(".reveal").forEach(function (el) {
+            io.observe(el);
+          });
+        } else {
+          document.querySelectorAll(".reveal").forEach(function (el) {
+            el.classList.add("in");
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>
