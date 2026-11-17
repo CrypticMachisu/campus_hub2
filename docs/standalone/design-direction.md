@@ -324,6 +324,9 @@ commitment: a dated activity with a host, a place and an optional capacity.
   and the club page always agree. Existing event RSVPs use the same rule.
 - Migration `014_comments_commitment_target.sql` widens the comments target
   enum so a commitment has its own discussion thread, like clubs and events.
+- Migration `015_notifications.sql` adds targeted in-app notices, so a moved or
+  cancelled commitment reaches the people who signed up instead of relying on
+  the officer to chase them.
 
 ### Surface
 
@@ -343,16 +346,19 @@ commitment: a dated activity with a host, a place and an optional capacity.
   nobody is deleted.
 - "My commitments" merges event RSVPs and commitment signups into one stack,
   stamped `Going`, `Committed` or `Waitlist`, and withdraws through the right
-  endpoint. The home rail mixes both, soonest first.
+  endpoint. The home rail mixes both, soonest first. A `Notices` section above
+  the tickets carries targeted changes: a moved notice says what the old and
+  new times were, a cancellation says the club removed it, and either can be
+  marked read or cleared in one action.
 - Signal treatment is unchanged: ruled rows, date stamps, a notice stub and
   mono metadata. The waitlist is never conveyed by colour alone — the button
   label, position and roster state all say it in words.
 
 ### Deferred
 
-- Rescheduling or cancelling a commitment does not yet notify the people who
-  signed up; the officer has to reach them another way. In-app notices are the
-  next slice.
+- Notices are in-app only. Email reminders before a commitment starts need a
+  transactional email provider and an opt-in decision; they are the next
+  slice.
 - Calendar export is a one-way .ics download. Subscribing or two-way calendar
   sync stays out of scope.
 - Commitment comments use the same thread component as clubs and events; there

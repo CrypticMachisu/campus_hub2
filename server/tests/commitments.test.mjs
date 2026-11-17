@@ -93,6 +93,17 @@ test(
 
     t.after(async () => {
       await api(`/v2/commitments/${commitment.id}`, { method: "DELETE", token: admin });
+      // Notices have no FK to the commitment, so clear the ones this run made.
+      for (const token of [sofia, yuki]) {
+        const res = await api("/v2/notifications", { token });
+        if (!res.ok) continue;
+        const { notifications } = await res.json();
+        for (const notice of notifications) {
+          if (notice.title.startsWith(commitment.title)) {
+            await api(`/v2/notifications/${notice.id}`, { method: "DELETE", token });
+          }
+        }
+      }
     });
 
     // Commitments accept comments like events and clubs do.
@@ -250,6 +261,32 @@ test(
     assert.equal(edited.hostName, "Daniel Kamau");
     assert.equal(edited.capacity, 2);
 
+    // A moved notice reaches the people who signed up, and is theirs to read.
+    const yukiNotices = await api("/v2/notifications", { token: yuki });
+    const yukiInbox = await expectJson(yukiNotices, 200, "yuki notices");
+    const moved = yukiInbox.notifications.find(
+      (notice) =>
+        notice.kind === "commitment_rescheduled" && notice.title.startsWith(commitment.title)
+    );
+    assert.ok(moved, "a reschedule should notify signed-up members");
+    assert.match(moved.title, /moved$/);
+    assert.match(moved.body, /it is now/);
+    assert.ok(yukiInbox.unreadCount >= 1);
+
+    const read = await api(`/v2/notifications/${moved.id}/read`, {
+      method: "PATCH",
+      token: yuki,
+    });
+    const readBody = await expectJson(read, 200, "mark notice read");
+    assert.ok(readBody.unreadCount < yukiInbox.unreadCount);
+
+    // Someone else cannot read or dismiss another member's notice.
+    const foreignRead = await api(`/v2/notifications/${moved.id}/read`, {
+      method: "PATCH",
+      token: sofia,
+    });
+    assert.equal(foreignRead.status, 404);
+
     // A member cannot remove another person from the roster.
     const memberRemove = await api(`/v2/commitments/${commitment.id}/signups/${firstSignup.id}`, {
       method: "DELETE",
@@ -286,7 +323,10 @@ test(
     const emptyRoster = await api(`/v2/commitments/${commitment.id}/roster`, { token: admin });
     assert.equal((await expectJson(emptyRoster, 200, "empty roster")).summary.going, 0);
 
-    // Cancelling removes the notice; the cleanup delete below is then a no-op.
+    // Cancelling tells whoever was still signed up, then removes the notice.
+    const lateSignup = await signupFor(sofia, commitment.id);
+    assert.equal(lateSignup.status, 201);
+
     const cancelled = await api(`/v2/commitments/${commitment.id}`, {
       method: "DELETE",
       token: admin,
@@ -294,5 +334,14 @@ test(
     assert.equal(cancelled.status, 204);
     const gone = await api(`/v2/commitments/${commitment.id}`);
     assert.equal(gone.status, 404, "a cancelled commitment should no longer be readable");
+
+    const sofiaNotices = await api("/v2/notifications", { token: sofia });
+    const sofiaInbox = await expectJson(sofiaNotices, 200, "sofia notices");
+    const cancellation = sofiaInbox.notifications.find(
+      (notice) =>
+        notice.kind === "commitment_cancelled" && notice.title.startsWith(commitment.title)
+    );
+    assert.ok(cancellation, "a cancellation should notify the people signed up");
+    assert.match(cancellation.title, /was cancelled$/);
   }
 );

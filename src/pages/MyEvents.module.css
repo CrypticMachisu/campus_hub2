@@ -70,6 +70,132 @@
   border-color: var(--ink);
 }
 
+.notices {
+  margin: 1rem 0 0.4rem;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--signal);
+  background: var(--paper-2);
+}
+
+.noticesHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem 0.55rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.noticesTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.noticesTools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.unreadCount {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+}
+
+.readAllButton,
+.readButton {
+  min-height: 30px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--rule);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.readAllButton:hover,
+.readButton:hover {
+  border-color: var(--ink);
+}
+
+.noticesList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.noticeItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px dashed var(--rule);
+}
+
+.noticeItem:last-child {
+  border-bottom: 0;
+}
+
+.unread {
+  background: var(--paper);
+}
+
+.noticeCopy {
+  min-width: 0;
+  flex: 1 1 14rem;
+}
+
+.noticeTitle {
+  margin: 0 0 0.2rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.unreadTag {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--signal);
+  font-family: var(--font-mono);
+  font-size: 0.48rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+  vertical-align: middle;
+}
+
+.noticeBody {
+  margin: 0 0 0.2rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.noticeMeta {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+.noticeLink {
+  border-bottom: 1px solid var(--ink);
+}
+
 .list {
   list-style: none;
   margin: 0.6rem 0 0;

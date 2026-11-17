@@ -255,6 +255,27 @@ CREATE TABLE announcements (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
+-- notifications
+-- Targeted in-app notices (commitment moved or cancelled). Read state is
+-- per user; the client only ever sees its own rows.
+-- ----------------------------------------------------------------------------
+CREATE TABLE notifications (
+    notification_id VARCHAR(64)  PRIMARY KEY,
+    user_id         VARCHAR(30)  NOT NULL,
+    kind            VARCHAR(40)  NOT NULL,
+    title           VARCHAR(200) NOT NULL,
+    body            TEXT         NULL,
+    link            VARCHAR(255) NULL,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    read_at         DATETIME     NULL,
+    INDEX idx_notifications_user_created (user_id, created_at),
+    INDEX idx_notifications_unread (user_id, read_at),
+    CONSTRAINT fk_notifications_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
 -- admin_requests
 -- Backs the "request admin access" flow: members ask a tier1 to promote
 -- them to a club's tier2 admin. request_id is auto-numbered because this

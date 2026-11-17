@@ -18,6 +18,7 @@ import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { agroRouter } from "./routes/agro.js";
 import { commitmentsRouter } from "./routes/commitments.js";
+import { notificationsRouter } from "./routes/notifications.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { limiter } from "./middleware/apiGuards.js";
 
@@ -37,4 +38,5 @@ v2Router.use("/agro", agroRouter);
 // Phase 2: commitments supersede agro opportunities for new clients. The agro
 // routes stay mounted so nothing breaks mid-migration, but no UI calls them.
 v2Router.use("/commitments", commitmentsRouter);
+v2Router.use("/notifications", notificationsRouter);
 v2Router.use("/admin", createAdminRouter(limiter));

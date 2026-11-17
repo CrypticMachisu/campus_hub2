@@ -6,6 +6,11 @@ import { useClubs } from "../context/ClubsContext";
 import { getAllEvents } from "../utils/eventsStore";
 import { getSignups, deleteSignup } from "../utils/storage";
 import { getMyCommitments, withdrawCommitment } from "../utils/commitmentsStore";
+import {
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "../utils/notificationsStore";
 import { formatEventDate, getEventTimestamp } from "../utils/dateTime";
 import { SkeletonGroup, CardStackSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
@@ -36,6 +41,8 @@ export default function MyEvents() {
   const [notice, setNotice] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [cancelling, setCancelling] = useState(() => new Set());
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -52,10 +59,12 @@ export default function MyEvents() {
       try {
         // Event signups cascade with their event; commitment signups come
         // back attached to the commitment, so both lists render directly.
-        const [events, signups, commitments] = await Promise.all([
+        const [events, signups, commitments, notices] = await Promise.all([
           getAllEvents(),
           getSignups(),
           getMyCommitments(),
+          // Notices are secondary: a notice outage must not hide the tickets.
+          getNotifications().catch(() => ({ notifications: [], unreadCount: 0 })),
         ]);
         if (cancelled) return;
 
@@ -79,6 +88,8 @@ export default function MyEvents() {
           .sort((a, b) => getEventTimestamp(a) - getEventTimestamp(b));
 
         setItems(joined);
+        setNotifications(notices.notifications || []);
+        setUnreadCount(notices.unreadCount || 0);
       } catch (err) {
         if (!cancelled) setError(err.message);
       } finally {
@@ -92,6 +103,35 @@ export default function MyEvents() {
       cancelled = true;
     };
   }, [user, reloadKey]);
+
+  async function handleRead(notificationId) {
+    try {
+      const result = await markNotificationRead(notificationId);
+      setNotifications((current) =>
+        current.map((notice) =>
+          notice.id === notificationId
+            ? { ...notice, readAt: notice.readAt || new Date().toISOString() }
+            : notice
+        )
+      );
+      setUnreadCount(result.unreadCount);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleReadAll() {
+    try {
+      await markAllNotificationsRead();
+      const readAt = new Date().toISOString();
+      setNotifications((current) =>
+        current.map((notice) => ({ ...notice, readAt: notice.readAt || readAt }))
+      );
+      setUnreadCount(0);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   async function handleCancel(item) {
     const previous = items;
@@ -152,6 +192,69 @@ export default function MyEvents() {
             : "Everything you've committed to, in one place"}
         </p>
       </header>
+
+      {notifications.length > 0 && (
+        <section className={styles.notices} aria-labelledby="notices-heading">
+          <div className={styles.noticesHead}>
+            <div>
+              <p className={styles.eyebrow}>Changes</p>
+              <h2 id="notices-heading" className={styles.noticesTitle}>
+                Notices
+              </h2>
+            </div>
+            {unreadCount > 0 && (
+              <div className={styles.noticesTools}>
+                <span className={styles.unreadCount}>{unreadCount} unread</span>
+                <button type="button" className={styles.readAllButton} onClick={handleReadAll}>
+                  Mark all read
+                </button>
+              </div>
+            )}
+          </div>
+
+          <ul className={styles.noticesList}>
+            {notifications.map((item) => (
+              <li
+                key={item.id}
+                className={
+                  item.readAt ? styles.noticeItem : `${styles.noticeItem} ${styles.unread}`
+                }
+              >
+                <div className={styles.noticeCopy}>
+                  <p className={styles.noticeTitle}>
+                    {!item.readAt && <span className={styles.unreadTag}>New</span>}
+                    {item.title}
+                  </p>
+                  {item.body && <p className={styles.noticeBody}>{item.body}</p>}
+                  <p className={styles.noticeMeta}>
+                    <time dateTime={item.createdAt}>
+                      {new Date(item.createdAt).toLocaleString()}
+                    </time>
+                    {item.link && (
+                      <>
+                        {" · "}
+                        <Link to={item.link} className={styles.noticeLink}>
+                          View
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                </div>
+                {!item.readAt && (
+                  <button
+                    type="button"
+                    className={styles.readButton}
+                    onClick={() => handleRead(item.id)}
+                    aria-label={`Mark "${item.title}" as read`}
+                  >
+                    Mark read
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {notice && (
         <p className={styles.notice} role="status">

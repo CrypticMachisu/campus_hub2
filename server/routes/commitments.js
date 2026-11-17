@@ -15,6 +15,7 @@ import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js"
 import { createApiRouter } from "../middleware/apiGuards.js";
 import { recordAudit } from "../audit.js";
 import { parseStartTime } from "./events.js";
+import { notifyUsers } from "../notify.js";
 
 export const commitmentsRouter = createApiRouter();
 
@@ -85,6 +86,28 @@ async function positionOf(commitmentId, signupId) {
 
 function waitlistedFor(capacity, position) {
   return capacity != null && position != null && position > Number(capacity);
+}
+
+/** "Thu 19 Nov, 08:00" from an East Africa wall-clock date and time. */
+function describeStart(date, time = "") {
+  const [year, month, day] = String(date).split("-").map(Number);
+  if (!year || !month || !day) return `${date} ${time}`.trim();
+  const label = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+  return time ? `${label}, ${time.slice(0, 5)}` : label;
+}
+
+/** Signup user ids, read before a cancel deletes the rows. */
+async function signupUserIds(commitmentId) {
+  const [rows] = await pool.query(
+    "SELECT user_id FROM commitment_signups WHERE commitment_id = :id",
+    { id: commitmentId }
+  );
+  return rows.map((row) => row.user_id);
 }
 
 /** The ids of this user's commitment signups, for the `joined` flag. */
@@ -277,7 +300,8 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
  */
 commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT commitment_id, club_id, title, capacity, starts_at
+    `SELECT commitment_id, club_id, title, capacity, starts_at,
+            DATE_FORMAT(starts_at, '%Y-%m-%dT%H:%i') AS starts_local
      FROM commitments WHERE commitment_id = :id`,
     { id: req.params.id }
   );
@@ -375,6 +399,28 @@ commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
     id: req.params.id,
   });
 
+  // A moved notice is the one edit members cannot see by refreshing a page
+  // they no longer have open, so it gets a targeted notice. Failing to write
+  // that notice must not turn a saved edit into an error.
+  if (updates.startsAt) {
+    const newStartLocal = updates.startsAt.value.slice(0, 16).replace(" ", "T");
+    if (newStartLocal !== commitment.starts_local) {
+      try {
+        await notifyUsers(await signupUserIds(req.params.id), {
+          kind: "commitment_rescheduled",
+          title: `${updatedRows[0].title} moved`,
+          body: `It was ${describeStart(
+            commitment.starts_local.slice(0, 10),
+            commitment.starts_local.slice(11)
+          )}; it is now ${describeStart(newStartLocal.slice(0, 10), newStartLocal.slice(11))}.`,
+          link: `/commitments/${req.params.id}`,
+        });
+      } catch (err) {
+        console.error("Could not notify commitment signups about a reschedule:", err.message);
+      }
+    }
+  }
+
   const fields = Object.keys(updates);
   const capacityOnly = fields.length === 1 && fields[0] === "capacity";
   await recordAudit(req, {
@@ -427,10 +473,13 @@ commitmentsRouter.delete("/:id/signups/:signupId", requireAuth, async (req, res)
   res.json({ signupCount: Number(count) });
 });
 
-/** DELETE /commitments/:id — managers only; signups cascade. */
+/** DELETE /commitments/:id — managers only; signups cascade and are told why. */
 commitmentsRouter.delete("/:id", requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    "SELECT commitment_id, club_id, title FROM commitments WHERE commitment_id = :id",
+    `SELECT c.commitment_id, c.club_id, c.title, cl.name AS club_name
+     FROM commitments c
+     JOIN clubs cl ON cl.club_id = c.club_id
+     WHERE c.commitment_id = :id`,
     { id: req.params.id }
   );
   const commitment = rows[0];
@@ -439,7 +488,21 @@ commitmentsRouter.delete("/:id", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "You don't have admin access to that club." });
   }
 
+  // Capture recipients before the cascade deletes their signup rows.
+  const recipients = await signupUserIds(req.params.id);
   await pool.query("DELETE FROM commitments WHERE commitment_id = :id", { id: req.params.id });
+
+  try {
+    await notifyUsers(recipients, {
+      kind: "commitment_cancelled",
+      title: `${commitment.title} was cancelled`,
+      body: `${commitment.club_name} cancelled this commitment. It has been removed from your commitments.`,
+      link: `/clubs/${commitment.club_id}`,
+    });
+  } catch (err) {
+    console.error("Could not notify commitment signups about a cancellation:", err.message);
+  }
+
   await recordAudit(req, {
     action: "commitment.delete",
     targetType: "commitment",
