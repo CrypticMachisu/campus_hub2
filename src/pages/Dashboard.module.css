@@ -743,6 +743,17 @@
   padding: 0.7rem 0.55rem 0.9rem;
 }
 
+.attendanceSelect {
+  min-height: 30px;
+  max-width: 8.5rem;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface, #fff);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--color-text);
+}
+
 .rosterSummary {
   margin: 0 0 0.45rem;
   font-family: var(--font-mono);

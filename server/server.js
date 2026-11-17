@@ -3,6 +3,7 @@ import { app } from "./app.js";
 import { isV1Retired } from "./v1.js";
 import { assertDbConnection } from "./db.js";
 import { validApiKeyCount } from "./middleware/apiKey.js";
+import { startReminderScheduler } from "./reminders.js";
 
 // server.js only starts things. The routes, middleware and the two API
 // versions live in app.js, which is exported without listening so the test
@@ -25,6 +26,7 @@ assertDbConnection()
         `Rate limit: ${process.env.RATE_LIMIT_MAX || 100} requests per ${process.env.RATE_LIMIT_WINDOW_MS || 60000} ms per key`
       );
       if (publicUrl) console.log(`Public URL: ${publicUrl}/api`);
+      startReminderScheduler();
       // Same line every time until the sunset; after it, say plainly that v1
       // is gone, because that is now the server's behaviour and not a plan.
       console.log(

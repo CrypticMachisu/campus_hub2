@@ -327,6 +327,12 @@ commitment: a dated activity with a host, a place and an optional capacity.
 - Migration `015_notifications.sql` adds targeted in-app notices, so a moved or
   cancelled commitment reaches the people who signed up instead of relying on
   the officer to chase them.
+- Migration `016_commitment_reminders.sql` stamps `reminder_sent_at` on a
+  signup after its reminder email is accepted, so a restart or a second sweep
+  cannot send the same reminder twice.
+- Migration `017_commitment_attendance.sql` adds `attendance` to each signup
+  (`unknown`, `attended`, `no_show`). It lives on the signup row, so promoting
+  someone from the waitlist never creates a second list to reconcile.
 
 ### Surface
 
@@ -341,9 +347,15 @@ commitment: a dated activity with a host, a place and an optional capacity.
 - The officer **Desk** now carries the full commitment loop: a publish/edit
   form for every notice field, an inline seat editor, an inline cancel that
   names how many signups it will remove, and an expandable roster with
-  positions, emails, waitlist state and a remove control for withdrawals taken
-  by phone. Lowering a capacity moves the newest signups to the waitlist;
-  nobody is deleted.
+  positions, emails, waitlist state, at-the-door attendance and a remove
+  control for withdrawals taken by phone. Lowering a capacity moves the newest
+  signups to the waitlist; nobody is deleted. The roster summary reports how
+  many are checked in and how many were marked no-show.
+- A reminder worker emails people who are **going** to a commitment inside a
+  24-hour window (configurable), through Resend's HTTPS API. It is off unless
+  `RESEND_API_KEY` and `REMINDER_FROM` are set, with `EMAIL_REMINDERS=off` as a
+  hard kill switch; only accepted sends are stamped, so failures retry on the
+  next sweep. Waitlisted people are not reminded until a seat opens.
 - "My commitments" merges event RSVPs and commitment signups into one stack,
   stamped `Going`, `Committed` or `Waitlist`, and withdraws through the right
   endpoint. The home rail mixes both, soonest first. A `Notices` section above
@@ -356,10 +368,12 @@ commitment: a dated activity with a host, a place and an optional capacity.
 
 ### Deferred
 
-- Notices are in-app only. Email reminders before a commitment starts need a
-  transactional email provider and an opt-in decision; they are the next
-  slice.
+- Reminder delivery needs a verified Resend sender. No key or sender is
+  committed; until `RESEND_API_KEY` and `REMINDER_FROM` are set the worker logs
+  that it is off and sends nothing.
 - Calendar export is a one-way .ics download. Subscribing or two-way calendar
   sync stays out of scope.
 - Commitment comments use the same thread component as clubs and events; there
   is no separate moderation queue for them yet.
+- Attendance is marked by an officer on the roster. There is no member
+  self-check-in, QR code or attendance export yet.

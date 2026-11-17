@@ -646,6 +646,8 @@ CREATE TABLE IF NOT EXISTS commitment_signups (
     name_snapshot    VARCHAR(120) NOT NULL,
     email_snapshot   VARCHAR(160) NOT NULL,
     created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reminder_sent_at DATETIME     NULL,
+    attendance       ENUM("unknown", "attended", "no_show") NOT NULL DEFAULT "unknown",
     UNIQUE KEY uq_commitment_user (commitment_id, user_id),
     INDEX idx_commitment_signups_order (commitment_id, created_at, signup_id),
     CONSTRAINT fk_commitment_signups_commitment

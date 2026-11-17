@@ -102,6 +102,14 @@ export async function removeCommitmentSignup(commitmentId, signupId) {
   );
 }
 
+/** Club managers only: mark a signup attended, no-show, or clear the mark. */
+export async function markCommitmentAttendance(commitmentId, signupId, status) {
+  return apiFetch(
+    `/commitments/${encodeURIComponent(commitmentId)}/signups/${encodeURIComponent(signupId)}/attendance`,
+    { method: "PATCH", body: { status } }
+  );
+}
+
 /** Club managers only: going + waitlisted, in arrival order. */
 export async function getCommitmentRoster(commitmentId) {
   return apiFetch(`/commitments/${encodeURIComponent(commitmentId)}/roster`);

@@ -17,6 +17,7 @@ import {
   updateCommitment,
   updateCommitmentCapacity,
   removeCommitmentSignup,
+  markCommitmentAttendance,
 } from "../utils/commitmentsStore";
 import {
   getPendingAdminRequests,
@@ -607,6 +608,7 @@ function CommitmentsDesk({ clubId }) {
   const [rosters, setRosters] = useState({});
   const [confirmRemoveId, setConfirmRemoveId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
+  const [savingAttendanceId, setSavingAttendanceId] = useState(null);
   const [editor, setEditor] = useState(null);
   const [editorSaving, setEditorSaving] = useState(false);
   const [editorError, setEditorError] = useState("");
@@ -705,6 +707,46 @@ function CommitmentsDesk({ clubId }) {
       setNotice(err.message);
     } finally {
       setRemovingId(null);
+    }
+  }
+
+  async function markAttendance(row, person, status) {
+    setSavingAttendanceId(person.id);
+    setNotice("");
+    try {
+      await markCommitmentAttendance(row.id, person.id, status);
+      setRosters((current) => {
+        const entry = current[row.id];
+        if (!entry?.data) return current;
+        const roster = entry.data.roster.map((candidate) =>
+          candidate.id === person.id ? { ...candidate, attendance: status } : candidate
+        );
+        return {
+          ...current,
+          [row.id]: {
+            data: {
+              ...entry.data,
+              roster,
+              summary: {
+                ...entry.data.summary,
+                attended: roster.filter((candidate) => candidate.attendance === "attended").length,
+                noShow: roster.filter((candidate) => candidate.attendance === "no_show").length,
+              },
+            },
+          },
+        };
+      });
+      if (status === "unknown") {
+        setNotice(`Cleared the attendance mark for ${person.name}.`);
+      } else {
+        setNotice(
+          `${person.name} marked ${status === "attended" ? "attended" : "as a no-show"} for ${row.title}.`
+        );
+      }
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setSavingAttendanceId(null);
     }
   }
 
@@ -1158,7 +1200,11 @@ function CommitmentsDesk({ clubId }) {
                               {rosterState.data.summary.capacity != null
                                 ? ` of ${rosterState.data.summary.capacity}`
                                 : ""}{" "}
-                              · Waitlist {rosterState.data.summary.waitlisted}
+                              · Waitlist {rosterState.data.summary.waitlisted} · Checked in{" "}
+                              {rosterState.data.summary.attended}
+                              {rosterState.data.summary.noShow > 0
+                                ? ` · No-shows ${rosterState.data.summary.noShow}`
+                                : ""}
                             </p>
                             {rosterState.data.roster.length === 0 ? (
                               <p className={styles.emptyState}>Nobody has committed yet.</p>
@@ -1171,6 +1217,7 @@ function CommitmentsDesk({ clubId }) {
                                     <th scope="col">Email</th>
                                     <th scope="col">Signed up</th>
                                     <th scope="col">State</th>
+                                    <th scope="col">Attendance</th>
                                     <th scope="col">Remove</th>
                                   </tr>
                                 </thead>
@@ -1186,6 +1233,25 @@ function CommitmentsDesk({ clubId }) {
                                           <span className={styles.waitBadge}>Waitlist</span>
                                         ) : (
                                           "Going"
+                                        )}
+                                      </td>
+                                      <td>
+                                        {person.waitlisted ? (
+                                          <span className={styles.cellNote}>Waitlist</span>
+                                        ) : (
+                                          <select
+                                            className={styles.attendanceSelect}
+                                            value={person.attendance || "unknown"}
+                                            aria-label={`Attendance for ${person.name}`}
+                                            disabled={savingAttendanceId === person.id}
+                                            onChange={(e) =>
+                                              markAttendance(row, person, e.target.value)
+                                            }
+                                          >
+                                            <option value="unknown">Not marked</option>
+                                            <option value="attended">Attended</option>
+                                            <option value="no_show">No-show</option>
+                                          </select>
                                         )}
                                       </td>
                                       <td>

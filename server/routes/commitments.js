@@ -601,7 +601,8 @@ commitmentsRouter.get("/:id/roster", requireAuth, async (req, res) => {
   }
 
   const [people] = await pool.query(
-    `SELECT s.signup_id, s.user_id, s.created_at, s.name_snapshot, s.email_snapshot
+    `SELECT s.signup_id, s.user_id, s.created_at, s.name_snapshot, s.email_snapshot,
+            s.attendance
      FROM commitment_signups s
      WHERE s.commitment_id = :id
      ORDER BY s.created_at, s.signup_id`,
@@ -620,6 +621,7 @@ commitmentsRouter.get("/:id/roster", requireAuth, async (req, res) => {
         email: person.email_snapshot,
         position,
         waitlisted: capacity != null && position > capacity,
+        attendance: person.attendance || "unknown",
         signedUpAt: person.created_at,
       };
     }),
@@ -627,6 +629,46 @@ commitmentsRouter.get("/:id/roster", requireAuth, async (req, res) => {
       going: capacity == null ? people.length : Math.min(people.length, capacity),
       waitlisted: capacity == null ? 0 : Math.max(0, people.length - capacity),
       capacity,
+      attended: people.filter((person) => person.attendance === "attended").length,
+      noShow: people.filter((person) => person.attendance === "no_show").length,
     },
   });
+});
+
+/**
+ * PATCH /commitments/:id/signups/:signupId/attendance — officer check-in.
+ * The enum is intentional: "unknown" is a real state (nobody has been marked
+ * yet), so clearing a mistaken tap does not erase the person from the roster.
+ */
+commitmentsRouter.patch("/:id/signups/:signupId/attendance", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT commitment_id, club_id, title FROM commitments WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+  const commitment = rows[0];
+  if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (!canManageClub(req.user, commitment.club_id)) {
+    return res.status(403).json({ error: "You don't have admin access to that club." });
+  }
+
+  const status = typeof req.body?.status === "string" ? req.body.status : "";
+  if (!["unknown", "attended", "no_show"].includes(status)) {
+    return res.status(400).json({ error: "status must be unknown, attended or no_show." });
+  }
+
+  const [result] = await pool.query(
+    `UPDATE commitment_signups
+     SET attendance = :status
+     WHERE signup_id = :signupId AND commitment_id = :id`,
+    { status, signupId: req.params.signupId, id: req.params.id }
+  );
+  if (result.affectedRows === 0) return res.status(404).json({ error: "Signup not found." });
+
+  await recordAudit(req, {
+    action: "commitment.attendance",
+    targetType: "commitment",
+    targetId: req.params.id,
+    detail: { clubId: commitment.club_id, signupId: req.params.signupId, status },
+  });
+  res.json({ signupId: req.params.signupId, status });
 });

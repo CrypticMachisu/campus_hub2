@@ -179,6 +179,38 @@ test(
     assert.equal(rosterBody.roster[1].waitlisted, true);
     assert.equal(rosterBody.summary.going, 1);
     assert.equal(rosterBody.summary.waitlisted, 1);
+    assert.equal(rosterBody.summary.attended, 0);
+
+    // Check-in is an officer action, on a signup that belongs to the notice.
+    const forbiddenAttendance = await api(
+      `/v2/commitments/${commitment.id}/signups/${firstSignup.id}/attendance`,
+      { method: "PATCH", token: sofia, body: { status: "attended" } }
+    );
+    assert.equal(forbiddenAttendance.status, 403);
+
+    const badAttendance = await api(
+      `/v2/commitments/${commitment.id}/signups/${firstSignup.id}/attendance`,
+      { method: "PATCH", token: admin, body: { status: "maybe" } }
+    );
+    assert.equal(badAttendance.status, 400);
+
+    const checkedIn = await api(
+      `/v2/commitments/${commitment.id}/signups/${firstSignup.id}/attendance`,
+      { method: "PATCH", token: admin, body: { status: "attended" } }
+    );
+    assert.equal((await expectJson(checkedIn, 200, "check in")).status, "attended");
+    const withAttendance = await api(`/v2/commitments/${commitment.id}/roster`, {
+      token: admin,
+    });
+    const attendanceBody = await expectJson(withAttendance, 200, "roster with attendance");
+    assert.equal(attendanceBody.roster[0].attendance, "attended");
+    assert.equal(attendanceBody.summary.attended, 1);
+
+    const cleared = await api(
+      `/v2/commitments/${commitment.id}/signups/${firstSignup.id}/attendance`,
+      { method: "PATCH", token: admin, body: { status: "unknown" } }
+    );
+    assert.equal((await expectJson(cleared, 200, "clear attendance")).status, "unknown");
 
     // A member cannot delete someone else's commitment record.
     const memberDelete = await api(`/v2/commitments/${commitment.id}`, {
