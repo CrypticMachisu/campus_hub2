@@ -279,9 +279,9 @@ CREATE TABLE notifications (
 
 -- ----------------------------------------------------------------------------
 -- posts
--- Club dispatches for the Phase 3 noticeboard. Officers publish; the body is
--- text only in 3a. Status is soft: hidden and removed rows stay for the audit
--- trail and so their comment threads do not disappear into a dangling id.
+-- Club dispatches for the Phase 3 noticeboard. Officers publish text and, in
+-- 3b, up to three photos. Status is soft: hidden and removed rows stay for the
+-- audit trail and so their comment threads do not disappear into a dangling id.
 -- ----------------------------------------------------------------------------
 CREATE TABLE posts (
     post_id              VARCHAR(64)  PRIMARY KEY,   -- e.g. 'post-<timestamp>'
@@ -300,6 +300,40 @@ CREATE TABLE posts (
         ON UPDATE CASCADE ON DELETE SET NULL,
     INDEX idx_posts_club_created (club_id, status, created_at),
     INDEX idx_posts_status_created (status, created_at)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- post_media
+-- Photos for club posts. A row starts pending when the API signs an upload;
+-- post_id stays null until the post is created and HeadObject confirms the
+-- object. Only ready rows are returned to readers.
+-- ----------------------------------------------------------------------------
+CREATE TABLE post_media (
+    media_id       VARCHAR(64)  PRIMARY KEY,                 -- e.g. 'media-<uuid>'
+    post_id        VARCHAR(64)  NULL,
+    club_id        VARCHAR(30)  NOT NULL,
+    uploader_id    VARCHAR(30)  NULL,
+    storage_key    VARCHAR(255) NOT NULL,
+    alt_text       VARCHAR(300) NOT NULL DEFAULT '',
+    decorative     TINYINT(1)   NOT NULL DEFAULT 0,
+    width          INT          NULL,
+    height         INT          NULL,
+    mime           VARCHAR(80)  NOT NULL,
+    position       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    status         ENUM('pending', 'ready') NOT NULL DEFAULT 'pending',
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_post_media_post
+        FOREIGN KEY (post_id) REFERENCES posts(post_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_post_media_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_post_media_uploader
+        FOREIGN KEY (uploader_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    UNIQUE KEY uq_post_media_key (storage_key),
+    INDEX idx_post_media_post (post_id, position),
+    INDEX idx_post_media_pending (status, created_at)
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------

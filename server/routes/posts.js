@@ -4,20 +4,31 @@
 // hidden or removed by a manager without deleting the row. Comments reuse the
 // existing polymorphic thread (`target_type = 'post'`), so there is one
 // discussion system, not a second one for this surface.
+import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
 import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 import { recordAudit } from "../audit.js";
+import {
+  mediaStorage,
+  allowedMediaMime,
+  extensionForMime,
+  MAX_MEDIA_BYTES,
+  MAX_POST_MEDIA,
+} from "../storage.js";
 
 export const postsRouter = createApiRouter();
 
 const MAX_BODY = 2000;
+const MAX_ALT = 300;
 const STATUSES = ["published", "hidden", "removed"];
 
 const POST_QUERY = `
   SELECT p.*, cl.name AS club_name,
          (SELECT COUNT(*) FROM comments c
-           WHERE c.target_type = 'post' AND c.target_id = p.post_id) AS comment_count
+           WHERE c.target_type = 'post' AND c.target_id = p.post_id) AS comment_count,
+         (SELECT COUNT(*) FROM post_media m
+           WHERE m.post_id = p.post_id AND m.status = 'ready') AS photo_count
   FROM posts p
   JOIN clubs cl ON cl.club_id = p.club_id
 `;
@@ -28,7 +39,9 @@ const MANAGE_QUERY = `
            WHERE c.target_type = 'post' AND c.target_id = p.post_id) AS comment_count,
          (SELECT COUNT(*) FROM reports r
            WHERE r.target_type = 'post' AND r.target_id = p.post_id
-             AND r.status = 'open') AS open_reports
+             AND r.status = 'open') AS open_reports,
+         (SELECT COUNT(*) FROM post_media m
+           WHERE m.post_id = p.post_id AND m.status = 'ready') AS photo_count
   FROM posts p
   JOIN clubs cl ON cl.club_id = p.club_id
 `;
@@ -44,9 +57,59 @@ function rowToPost(row) {
     status: row.status,
     commentCount: Number(row.comment_count || 0),
     openReportCount: Number(row.open_reports || 0),
+    photoCount: Number(row.photo_count || 0),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function mediaRowToJson(row, url) {
+  return {
+    id: row.media_id,
+    altText: row.alt_text,
+    decorative: Boolean(row.decorative),
+    width: row.width,
+    height: row.height,
+    mime: row.mime,
+    position: row.position,
+    url,
+  };
+}
+
+/** Attach ready media and fresh delivery URLs to already-shaped posts. */
+async function attachMedia(posts) {
+  if (!posts.length) return posts;
+  const ids = posts.map((post) => post.id);
+  const placeholders = ids.map((_, index) => `:id${index}`).join(", ");
+  const params = Object.fromEntries(ids.map((id, index) => [`id${index}`, id]));
+  const [rows] = await pool.query(
+    `SELECT * FROM post_media
+     WHERE post_id IN (${placeholders}) AND status = 'ready'
+     ORDER BY position ASC, created_at ASC`,
+    params
+  );
+
+  // Sign in parallel, then assemble in the saved order. Pushing as each
+  // signature resolves would let network timing reshuffle the photos.
+  const prepared = await Promise.all(
+    rows.map(async (row) => {
+      let url = null;
+      try {
+        url = await mediaStorage.getUrl(row.storage_key);
+      } catch (err) {
+        console.error(`Could not sign photo ${row.media_id}:`, err.message);
+      }
+      return { postId: row.post_id, entry: mediaRowToJson(row, url) };
+    })
+  );
+
+  const media = new Map();
+  for (const { postId, entry } of prepared) {
+    if (!media.has(postId)) media.set(postId, []);
+    media.get(postId).push(entry);
+  }
+  for (const post of posts) post.media = media.get(post.id) || [];
+  return posts;
 }
 
 function cleanBody(value) {
@@ -57,6 +120,277 @@ function cleanBody(value) {
   }
   return { body };
 }
+
+function cleanAlt(value) {
+  return typeof value === "string" ? value.trim().slice(0, MAX_ALT) : "";
+}
+
+function cleanDimension(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 && number <= 20_000 ? number : null;
+}
+
+async function discardObject(key) {
+  try {
+    await mediaStorage.remove(key);
+  } catch (err) {
+    console.error(`Could not delete photo ${key}:`, err.message);
+  }
+}
+
+/**
+ * POST /posts/media — reserve a pending photo and return a presigned PUT.
+ * The browser uploads directly to the bucket; nothing is attached until the
+ * post is created and HeadObject confirms the object.
+ */
+postsRouter.post("/media", requireAuth, async (req, res) => {
+  if (!mediaStorage.enabled) {
+    return res.status(503).json({ error: "Photo uploads aren't configured on this server." });
+  }
+
+  const body = req.body || {};
+  const clubId = typeof body.clubId === "string" ? body.clubId.trim() : "";
+  const mime = typeof body.mimeType === "string" ? body.mimeType.toLowerCase().trim() : "";
+  const size = Number(body.size);
+  const decorative = body.decorative === true;
+  const altText = cleanAlt(body.altText);
+  const width = cleanDimension(body.width);
+  const height = cleanDimension(body.height);
+
+  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!(await clubExists(clubId))) return res.status(404).json({ error: "Club not found." });
+  if (!canManageClub(req.user, clubId)) {
+    return res.status(403).json({ error: "You don't have admin access to that club." });
+  }
+  if (!allowedMediaMime(mime)) {
+    return res.status(400).json({ error: "Photos must be a JPEG, PNG or WebP image." });
+  }
+  if (!Number.isFinite(size) || size <= 0 || size > MAX_MEDIA_BYTES) {
+    return res
+      .status(400)
+      .json({ error: `Each photo must be under ${MAX_MEDIA_BYTES / 1024 / 1024} MB.` });
+  }
+  if (!decorative && !altText) {
+    return res.status(400).json({
+      error: "Describe the photo for screen readers, or mark it as decorative.",
+    });
+  }
+
+  const mediaId = `media-${randomUUID()}`;
+  const storageKey = `clubs/${clubId}/posts/${mediaId}.${extensionForMime(mime)}`;
+
+  await pool.query(
+    `INSERT INTO post_media
+       (media_id, club_id, uploader_id, storage_key, alt_text, decorative,
+        width, height, mime, status)
+     VALUES (:mediaId, :clubId, :uploaderId, :storageKey, :altText, :decorative,
+             :width, :height, :mime, 'pending')`,
+    {
+      mediaId,
+      clubId,
+      uploaderId: req.user.id,
+      storageKey,
+      altText,
+      decorative: decorative ? 1 : 0,
+      width,
+      height,
+      mime,
+    }
+  );
+
+  let upload;
+  try {
+    upload = await mediaStorage.createUploadUrl(storageKey, mime);
+  } catch (err) {
+    await pool.query("DELETE FROM post_media WHERE media_id = :mediaId", { mediaId });
+    throw err;
+  }
+
+  await recordAudit(req, {
+    action: "post.media.request",
+    targetType: "club",
+    targetId: clubId,
+    detail: { mediaId, mime },
+  });
+
+  res.status(201).json({
+    media: mediaRowToJson(
+      {
+        media_id: mediaId,
+        alt_text: altText,
+        decorative: decorative ? 1 : 0,
+        width,
+        height,
+        mime,
+        position: 0,
+      },
+      null
+    ),
+    upload,
+  });
+});
+
+/** DELETE /posts/media/:mediaId — discard a photo uploaded before publishing. */
+postsRouter.delete("/media/:mediaId", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT * FROM post_media WHERE media_id = :mediaId AND status = 'pending'",
+    { mediaId: req.params.mediaId }
+  );
+  const media = rows[0];
+  if (!media) return res.status(404).json({ error: "Pending photo not found." });
+  if (media.uploader_id !== req.user.id && !canManageClub(req.user, media.club_id)) {
+    return res.status(403).json({ error: "You can't remove this photo." });
+  }
+
+  await pool.query("DELETE FROM post_media WHERE media_id = :mediaId", {
+    mediaId: media.media_id,
+  });
+  await discardObject(media.storage_key);
+  res.status(204).end();
+});
+
+/** POST /posts — publish a post, optionally with ready-made photo uploads. */
+postsRouter.post("/", requireAuth, async (req, res) => {
+  const body = req.body || {};
+  const clubId = typeof body.clubId === "string" ? body.clubId.trim() : "";
+  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!(await clubExists(clubId))) return res.status(404).json({ error: "Club not found." });
+  if (!canManageClub(req.user, clubId)) {
+    return res.status(403).json({ error: "You don't have admin access to that club." });
+  }
+
+  const cleaned = cleanBody(body.text);
+  if (cleaned.error) return res.status(400).json({ error: cleaned.error });
+
+  const mediaIds = Array.isArray(body.mediaIds)
+    ? [
+        ...new Set(
+          body.mediaIds.map((id) => (typeof id === "string" ? id.trim() : "")).filter(Boolean)
+        ),
+      ]
+    : [];
+  if (body.mediaIds !== undefined && !Array.isArray(body.mediaIds)) {
+    return res.status(400).json({ error: "mediaIds must be a list." });
+  }
+  if (mediaIds.length > MAX_POST_MEDIA) {
+    return res.status(400).json({ error: `A post can have at most ${MAX_POST_MEDIA} photos.` });
+  }
+  if (mediaIds.length && !mediaStorage.enabled) {
+    return res.status(503).json({ error: "Photo uploads aren't configured on this server." });
+  }
+
+  let pending = [];
+  if (mediaIds.length) {
+    const placeholders = mediaIds.map((_, index) => `:id${index}`).join(", ");
+    const params = Object.fromEntries(mediaIds.map((id, index) => [`id${index}`, id]));
+    const [rows] = await pool.query(
+      `SELECT * FROM post_media
+       WHERE post_id IS NULL AND status = 'pending'
+         AND club_id = :clubId AND uploader_id = :uploaderId
+         AND media_id IN (${placeholders})
+         AND created_at >= (NOW() - INTERVAL 1 HOUR)`,
+      { ...params, clubId, uploaderId: req.user.id }
+    );
+    if (rows.length !== mediaIds.length) {
+      return res.status(400).json({
+        error: "A photo upload expired or was already used. Add the photo again.",
+      });
+    }
+    // The IN query has no order; preserve the order the author chose.
+    const byId = new Map(rows.map((row) => [row.media_id, row]));
+    pending = mediaIds.map((mediaId) => byId.get(mediaId));
+
+    const invalid = [];
+    await Promise.all(
+      pending.map(async (media) => {
+        try {
+          const actual = await mediaStorage.inspect(media.storage_key);
+          if (actual.size <= 0 || actual.size > MAX_MEDIA_BYTES || actual.mime !== media.mime) {
+            invalid.push(media);
+          }
+        } catch {
+          invalid.push(media);
+        }
+      })
+    );
+    if (invalid.length) {
+      return res.status(400).json({
+        error: "One of the photos didn't upload correctly. Remove it and try again.",
+        mediaId: invalid[0].media_id,
+      });
+    }
+  }
+
+  const id = `post-${Date.now()}`;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query(
+      `INSERT INTO posts
+         (post_id, club_id, author_id, author_name_snapshot, body)
+       VALUES (:id, :clubId, :authorId, :authorName, :body)`,
+      { id, clubId, authorId: req.user.id, authorName: req.user.name, body: cleaned.body }
+    );
+    for (const [index, media] of pending.entries()) {
+      const [attached] = await connection.query(
+        `UPDATE post_media
+         SET post_id = :id, status = 'ready', position = :position
+         WHERE media_id = :mediaId AND status = 'pending'`,
+        { id, position: index, mediaId: media.media_id }
+      );
+      if (attached.affectedRows !== 1) {
+        throw new Error("A photo was already attached to another post.");
+      }
+    }
+    await connection.commit();
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+
+  const [rows] = await pool.query(`${POST_QUERY} WHERE p.post_id = :id`, { id });
+  await recordAudit(req, {
+    action: "post.create",
+    targetType: "post",
+    targetId: id,
+    detail: { clubId, length: cleaned.body.length, photos: pending.length },
+  });
+  const [created] = await attachMedia([rowToPost(rows[0])]);
+  res.status(201).json({ post: created, mediaEnabled: mediaStorage.enabled });
+});
+
+/** DELETE /posts/:id/media/:mediaId — detach and delete one ready photo. */
+postsRouter.delete("/:id/media/:mediaId", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT m.*, p.author_id, p.status AS post_status
+     FROM post_media m
+     JOIN posts p ON p.post_id = m.post_id
+     WHERE m.media_id = :mediaId AND m.post_id = :postId AND m.status = 'ready'`,
+    { mediaId: req.params.mediaId, postId: req.params.id }
+  );
+  const media = rows[0];
+  if (!media) return res.status(404).json({ error: "Photo not found on this post." });
+  if (!canManageClub(req.user, media.club_id) && media.author_id !== req.user.id) {
+    return res.status(403).json({ error: "You can't remove this photo." });
+  }
+  if (media.post_status === "removed" && !canManageClub(req.user, media.club_id)) {
+    return res.status(403).json({ error: "This post has been removed." });
+  }
+
+  await pool.query("DELETE FROM post_media WHERE media_id = :mediaId", {
+    mediaId: media.media_id,
+  });
+  await discardObject(media.storage_key);
+  await recordAudit(req, {
+    action: "post.media.remove",
+    targetType: "post",
+    targetId: req.params.id,
+    detail: { clubId: media.club_id, mediaId: media.media_id },
+  });
+  res.json({ removed: true });
+});
 
 async function clubExists(clubId) {
   const [rows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
@@ -100,9 +434,12 @@ postsRouter.get("/", async (req, res) => {
     params
   );
 
+  const shaped = rows.map(rowToPost);
+  await attachMedia(shaped);
   res.json({
-    posts: rows.map(rowToPost),
+    posts: shaped,
     nextCursor: rows.length === limit ? rows[rows.length - 1].post_id : null,
+    mediaEnabled: mediaStorage.enabled,
   });
 });
 
@@ -125,7 +462,9 @@ postsRouter.get("/manage", requireAuth, async (req, res) => {
      LIMIT 100`,
     { clubId }
   );
-  res.json({ posts: rows.map(rowToPost) });
+  const shaped = rows.map(rowToPost);
+  await attachMedia(shaped);
+  res.json({ posts: shaped, mediaEnabled: mediaStorage.enabled });
 });
 
 /** GET /posts/:id — public while published; managers can read hidden rows. */
@@ -139,38 +478,8 @@ postsRouter.get("/:id", optionalAuth, async (req, res) => {
     return res.status(404).json({ error: "Post not found." });
   }
 
-  res.json({ post: { ...rowToPost(row), canManage } });
-});
-
-/** POST /posts — publish a text post. Club managers only. */
-postsRouter.post("/", requireAuth, async (req, res) => {
-  const body = req.body || {};
-  const clubId = typeof body.clubId === "string" ? body.clubId.trim() : "";
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
-  if (!(await clubExists(clubId))) return res.status(404).json({ error: "Club not found." });
-  if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
-  }
-
-  const cleaned = cleanBody(body.text);
-  if (cleaned.error) return res.status(400).json({ error: cleaned.error });
-
-  const id = `post-${Date.now()}`;
-  await pool.query(
-    `INSERT INTO posts
-       (post_id, club_id, author_id, author_name_snapshot, body)
-     VALUES (:id, :clubId, :authorId, :authorName, :body)`,
-    { id, clubId, authorId: req.user.id, authorName: req.user.name, body: cleaned.body }
-  );
-
-  const [rows] = await pool.query(`${POST_QUERY} WHERE p.post_id = :id`, { id });
-  await recordAudit(req, {
-    action: "post.create",
-    targetType: "post",
-    targetId: id,
-    detail: { clubId, length: cleaned.body.length },
-  });
-  res.status(201).json({ post: rowToPost(rows[0]) });
+  const [post] = await attachMedia([rowToPost(row)]);
+  res.json({ post: { ...post, canManage }, mediaEnabled: mediaStorage.enabled });
 });
 
 /** PATCH /posts/:id — edit the text. The author or a club manager. */
@@ -206,7 +515,8 @@ postsRouter.patch("/:id", requireAuth, async (req, res) => {
     targetId: req.params.id,
     detail: { clubId: post.club_id, length: cleaned.body.length },
   });
-  res.json({ post: rowToPost(updated[0]) });
+  const [shaped] = await attachMedia([rowToPost(updated[0])]);
+  res.json({ post: shaped, mediaEnabled: mediaStorage.enabled });
 });
 
 /** PATCH /posts/:id/status — hide, restore or remove. Managers only. */
@@ -256,5 +566,6 @@ postsRouter.patch("/:id/status", requireAuth, async (req, res) => {
     targetId: req.params.id,
     detail: { clubId: post.club_id, from: post.status, to: status },
   });
-  res.json({ post: rowToPost(updated[0]) });
+  const [shaped] = await attachMedia([rowToPost(updated[0])]);
+  res.json({ post: shaped, mediaEnabled: mediaStorage.enabled });
 });

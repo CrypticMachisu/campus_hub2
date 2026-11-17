@@ -169,9 +169,49 @@
   gap: 0.4rem;
 }
 
+.editPhotos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.editPhotoList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editPhotoList li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-width: 96px;
+}
+
+.editPhotoList img {
+  display: block;
+  width: 96px;
+  height: 68px;
+  object-fit: cover;
+  background: var(--color-bg-alt);
+}
+
 .editActions {
   display: flex;
   gap: 0.4rem;
+}
+
+.photoCount {
+  display: inline-block;
+  margin: 0.25rem 0 0 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .status {

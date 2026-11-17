@@ -201,6 +201,36 @@
   gap: 0.5rem;
 }
 
+.editPhotos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.editPhotoList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editPhotoList li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 120px;
+}
+
+.editPhotoList img {
+  display: block;
+  width: 120px;
+  height: 82px;
+  object-fit: cover;
+  background: var(--paper-2);
+}
+
 .primaryButton {
   min-height: 38px;
   padding: 0 0.8rem;

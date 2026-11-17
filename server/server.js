@@ -3,6 +3,7 @@ import { app } from "./app.js";
 import { isV1Retired } from "./v1.js";
 import { assertDbConnection } from "./db.js";
 import { validApiKeyCount } from "./middleware/apiKey.js";
+import { mediaStorage } from "./storage.js";
 import { startReminderScheduler } from "./reminders.js";
 
 // server.js only starts things. The routes, middleware and the two API
@@ -24,6 +25,11 @@ assertDbConnection()
       }
       console.log(
         `Rate limit: ${process.env.RATE_LIMIT_MAX || 100} requests per ${process.env.RATE_LIMIT_WINDOW_MS || 60000} ms per key`
+      );
+      console.log(
+        mediaStorage.enabled
+          ? "Post photos: on (S3-compatible storage configured)"
+          : "Post photos: off (set R2/S3 storage variables in server/.env to enable)"
       );
       if (publicUrl) console.log(`Public URL: ${publicUrl}/api`);
       startReminderScheduler();

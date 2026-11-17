@@ -86,6 +86,29 @@ test("posts: publish, comment, report and moderate", { timeout: 60_000 }, async 
     await pool.end();
   });
 
+  // Text posts must keep working when photo storage is not configured.
+  const firstFeed = await expectJson(await api("/v2/posts?clubId=club-01"), 200, "feed");
+  assert.equal(typeof firstFeed.mediaEnabled, "boolean");
+  if (!firstFeed.mediaEnabled) {
+    const noUpload = await api("/v2/posts/media", {
+      method: "POST",
+      token: admin,
+      body: {
+        clubId: "club-01",
+        mimeType: "image/jpeg",
+        size: 1024,
+        altText: "A seedling in a tray",
+      },
+    });
+    assert.equal(noUpload.status, 503);
+    const noPhotoPost = await api("/v2/posts", {
+      method: "POST",
+      token: admin,
+      body: { clubId: "club-01", text: "No storage, no photo post.", mediaIds: ["media-fake"] },
+    });
+    assert.equal(noPhotoPost.status, 503);
+  }
+
   // Publishing is an officer action.
   const forbiddenCreate = await api("/v2/posts", {
     method: "POST",

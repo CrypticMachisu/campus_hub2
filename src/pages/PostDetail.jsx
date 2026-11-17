@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { getPost } from "../utils/postsStore";
 import { useAuth } from "../context/AuthContext";
 import CommentSection from "../components/CommentSection";
+import PostPhotos from "../components/PostPhotos";
 import ReportButton from "../components/ReportButton";
 import ErrorState from "../components/ErrorState";
 import { SkeletonGroup } from "../components/Skeleton";
@@ -128,6 +129,7 @@ export default function PostDetail() {
         )}
 
         <p className={styles.body}>{post.body}</p>
+        <PostPhotos media={post.media} label={`Photos with this update from ${post.clubName}`} />
 
         <footer className={styles.foot}>
           <span className={styles.commentCount}>

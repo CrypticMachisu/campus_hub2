@@ -1,7 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { createPost, getManagedPosts, setPostStatus, updatePost } from "../utils/postsStore";
+import {
+  createPost,
+  discardPendingPhoto,
+  getManagedPosts,
+  removePostPhoto,
+  requestPhotoUpload,
+  setPostStatus,
+  updatePost,
+  uploadPhoto,
+} from "../utils/postsStore";
+import {
+  createPhotoDraft,
+  MAX_POST_PHOTOS,
+  photoFileError,
+  revokePhotoDraft,
+} from "../utils/photoFiles";
 import { getReports, resolveReport } from "../utils/reportsStore";
+import PostPhotoPicker from "./PostPhotoPicker";
 import styles from "./ClubPostsDesk.module.css";
 
 function shortDate(value) {
@@ -35,16 +51,36 @@ export default function ClubPostsDesk({ clubId }) {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [photos, setPhotos] = useState([]);
+  const [photoError, setPhotoError] = useState("");
+  const [mediaEnabled, setMediaEnabled] = useState(false);
+  const [savingLabel, setSavingLabel] = useState("");
+  const photosRef = useRef(photos);
+
+  useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
+
+  useEffect(
+    () => () => {
+      photosRef.current.forEach((photo) => {
+        revokePhotoDraft(photo);
+        if (photo.mediaId) discardPendingPhoto(photo.mediaId).catch(() => {});
+      });
+    },
+    []
+  );
 
   const load = useCallback(async () => {
     setStatus("loading");
     setError("");
     try {
-      const [nextPosts, nextReports] = await Promise.all([
+      const [managed, nextReports] = await Promise.all([
         getManagedPosts(clubId),
         getReports(clubId),
       ]);
-      setPosts(nextPosts);
+      setPosts(managed.posts);
+      setMediaEnabled(Boolean(managed.mediaEnabled));
       setReports(nextReports);
       setStatus("ok");
     } catch (err) {
@@ -57,19 +93,130 @@ export default function ClubPostsDesk({ clubId }) {
     load();
   }, [load]);
 
+  function resetPhotos() {
+    photos.forEach(revokePhotoDraft);
+    setPhotos([]);
+    setPhotoError("");
+  }
+
+  async function addPhotos(event) {
+    const files = [...event.target.files];
+    event.target.value = "";
+    setPhotoError("");
+    const room = MAX_POST_PHOTOS - photos.length;
+    if (files.length > room) {
+      setPhotoError(`A post can have at most ${MAX_POST_PHOTOS} photos.`);
+    }
+
+    let next = [...photos];
+    for (const file of files.slice(0, Math.max(room, 0))) {
+      const message = photoFileError(file);
+      if (message) {
+        setPhotoError(message);
+        continue;
+      }
+      try {
+        next = [...next, await createPhotoDraft(file)];
+      } catch {
+        setPhotoError("That photo couldn't be opened. Try another file.");
+      }
+    }
+    setPhotos(next);
+  }
+
+  function changePhoto(key, patch) {
+    setPhotos((current) =>
+      current.map((photo) => (photo.key === key ? { ...photo, ...patch } : photo))
+    );
+  }
+
+  function removePhoto(key) {
+    const photo = photos.find((entry) => entry.key === key);
+    if (photo?.mediaId) discardPendingPhoto(photo.mediaId).catch(() => {});
+    if (photo) revokePhotoDraft(photo);
+    setPhotos((current) => current.filter((entry) => entry.key !== key));
+    setPhotoError("");
+  }
+
   async function handlePublish(e) {
     e.preventDefault();
+    const missing = photos.find((photo) => !photo.decorative && !photo.altText.trim());
+    if (missing) {
+      setPhotoError("Describe every photo, or mark it as decorative.");
+      return;
+    }
+
     setSaving(true);
     setNotice("");
     try {
-      const created = await createPost(clubId, draft);
+      let ready = photos;
+      const mediaIds = [];
+      for (const [index, photo] of ready.entries()) {
+        if (!photo.mediaId) {
+          setSavingLabel(
+            ready.length > 1
+              ? `Uploading photo ${index + 1} of ${ready.length}…`
+              : "Uploading photo…"
+          );
+          let reservation = null;
+          try {
+            reservation = await requestPhotoUpload(clubId, photo);
+            await uploadPhoto(reservation.upload, photo.file);
+          } catch (err) {
+            if (reservation?.media?.id) {
+              discardPendingPhoto(reservation.media.id).catch(() => {});
+            }
+            throw err;
+          }
+          const withId = { ...photo, mediaId: reservation.media.id };
+          ready = ready.map((entry) => (entry.key === photo.key ? withId : entry));
+          setPhotos(ready);
+          mediaIds.push(withId.mediaId);
+        } else {
+          mediaIds.push(photo.mediaId);
+        }
+      }
+
+      setSavingLabel("Publishing…");
+      const created = await createPost(clubId, draft, mediaIds);
       setPosts((current) => [created, ...current]);
       setDraft("");
-      setNotice("Post published on the club page.");
+      resetPhotos();
+      setNotice(
+        mediaIds.length
+          ? "Post and photos published on the club page."
+          : "Post published on the club page."
+      );
     } catch (err) {
       setNotice(err.message);
     } finally {
       setSaving(false);
+      setSavingLabel("");
+    }
+  }
+
+  async function removeExistingPhoto(post, media) {
+    if (!window.confirm("Remove this photo from the post?")) return;
+    setBusyId(post.id);
+    setNotice("");
+    try {
+      await removePostPhoto(post.id, media.id);
+      setPosts((current) =>
+        current.map((entry) =>
+          entry.id === post.id
+            ? {
+                ...entry,
+                media: (entry.media || []).filter((photo) => photo.id !== media.id),
+                photoCount: Math.max(0, entry.photoCount - 1),
+              }
+            : entry
+        )
+      );
+      setNotice("Photo removed. The post stays published.");
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -191,10 +338,23 @@ export default function ClubPostsDesk({ clubId }) {
             placeholder="What should the club know?"
           />
         </label>
+        {mediaEnabled && (
+          <PostPhotoPicker
+            photos={photos}
+            onAdd={addPhotos}
+            onRemove={removePhoto}
+            onChange={changePhoto}
+            disabled={saving}
+            error={photoError}
+          />
+        )}
         <div className={styles.composerFoot}>
-          <span className={styles.count}>{draft.trim().length}/2000</span>
+          <span className={styles.count}>
+            {draft.trim().length}/2000
+            {savingLabel ? ` · ${savingLabel}` : ""}
+          </span>
           <button type="submit" className={styles.primaryButton} disabled={saving}>
-            {saving ? "Publishing…" : "Publish post"}
+            {saving ? savingLabel || "Publishing…" : "Publish post"}
           </button>
         </div>
       </form>
@@ -247,6 +407,26 @@ export default function ClubPostsDesk({ clubId }) {
                             onChange={(e) => setEditDraft(e.target.value)}
                           />
                         </label>
+                        {post.media?.length > 0 && (
+                          <div className={styles.editPhotos}>
+                            <span className={styles.count}>Photos on this post</span>
+                            <ul className={styles.editPhotoList}>
+                              {post.media.map((media, index) => (
+                                <li key={media.id}>
+                                  <img src={media.url} alt="" />
+                                  <button
+                                    type="button"
+                                    className={styles.textButton}
+                                    onClick={() => removeExistingPhoto(post, media)}
+                                    disabled={busy}
+                                  >
+                                    Remove photo {index + 1}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                         <div className={styles.editActions}>
                           <button
                             type="button"
@@ -272,6 +452,11 @@ export default function ClubPostsDesk({ clubId }) {
                     <Link to={`/posts/${post.id}`} className={styles.permalink}>
                       Open post
                     </Link>
+                    {post.photoCount > 0 && (
+                      <span className={styles.photoCount}>
+                        {post.photoCount} {post.photoCount === 1 ? "photo" : "photos"}
+                      </span>
+                    )}
                   </td>
                   <td>{post.commentCount}</td>
                   <td>{post.openReportCount || 0}</td>

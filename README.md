@@ -28,6 +28,11 @@ DB_NAME=campushub_standalone PORT=5002 npm start
 Its design direction and open questions live in
 [docs/standalone/design-direction.md](docs/standalone/design-direction.md).
 
+Post photos are optional and stay off until `server/.env` has R2 (or generic
+`S3_*`) credentials. Text posts and the rest of the noticeboard work without
+them. The bucket settings and CORS requirement are in
+[docs/standalone/phase-3-social.md](docs/standalone/phase-3-social.md#bucket-setup).
+
 ---
 
 ## Try it without installing anything (temporary live API)
@@ -76,7 +81,7 @@ This address stops working when the host's machine or tunnel is switched off. Al
 
 ## Run it locally (from a clean clone)
 
-You need: **Node.js 18+**, **Git**, and **MySQL** (XAMPP's MySQL works). Nothing else.
+You need: **Node.js 20+**, **Git**, and **MySQL** (XAMPP's MySQL works). Nothing else.
 
 For the complete step-by-step — including every command and its fallbacks, first-run
 database setup, the front end, the public tunnel, and a full troubleshooting list — see

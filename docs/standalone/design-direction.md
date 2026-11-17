@@ -378,11 +378,12 @@ commitment: a dated activity with a host, a place and an optional capacity.
 - Attendance is marked by an officer on the roster. There is no member
   self-check-in, QR code or attendance export yet.
 
-## Phase 3 — club noticeboard (3a, 17 November 2026)
+## Phase 3 — club noticeboard (3a and 3b, 17 November 2026)
 
-The text half of the social design is implemented; photos and reactions are
-not. The full design and the 3a record live in
-[`phase-3-social.md`](./phase-3-social.md).
+Text posts and photos are implemented; reactions and pinning are not. Photo
+controls appear only when R2/S3 credentials are set, so the text noticeboard
+never depends on storage being available. The full design and setup notes live
+in [`phase-3-social.md`](./phase-3-social.md).
 
 ### Model
 
@@ -393,6 +394,9 @@ not. The full design and the 3a record live in
   item was hidden, removed or the report dismissed.
 - Migration `020_comments_post_target.sql` widens the existing thread to
   `post`, so posts do not get a second discussion system.
+- Migration `021_post_media.sql` adds up to three photos per post. A photo row
+  starts pending when the API signs a direct upload; it becomes `ready` only
+  after the post exists and the bucket confirms the object's size and type.
 
 ### Surface
 
@@ -403,6 +407,13 @@ not. The full design and the 3a record live in
 - `/posts/:id` is the permalink: the dispatch, its club, the shared comment
   thread and a report control. A hidden or removed post is readable only by a
   manager and says so.
+- A manager's composer now takes up to three photos. Each needs a text
+  description unless it is explicitly decorative, the picker is keyboard
+  reachable, and uploads go straight to object storage rather than through the
+  API. Photos appear as a band under the dispatch on the club page and at the
+  permalink.
+- Editing a post can remove one photo without deleting the dispatch. Removing
+  a photo deletes the stored object; the row is not kept.
 - The officer **Desk** has a **Posts** section: publish, edit, hide, restore,
   remove, and a report queue showing the reason, note and number of reporters.
   The queue never shows who reported. `Hide` is reversible; `Remove` closes the
@@ -414,7 +425,9 @@ not. The full design and the 3a record live in
 
 ### Deferred
 
-- Photos and object storage (3b), reactions, pinning and search (3c).
+- Reactions, pinning and search (3c).
+- Editing alt text after upload, thumbnails, per-photo reports, and a purge for
+  abandoned pending uploads.
 - The cross-club tier1 report aggregate; tier 1 can open each club's queue.
 - Author-initiated deletion. Authors can edit their post; removal is a manager
   action.

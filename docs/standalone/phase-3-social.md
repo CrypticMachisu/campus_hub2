@@ -1,7 +1,9 @@
 # Phase 3 — the club feed, a design pass
 
-**Status:** 3a implemented 17 November 2026. 3b (photos) and 3c (reactions,
-pinning, search) are not built.
+**Status:** 3a and 3b implemented 17 November 2026. 3c (reactions, pinning,
+search) is not built. Photo endpoints stay off until R2 credentials are set;
+the code path is tested, but no real bucket upload has been run in this
+environment.
 
 Phase 2 answered “will you show up?”. Phase 3 answers the quieter question
 between commitments: **what is this club doing?** The goal is a club
@@ -29,8 +31,8 @@ without reading a second inbox.
 
 ## Model
 
-3a applied as migrations `018_posts.sql`, `019_reports.sql` and
-`020_comments_post_target.sql`.
+The phase applied migrations `018_posts.sql`, `019_reports.sql`,
+`020_comments_post_target.sql` and `021_post_media.sql`.
 
 ### 018 — posts (applied)
 
@@ -76,18 +78,27 @@ Widened `comments.target_type` to `('event','club','commitment','post')` and
 extended `clubForTarget` / `targetTable` in `server/routes/comments.js`. Post
 comments are the existing thread, not a second comment system.
 
-### 021 — post media (3b, not applied)
+### 021 — post media (applied)
 
-| Column        | Type                                               |
-| ------------- | -------------------------------------------------- |
-| `media_id`    | `VARCHAR(60)` primary key                          |
-| `post_id`     | foreign key to `posts`, cascade                    |
-| `storage_key` | `VARCHAR(255)` not null                            |
-| `alt_text`    | `VARCHAR(300)` not null — empty only if decorative |
-| `width`       | `INT`                                              |
-| `height`      | `INT`                                              |
-| `mime`        | `VARCHAR(80)`                                      |
-| `position`    | `TINYINT` default 0                                |
+| Column        | Type                                                 |
+| ------------- | ---------------------------------------------------- |
+| `media_id`    | `VARCHAR(64)` primary key (`media-<uuid>`)           |
+| `post_id`     | `VARCHAR(64) NULL`, foreign key to `posts`, cascade  |
+| `club_id`     | `VARCHAR(30)` foreign key to `clubs`, cascade        |
+| `uploader_id` | `VARCHAR(30) NULL`, foreign key to `users`, set null |
+| `storage_key` | `VARCHAR(255)` not null, unique                      |
+| `alt_text`    | `VARCHAR(300)` not null, empty only if decorative    |
+| `decorative`  | `TINYINT(1)` default 0                               |
+| `width`       | `INT NULL`                                           |
+| `height`      | `INT NULL`                                           |
+| `mime`        | `VARCHAR(80)` not null                               |
+| `position`    | `TINYINT` default 0                                  |
+| `status`      | `ENUM('pending','ready')` default `pending`          |
+| `created_at`  | `DATETIME` default now                               |
+
+Pending rows are uploads that exist before their post does. `post_id` is set
+only when `POST /posts` attaches them, and only after the API has checked the
+object's real size and content type with `HeadObject`.
 
 ### Explicitly not modelled yet
 
@@ -181,22 +192,24 @@ members want it.
 
 ## Infrastructure decision
 
-Text posts and reports need **no new service**. Photo posts need object
-storage and an upload path. Until a deployment host is chosen, 3a should ship
-without photos rather than inventing a local-disk store that cannot survive a
-deploy. Candidate providers once hosting is known: Cloudflare R2
-(S3-compatible, no egress fee), Supabase Storage, or the host’s own bucket.
-The upload flow should be a short-lived presigned PUT from the API to the
-bucket, with the API validating MIME and size afterwards; never accept a
-client-supplied storage URL.
+Text posts and reports need **no new service**. Photos use **Cloudflare R2**
+through its S3-compatible API: no egress fee, a private bucket works, and the
+same adapter accepts any compatible store through `S3_*` variables.
+
+The browser asks the API for a short-lived presigned `PUT`, uploads directly to
+the bucket, and never sends image bytes through Express. The API signs an exact
+`Content-Type`, then checks the object with `HeadObject` for size and type
+before attaching it to a post. A private bucket serves one-hour signed `GET`
+URLs; setting a public bucket domain makes delivery URLs stable and cacheable.
 
 ## Delivery order
 
 1. **3a — text noticeboard (shipped 17 November 2026).** Posts table,
    comments-on-posts, club page column, permalink, desk list, reports and the
    moderation queue. No new service.
-2. **3b — photos.** Storage choice, presigned upload, alt-text gate, image
-   rendering and the same moderation paths.
+2. **3b — photos (implemented 17 November 2026).** R2/S3 presigned upload,
+   alt-text gate, image rendering and the same moderation paths. Requires
+   bucket credentials before the controls appear.
 3. **3c — only with evidence.** Reactions, pinning, search. Each needs a
    measured reason, not a roadmap checkbox.
 
@@ -220,11 +233,75 @@ client-supplied storage URL.
 
 Not built in 3a: the cross-club tier1 report aggregate (tier 1 can manage each
 club's queue through the club switcher), author-initiated deletion (authors can
-edit; managers remove), photos, and reactions.
+edit; managers remove), and reactions. Photos shipped in 3b.
+
+## 3b implementation record
+
+- `server/storage.js` — one S3 adapter for R2 or another compatible store.
+  Presigned PUTs last ten minutes; GET URLs last one hour unless
+  `R2_PUBLIC_BASE_URL` is set. The adapter disables itself cleanly when the
+  four required settings are absent.
+- `POST /posts/media` reserves a pending row and returns the upload URL. The
+  route requires a club manager, a JPEG/PNG/WebP MIME type, a size under 5 MB,
+  and alt text unless the photo is explicitly decorative.
+- `POST /posts` accepts up to three `mediaIds`, checks each pending object with
+  `HeadObject`, then attaches them in one transaction with the post.
+- `DELETE /posts/media/:id` discards an upload that was never published;
+  `DELETE /posts/:id/media/:id` removes one photo from a published post. Both
+  delete the stored object.
+- The feed and permalink return `media` with fresh URLs, alt text, dimensions
+  and orientation-free ordering. The club feed, permalink and officer desk all
+  render the same photo band.
+- The composer offers a labelled file picker, per-photo description, an
+  explicit decorative checkbox, a remove control and a 3-photo count. The file
+  input is keyboard reachable; there is no drag-only path.
+- `server/tests/storage.test.mjs` covers configuration, MIME policy, presigned
+  PUTs, public URLs and signed GETs. `server/tests/posts.test.mjs` covers the
+  text-only fallback when storage is absent.
+
+Not built in 3b: editing alt text after upload, image cropping/thumbnails,
+per-photo reports, and automated purging of abandoned pending uploads. Those
+objects expire only when someone discards them or the bucket's lifecycle rule
+removes them. Captions remain text and are not baked into images.
+
+### Bucket setup
+
+Set these in `server/.env` (R2 names; use `S3_*` for another provider):
+
+```
+R2_ACCOUNT_ID=…
+R2_ACCESS_KEY_ID=…
+R2_SECRET_ACCESS_KEY=…
+R2_BUCKET_NAME=…
+# Optional: a public bucket domain for stable image URLs.
+R2_PUBLIC_BASE_URL=https://photos.example.com
+```
+
+Compatible stores that require path-style addressing can set
+`S3_FORCE_PATH_STYLE=true`. The R2 token needs Object Read & Write on this
+bucket. For direct browser
+uploads, the bucket CORS policy must allow the app's origin with `PUT` and the
+`content-type` header, for example:
+
+```json
+[
+  {
+    "AllowedOrigins": ["http://localhost:5173"],
+    "AllowedMethods": ["GET", "HEAD", "PUT"],
+    "AllowedHeaders": ["content-type"],
+    "ExposeHeaders": ["etag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Add the deployed frontend origin to `AllowedOrigins`. The API does not proxy
+image bodies; a CORS failure means the browser never reaches the bucket.
 
 ## Decisions still open
 
-- Storage provider and upload limits (blocks 3b only).
+- Retention for abandoned pending uploads (recommendation: a 24-hour purge in
+  the ops worker, plus an R2 lifecycle rule as a backstop).
 - Whether posts ever appear in the home edition (recommendation: no).
 - Whether announcements merge into posts (recommendation: later, once posts
   have a permalink habit).
