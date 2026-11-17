@@ -210,6 +210,46 @@ test(
     const waitingAgain = await api(`/v2/commitments/${commitment.id}`, { token: yuki });
     assert.equal((await expectJson(waitingAgain, 200, "lowered detail")).signup.waitlisted, true);
 
+    // Officers can edit the whole notice, not just the seat count.
+    const badEdit = await api(`/v2/commitments/${commitment.id}`, {
+      method: "PATCH",
+      token: admin,
+      body: {},
+    });
+    assert.equal(badEdit.status, 400, "an empty edit should be rejected");
+
+    const halfDate = await api(`/v2/commitments/${commitment.id}`, {
+      method: "PATCH",
+      token: admin,
+      body: { date: "2030-06-03" },
+    });
+    assert.equal(halfDate.status, 400, "a date without a time is not a valid reschedule");
+
+    const edit = await api(`/v2/commitments/${commitment.id}`, {
+      method: "PATCH",
+      token: admin,
+      body: {
+        kind: "farm_visit",
+        title: `${commitment.title} (edited)`,
+        description: "Rescheduled by the route test.",
+        date: "2030-06-03",
+        time: "10:30",
+        location: "Block D",
+        county: "Nairobi",
+        hostName: "Daniel Kamau",
+        capacity: 2,
+      },
+    });
+    const edited = (await expectJson(edit, 200, "edit commitment")).commitment;
+    assert.equal(edited.title, `${commitment.title} (edited)`);
+    assert.equal(edited.kind, "farm_visit");
+    assert.equal(edited.kindLabel, "Farm visit");
+    assert.equal(edited.startsAt, "2030-06-03T10:30:00+03:00");
+    assert.equal(edited.location, "Block D");
+    assert.equal(edited.county, "Nairobi");
+    assert.equal(edited.hostName, "Daniel Kamau");
+    assert.equal(edited.capacity, 2);
+
     // A member cannot remove another person from the roster.
     const memberRemove = await api(`/v2/commitments/${commitment.id}/signups/${firstSignup.id}`, {
       method: "DELETE",
@@ -245,5 +285,14 @@ test(
 
     const emptyRoster = await api(`/v2/commitments/${commitment.id}/roster`, { token: admin });
     assert.equal((await expectJson(emptyRoster, 200, "empty roster")).summary.going, 0);
+
+    // Cancelling removes the notice; the cleanup delete below is then a no-op.
+    const cancelled = await api(`/v2/commitments/${commitment.id}`, {
+      method: "DELETE",
+      token: admin,
+    });
+    assert.equal(cancelled.status, 204);
+    const gone = await api(`/v2/commitments/${commitment.id}`);
+    assert.equal(gone.status, 404, "a cancelled commitment should no longer be readable");
   }
 );

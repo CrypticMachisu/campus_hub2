@@ -335,10 +335,12 @@ commitment: a dated activity with a host, a place and an optional capacity.
   waitlist state, a withdraw control, a `Comments` thread and a one-way
   `Add to calendar` (.ics) download. It is public; signing up and commenting
   require a session and return to login otherwise.
-- The officer **Desk** now carries a Commitments table: date, places, waitlist,
-  an inline seat editor and an expandable roster with positions, emails,
-  waitlist state and a remove control for withdrawals taken by phone. Lowering
-  a capacity moves the newest signups to the waitlist; nobody is deleted.
+- The officer **Desk** now carries the full commitment loop: a publish/edit
+  form for every notice field, an inline seat editor, an inline cancel that
+  names how many signups it will remove, and an expandable roster with
+  positions, emails, waitlist state and a remove control for withdrawals taken
+  by phone. Lowering a capacity moves the newest signups to the waitlist;
+  nobody is deleted.
 - "My commitments" merges event RSVPs and commitment signups into one stack,
   stamped `Going`, `Committed` or `Waitlist`, and withdraws through the right
   endpoint. The home rail mixes both, soonest first.
@@ -348,9 +350,9 @@ commitment: a dated activity with a host, a place and an optional capacity.
 
 ### Deferred
 
-- Publishing a new commitment still happens on the club page; the Desk manages
-  existing commitments. A dashboard publish form is a convenience, not a model
-  change.
+- Rescheduling or cancelling a commitment does not yet notify the people who
+  signed up; the officer has to reach them another way. In-app notices are the
+  next slice.
 - Calendar export is a one-way .ics download. Subscribing or two-way calendar
   sync stays out of scope.
 - Commitment comments use the same thread component as clubs and events; there

@@ -73,6 +73,18 @@ export async function withdrawCommitment(commitmentId) {
   });
 }
 
+/**
+ * Club managers only: edit any of the notice fields. Send only what changed;
+ * capacity is null or "" for no limit.
+ */
+export async function updateCommitment(commitmentId, payload) {
+  const { commitment } = await apiFetch(`/commitments/${encodeURIComponent(commitmentId)}`, {
+    method: "PATCH",
+    body: payload,
+  });
+  return toUiCommitment(commitment);
+}
+
 /** Club managers only: change the seat count (null or "" = no limit). */
 export async function updateCommitmentCapacity(commitmentId, capacity) {
   const { commitment } = await apiFetch(`/commitments/${encodeURIComponent(commitmentId)}`, {

@@ -270,13 +270,15 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
 });
 
 /**
- * PATCH /commitments/:id — managers can change the seat count.
- * Lowering it below the current list moves the newest signups to the waitlist,
- * which is exactly what the member ticket will then show; nothing is deleted.
+ * PATCH /commitments/:id — managers can edit the notice or the seat count.
+ * Fields are optional and only the ones present are written. Lowering capacity
+ * below the current list moves the newest signups to the waitlist, which is
+ * exactly what the member ticket will then show; nothing is deleted.
  */
 commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    "SELECT commitment_id, club_id, title, capacity FROM commitments WHERE commitment_id = :id",
+    `SELECT commitment_id, club_id, title, capacity, starts_at
+     FROM commitments WHERE commitment_id = :id`,
     { id: req.params.id }
   );
   const commitment = rows[0];
@@ -285,35 +287,103 @@ commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "You don't have admin access to that club." });
   }
 
-  if (!Object.prototype.hasOwnProperty.call(req.body || {}, "capacity")) {
-    return res.status(400).json({ error: "Send capacity (blank or null for no limit)." });
-  }
+  const body = req.body || {};
+  const updates = {};
+  const set = (column, key, value) => {
+    updates[key] = { column, value };
+  };
 
-  const raw = req.body.capacity;
-  let capacity = null;
-  if (raw !== null && raw !== "" && raw !== undefined) {
-    const parsed = Number(raw);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
-      return res
-        .status(400)
-        .json({ error: "capacity must be a whole number between 1 and 10000." });
+  if (Object.prototype.hasOwnProperty.call(body, "capacity")) {
+    const raw = body.capacity;
+    let capacity = null;
+    if (raw !== null && raw !== "" && raw !== undefined) {
+      const parsed = Number(raw);
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
+        return res
+          .status(400)
+          .json({ error: "capacity must be a whole number between 1 and 10000." });
+      }
+      capacity = parsed;
     }
-    capacity = parsed;
+    set("capacity", "capacity", capacity);
   }
 
-  await pool.query("UPDATE commitments SET capacity = :capacity WHERE commitment_id = :id", {
-    capacity,
-    id: req.params.id,
-  });
+  if (Object.prototype.hasOwnProperty.call(body, "kind")) {
+    const kind = typeof body.kind === "string" ? body.kind.trim() : "";
+    if (!KINDS.includes(kind)) {
+      return res.status(400).json({ error: `kind must be one of: ${KINDS.join(", ")}.` });
+    }
+    set("kind", "kind", kind);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "title")) {
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title) return res.status(400).json({ error: "Title is required." });
+    if (title.length > 150) return res.status(400).json({ error: "Title is too long." });
+    set("title", "title", title);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "description")) {
+    set(
+      "description",
+      "description",
+      typeof body.description === "string" ? body.description.trim() : ""
+    );
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "location")) {
+    const location = typeof body.location === "string" ? body.location.trim() : "";
+    if (!location) return res.status(400).json({ error: "Location is required." });
+    if (location.length > 150) return res.status(400).json({ error: "Location is too long." });
+    set("location", "location", location);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "county")) {
+    set("county", "county", typeof body.county === "string" ? body.county.trim().slice(0, 80) : "");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "hostName")) {
+    set(
+      "host_name",
+      "hostName",
+      typeof body.hostName === "string" ? body.hostName.trim().slice(0, 120) : ""
+    );
+  }
+
+  if (body.startsAt !== undefined || body.date !== undefined || body.time !== undefined) {
+    if (body.startsAt === undefined && !(body.date && body.time)) {
+      return res.status(400).json({ error: "Send date and time together, or startsAt." });
+    }
+    const start = parseStartTime({ startTime: body.startsAt, date: body.date, time: body.time });
+    if (!start) return res.status(400).json({ error: "Invalid startsAt." });
+    set("starts_at", "startsAt", `${start.date} ${start.time}`);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "Send at least one field to update." });
+  }
+
+  const assignments = Object.entries(updates).map(([key, entry]) => `${entry.column} = :${key}`);
+  const params = { id: req.params.id };
+  for (const [key, entry] of Object.entries(updates)) params[key] = entry.value;
+
+  await pool.query(
+    `UPDATE commitments SET ${assignments.join(", ")} WHERE commitment_id = :id`,
+    params
+  );
   const [updatedRows] = await pool.query(`${COMMITMENT_QUERY} WHERE c.commitment_id = :id`, {
     id: req.params.id,
   });
 
+  const fields = Object.keys(updates);
+  const capacityOnly = fields.length === 1 && fields[0] === "capacity";
   await recordAudit(req, {
-    action: "commitment.capacity",
+    action: capacityOnly ? "commitment.capacity" : "commitment.update",
     targetType: "commitment",
     targetId: req.params.id,
-    detail: { clubId: commitment.club_id, from: commitment.capacity, to: capacity },
+    detail: capacityOnly
+      ? { clubId: commitment.club_id, from: commitment.capacity, to: updates.capacity.value }
+      : { clubId: commitment.club_id, fields },
   });
   res.json({ commitment: rowToCommitment(updatedRows[0]) });
 });

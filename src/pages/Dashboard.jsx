@@ -9,8 +9,12 @@ import { getSignupsByEvent } from "../utils/storage";
 import { getAnnouncements, saveAnnouncement } from "../utils/dashboardStorage";
 import { formatDateTime, formatEventDate } from "../utils/dateTime";
 import {
+  COMMITMENT_KINDS,
+  createCommitment,
+  deleteCommitment,
   getCommitments,
   getCommitmentRoster,
+  updateCommitment,
   updateCommitmentCapacity,
   removeCommitmentSignup,
 } from "../utils/commitmentsStore";
@@ -568,11 +572,31 @@ function StatsRow({ event }) {
 }
 
 /**
- * Officer desk for commitments: seats, the waitlist and the roster in one
- * place. Capacity is editable per row; lowering it never deletes anyone, the
- * newest signups simply become waitlisted, which the member ticket reflects on
- * its next read. Roster removal is for withdrawals taken by phone.
+ * Officer desk for commitments: publish, edit and cancel notices, change the
+ * seat count, and read the waitlist and roster in one place. Lowering capacity
+ * never deletes anyone, the newest signups simply become waitlisted, which the
+ * member ticket reflects on its next read. Roster removal is for withdrawals
+ * taken by phone; cancelling removes the notice and its signups after an
+ * explicit confirmation that says so.
  */
+const EMPTY_EDITOR = {
+  mode: "create",
+  id: null,
+  kind: "activity",
+  title: "",
+  description: "",
+  date: "",
+  time: "09:00",
+  location: "",
+  county: "",
+  capacity: "",
+  hostName: "",
+};
+
+function sortCommitments(list) {
+  return [...list].sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+}
+
 function CommitmentsDesk({ clubId }) {
   const [rows, setRows] = useState(null); // null = loading
   const [failed, setFailed] = useState("");
@@ -583,6 +607,11 @@ function CommitmentsDesk({ clubId }) {
   const [rosters, setRosters] = useState({});
   const [confirmRemoveId, setConfirmRemoveId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
+  const [editor, setEditor] = useState(null);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorError, setEditorError] = useState("");
+  const [confirmCancelId, setConfirmCancelId] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
 
   const load = useCallback(async () => {
     setFailed("");
@@ -599,6 +628,8 @@ function CommitmentsDesk({ clubId }) {
     setRosters({});
     setEditingId(null);
     setNotice("");
+    setEditor(null);
+    setConfirmCancelId(null);
     load();
   }, [clubId, load]);
 
@@ -677,6 +708,110 @@ function CommitmentsDesk({ clubId }) {
     }
   }
 
+  function startCreate() {
+    setEditor({ ...EMPTY_EDITOR });
+    setEditorError("");
+    setNotice("");
+    setConfirmCancelId(null);
+  }
+
+  function startEdit(row) {
+    setEditor({
+      mode: "edit",
+      id: row.id,
+      kind: row.kind,
+      title: row.title,
+      description: row.description || "",
+      date: row.date,
+      time: row.time,
+      location: row.location,
+      county: row.county || "",
+      capacity: row.capacity == null ? "" : String(row.capacity),
+      hostName: row.hostName || "",
+    });
+    setEditorError("");
+    setNotice("");
+    setConfirmCancelId(null);
+  }
+
+  function updateEditorField(field, value) {
+    setEditor((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveEditor(event) {
+    event.preventDefault();
+    if (!editor) return;
+    setEditorError("");
+
+    let capacity = null;
+    if (editor.capacity !== "" && editor.capacity !== null) {
+      capacity = Number(editor.capacity);
+      if (!Number.isInteger(capacity) || capacity < 1 || capacity > 10000) {
+        setEditorError(
+          "Spaces must be a whole number between 1 and 10000 — leave it blank for no limit."
+        );
+        return;
+      }
+    }
+
+    const payload = {
+      kind: editor.kind,
+      title: editor.title.trim(),
+      description: editor.description.trim(),
+      date: editor.date,
+      time: editor.time,
+      location: editor.location.trim(),
+      county: editor.county.trim(),
+      hostName: editor.hostName.trim(),
+      capacity,
+    };
+
+    setEditorSaving(true);
+    try {
+      if (editor.mode === "edit") {
+        const updated = await updateCommitment(editor.id, payload);
+        setRows((current) =>
+          sortCommitments(current.map((entry) => (entry.id === updated.id ? updated : entry)))
+        );
+        setNotice(`${updated.title} was updated.`);
+        if (rosters[editor.id]?.data) loadRoster(editor.id);
+      } else {
+        const created = await createCommitment({ clubId, ...payload });
+        setRows((current) => sortCommitments([...current, created]));
+        setNotice(`${created.title} is now on the club's commitments.`);
+      }
+      setEditor(null);
+    } catch (err) {
+      setEditorError(err.message);
+    } finally {
+      setEditorSaving(false);
+    }
+  }
+
+  async function cancelCommitment(row) {
+    setCancellingId(row.id);
+    setNotice("");
+    try {
+      await deleteCommitment(row.id);
+      setRows((current) => current.filter((entry) => entry.id !== row.id));
+      setRosters((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+      setConfirmCancelId(null);
+      setNotice(
+        row.signupCount > 0
+          ? `${row.title} was cancelled and ${row.signupCount} ${row.signupCount === 1 ? "signup" : "signups"} removed.`
+          : `${row.title} was cancelled.`
+      );
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
   if (failed) {
     return (
       <div>
@@ -699,15 +834,167 @@ function CommitmentsDesk({ clubId }) {
   return (
     <>
       <p className={styles.deskNote}>
-        Seats changed here apply immediately; lowering a capacity moves the newest signups to the
-        waitlist instead of deleting them. Publish new commitments from the{" "}
-        <Link to={`/clubs/${clubId}`}>club page</Link>.
+        Publish and edit notices here; changes apply immediately. Lowering a capacity moves the
+        newest signups to the waitlist instead of deleting them, and cancelling a commitment removes
+        its signups after an explicit confirmation.
       </p>
 
       {notice && (
         <p className={styles.deskNotice} role="status">
           {notice}
         </p>
+      )}
+
+      <div className={styles.deskToolbar}>
+        <button
+          type="button"
+          className={styles.primaryButton}
+          aria-expanded={Boolean(editor)}
+          onClick={() => {
+            if (editor) {
+              setEditor(null);
+              setEditorError("");
+            } else {
+              startCreate();
+            }
+          }}
+        >
+          {editor ? "Close editor" : "Publish a commitment"}
+        </button>
+      </div>
+
+      {editor && (
+        <form
+          className={styles.form}
+          onSubmit={saveEditor}
+          aria-label={editor.mode === "edit" ? "Edit commitment" : "New commitment"}
+        >
+          <h3>{editor.mode === "edit" ? "Edit commitment" : "New commitment"}</h3>
+
+          <div className={styles.formRow}>
+            <label>
+              Type
+              <select
+                value={editor.kind}
+                onChange={(e) => updateEditorField("kind", e.target.value)}
+              >
+                {COMMITMENT_KINDS.map((kind) => (
+                  <option key={kind.id} value={kind.id}>
+                    {kind.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Title
+              <input
+                type="text"
+                required
+                maxLength={150}
+                value={editor.title}
+                onChange={(e) => updateEditorField("title", e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className={styles.formRow}>
+            <label>
+              Date
+              <input
+                type="date"
+                required
+                value={editor.date}
+                onChange={(e) => updateEditorField("date", e.target.value)}
+              />
+            </label>
+            <label>
+              Time
+              <input
+                type="time"
+                required
+                value={editor.time}
+                onChange={(e) => updateEditorField("time", e.target.value)}
+              />
+            </label>
+            <label>
+              Spaces <span className={styles.optional}>(blank = no limit)</span>
+              <input
+                type="number"
+                min="1"
+                max="10000"
+                value={editor.capacity}
+                placeholder="No limit"
+                onChange={(e) => updateEditorField("capacity", e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className={styles.formRow}>
+            <label>
+              Where
+              <input
+                type="text"
+                required
+                maxLength={150}
+                value={editor.location}
+                onChange={(e) => updateEditorField("location", e.target.value)}
+              />
+            </label>
+            <label>
+              County
+              <input
+                type="text"
+                maxLength={80}
+                value={editor.county}
+                onChange={(e) => updateEditorField("county", e.target.value)}
+              />
+            </label>
+            <label>
+              Host
+              <input
+                type="text"
+                maxLength={120}
+                value={editor.hostName}
+                placeholder="Who is hosting?"
+                onChange={(e) => updateEditorField("hostName", e.target.value)}
+              />
+            </label>
+          </div>
+
+          <label>
+            What happens
+            <textarea
+              rows={3}
+              value={editor.description}
+              onChange={(e) => updateEditorField("description", e.target.value)}
+            />
+          </label>
+
+          {editorError && (
+            <p className={styles.error} role="alert">
+              {editorError}
+            </p>
+          )}
+
+          <div className={styles.formActions}>
+            <button type="submit" className={styles.primaryButton} disabled={editorSaving}>
+              {editorSaving
+                ? "Saving…"
+                : editor.mode === "edit"
+                  ? "Save changes"
+                  : "Publish commitment"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditor(null);
+                setEditorError("");
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       )}
 
       {rows.length === 0 ? (
@@ -721,6 +1008,7 @@ function CommitmentsDesk({ clubId }) {
               <th scope="col">Places</th>
               <th scope="col">Waitlist</th>
               <th scope="col">Roster</th>
+              <th scope="col">Manage</th>
             </tr>
           </thead>
           <tbody>
@@ -810,11 +1098,51 @@ function CommitmentsDesk({ clubId }) {
                         {rosterState?.data ? "Hide" : `View (${row.signupCount})`}
                       </button>
                     </td>
+                    <td>
+                      {confirmCancelId === row.id ? (
+                        <span className={styles.cancelConfirm}>
+                          <span className={styles.cellNote}>
+                            Cancel this notice
+                            {row.signupCount > 0
+                              ? ` and remove ${row.signupCount} ${row.signupCount === 1 ? "signup" : "signups"}?`
+                              : "?"}
+                          </span>
+                          <span className={styles.rowActions}>
+                            <button
+                              type="button"
+                              className={styles.dangerButton}
+                              onClick={() => cancelCommitment(row)}
+                              disabled={cancellingId === row.id}
+                              aria-label={`Confirm cancelling ${row.title}`}
+                            >
+                              {cancellingId === row.id ? "Cancelling…" : "Yes"}
+                            </button>
+                            <button type="button" onClick={() => setConfirmCancelId(null)}>
+                              No
+                            </button>
+                          </span>
+                        </span>
+                      ) : (
+                        <span className={styles.rowActions}>
+                          <button type="button" onClick={() => startEdit(row)}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.dangerButton}
+                            onClick={() => setConfirmCancelId(row.id)}
+                            aria-label={`Cancel ${row.title}`}
+                          >
+                            Cancel
+                          </button>
+                        </span>
+                      )}
+                    </td>
                   </tr>
 
                   {rosterState && (
                     <tr key={`${row.id}-roster`}>
-                      <td colSpan={5} className={styles.rosterCell}>
+                      <td colSpan={6} className={styles.rosterCell}>
                         {rosterState.loading && (
                           <p className={styles.emptyState}>Loading roster…</p>
                         )}

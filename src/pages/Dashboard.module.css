@@ -663,6 +663,20 @@
   border-bottom: 1px solid var(--color-border-strong);
 }
 
+.deskToolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 0.7rem;
+}
+
+.cancelConfirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  min-width: 9rem;
+}
+
 .deskNotice {
   margin: 0 0 0.7rem;
   padding: 0.4rem 0.55rem;
