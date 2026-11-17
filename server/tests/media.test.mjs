@@ -261,4 +261,38 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
   assert.equal(after.status, 200);
   assert.equal(after.body.post.media.length, 1);
   assert.equal(after.body.post.photoCount, 1);
+
+  // Abandoned pending uploads expire; a fresh one is left for its author.
+  const abandoned = await reserve({ altText: "An upload that was never published." });
+  await put(abandoned.body.upload);
+  const [[abandonedRow]] = await pool.query(
+    "SELECT storage_key FROM post_media WHERE media_id = ?",
+    [abandoned.body.media.id]
+  );
+  await pool.query(
+    "UPDATE post_media SET created_at = DATE_SUB(NOW(), INTERVAL 2 DAY) WHERE media_id = ?",
+    [abandoned.body.media.id]
+  );
+  const fresh = await reserve({ altText: "A fresh upload." });
+  assert.equal(fresh.status, 201);
+
+  const { runMediaPurge } = await import("../mediaCleanup.js");
+  const purge = await runMediaPurge({ olderThanHours: 24 });
+  assert.equal(purge.reason, null);
+  assert.ok(purge.removed >= 1);
+  assert.equal(s3.objects.has(abandonedRow.storage_key), false);
+  const [[purgedRow]] = await pool.query("SELECT media_id FROM post_media WHERE media_id = ?", [
+    abandoned.body.media.id,
+  ]);
+  assert.equal(purgedRow, undefined);
+  const [[freshRow]] = await pool.query("SELECT media_id FROM post_media WHERE media_id = ?", [
+    fresh.body.media.id,
+  ]);
+  assert.equal(freshRow.media_id, fresh.body.media.id);
+
+  const discardedFresh = await call(`/posts/media/${fresh.body.media.id}`, {
+    method: "DELETE",
+    token: admin,
+  });
+  assert.equal(discardedFresh.status, 204);
 });

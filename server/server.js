@@ -5,6 +5,7 @@ import { assertDbConnection } from "./db.js";
 import { validApiKeyCount } from "./middleware/apiKey.js";
 import { mediaStorage } from "./storage.js";
 import { startReminderScheduler } from "./reminders.js";
+import { startMediaCleanupScheduler } from "./mediaCleanup.js";
 
 // server.js only starts things. The routes, middleware and the two API
 // versions live in app.js, which is exported without listening so the test
@@ -33,6 +34,7 @@ assertDbConnection()
       );
       if (publicUrl) console.log(`Public URL: ${publicUrl}/api`);
       startReminderScheduler();
+      startMediaCleanupScheduler();
       // Same line every time until the sunset; after it, say plainly that v1
       // is gone, because that is now the server's behaviour and not a plan.
       console.log(

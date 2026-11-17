@@ -1,9 +1,10 @@
 # Phase 3 — the club feed, a design pass
 
-**Status:** 3a, 3b and the pinning part of 3c are implemented 17 November 2026.
-Reactions and campus-wide search remain deferred until there is evidence for
-them. Photo endpoints stay off until R2 credentials are set; the code path is
-tested, but no real bucket upload has been run in this environment.
+**Status:** 3a, 3b and the pinning part of 3c are implemented 17 November 2026,
+along with the purge for abandoned photo uploads. Reactions and campus-wide
+search remain deferred until there is evidence for them. Photo endpoints stay
+off until R2 credentials are set; the code path is tested, but no real bucket
+upload has been run in this environment.
 
 Phase 2 answered “will you show up?”. Phase 3 answers the quieter question
 between commitments: **what is this club doing?** The goal is a club
@@ -273,10 +274,29 @@ edit; managers remove), and reactions. Photos shipped in 3b.
   PUTs, public URLs and signed GETs. `server/tests/posts.test.mjs` covers the
   text-only fallback when storage is absent.
 
-Not built in 3b: editing alt text after upload, image cropping/thumbnails,
-per-photo reports, and automated purging of abandoned pending uploads. Those
-objects expire only when someone discards them or the bucket's lifecycle rule
-removes them. Captions remain text and are not baked into images.
+Not built in 3b: editing alt text after upload, image cropping/thumbnails and
+per-photo reports. Abandoned pending uploads are now handled by the cleanup
+worker described below. Captions remain text and are not baked into images.
+
+## Follow-up — abandoned uploads (implemented 17 November 2026)
+
+- `server/mediaCleanup.js` deletes pending photo rows and objects once they are
+  older than `MEDIA_PURGE_HOURS` (24 by default). The publish route already
+  refuses reservations older than one hour, so a day-old row cannot belong to
+  an in-progress post.
+- At most 200 rows are handled per pass. The object is removed first, then the
+  row; a failed bucket delete leaves the row for the next pass instead of
+  losing track of the object.
+- The worker runs every six hours after server start, logs only when it changes
+  something, and is disabled when photo storage is off. `MEDIA_CLEANUP=off` is
+  an explicit kill switch even when storage is configured.
+- An R2 lifecycle rule on the upload prefix remains the backstop for objects
+  that outlive the database row.
+
+```
+MEDIA_PURGE_HOURS=24
+MEDIA_CLEANUP=on
+```
 
 ## 3c implementation record
 
@@ -310,6 +330,9 @@ R2_SECRET_ACCESS_KEY=…
 R2_BUCKET_NAME=…
 # Optional: a public bucket domain for stable image URLs.
 R2_PUBLIC_BASE_URL=https://photos.example.com
+# Abandoned uploads: purge after 24 hours; MEDIA_CLEANUP=off disables it.
+MEDIA_PURGE_HOURS=24
+MEDIA_CLEANUP=on
 ```
 
 Compatible stores that require path-style addressing can set
@@ -335,8 +358,6 @@ image bodies; a CORS failure means the browser never reaches the bucket.
 
 ## Decisions still open
 
-- Retention for abandoned pending uploads (recommendation: a 24-hour purge in
-  the ops worker, plus an R2 lifecycle rule as a backstop).
 - Whether posts ever appear in the home edition (recommendation: no).
 - Whether announcements merge into posts (recommendation: later, once posts
   have a permalink habit).
