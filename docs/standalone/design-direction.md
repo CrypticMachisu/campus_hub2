@@ -377,3 +377,11 @@ commitment: a dated activity with a host, a place and an optional capacity.
   is no separate moderation queue for them yet.
 - Attendance is marked by an officer on the roster. There is no member
   self-check-in, QR code or attendance export yet.
+
+## Phase 3 — social (design pass, 17 November 2026)
+
+A club noticeboard — officer-authored posts, the existing comment thread and a
+report queue — is designed in
+[`phase-3-social.md`](./phase-3-social.md). Text posts and moderation need no
+new infrastructure; photo posts wait on an object-storage decision. Nothing in
+that document is implemented yet, and no schema has been added for it.
