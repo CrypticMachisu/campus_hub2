@@ -213,6 +213,33 @@ test("posts: publish, comment, report and moderate", { timeout: 60_000 }, async 
   });
   assert.equal((await expectJson(restored, 200, "restore post")).post.status, "published");
 
+  // Hiding straight from the desk closes reports too, not just the queue path.
+  const deskReport = await api("/v2/reports", {
+    method: "POST",
+    token: yuki,
+    body: { targetType: "post", targetId: post.id, reason: "off_topic" },
+  });
+  assert.equal(deskReport.status, 201);
+  const deskHidden = await api(`/v2/posts/${post.id}/status`, {
+    method: "PATCH",
+    token: admin,
+    body: { status: "hidden" },
+  });
+  assert.equal((await expectJson(deskHidden, 200, "desk hide")).post.status, "hidden");
+  const queueAfterDeskHide = await api("/v2/reports?clubId=club-01", { token: admin });
+  assert.equal(
+    (await expectJson(queueAfterDeskHide, 200, "queue after desk hide")).reports.some(
+      (entry) => entry.targetId === post.id
+    ),
+    false
+  );
+  const publicAgain = await api(`/v2/posts/${post.id}/status`, {
+    method: "PATCH",
+    token: admin,
+    body: { status: "published" },
+  });
+  assert.equal((await expectJson(publicAgain, 200, "publish again")).post.status, "published");
+
   // Editing: another member cannot, the manager can.
   const forbiddenEdit = await api(`/v2/posts/${post.id}`, {
     method: "PATCH",

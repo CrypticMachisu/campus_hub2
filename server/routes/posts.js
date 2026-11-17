@@ -229,6 +229,24 @@ postsRouter.patch("/:id/status", requireAuth, async (req, res) => {
     status,
     id: req.params.id,
   });
+
+  // Hiding from the desk and hiding through the report queue must leave the
+  // queue in the same state: no open reports on content that is no longer
+  // public.
+  if (status !== "published") {
+    await pool.query(
+      `UPDATE reports
+       SET status = 'actioned', resolution = :resolution,
+           resolved_at = NOW(), resolved_by = :userId
+       WHERE target_type = 'post' AND target_id = :id AND status = 'open'`,
+      {
+        resolution: status === "removed" ? "removed" : "hidden",
+        userId: req.user.id,
+        id: req.params.id,
+      }
+    );
+  }
+
   const [updated] = await pool.query(`${POST_QUERY} WHERE p.post_id = :id`, {
     id: req.params.id,
   });

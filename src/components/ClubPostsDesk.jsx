@@ -97,7 +97,7 @@ export default function ClubPostsDesk({ clubId }) {
     if (
       nextStatus === "removed" &&
       !window.confirm(
-        "Remove this post? It closes the public thread and cannot be made public again by restoring; hide instead if this is temporary."
+        "Remove this post? It closes the public thread and its open reports. You can restore it from this desk if you change your mind."
       )
     ) {
       return;
@@ -107,6 +107,11 @@ export default function ClubPostsDesk({ clubId }) {
     try {
       const updated = await setPostStatus(post.id, nextStatus);
       setPosts((current) => current.map((entry) => (entry.id === post.id ? updated : entry)));
+      if (nextStatus !== "published") {
+        setReports((current) =>
+          current.filter((entry) => !(entry.targetType === "post" && entry.targetId === post.id))
+        );
+      }
       setNotice(
         nextStatus === "hidden"
           ? "Post hidden from the club page."
@@ -145,7 +150,11 @@ export default function ClubPostsDesk({ clubId }) {
         setPosts((current) =>
           current.map((entry) =>
             entry.id === report.targetId
-              ? { ...entry, status: action === "hide" ? "hidden" : "removed" }
+              ? {
+                  ...entry,
+                  status: action === "hide" ? "hidden" : "removed",
+                  openReportCount: 0,
+                }
               : entry
           )
         );
