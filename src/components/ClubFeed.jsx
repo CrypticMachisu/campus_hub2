@@ -8,6 +8,7 @@ import {
   getClubPosts,
   removePostPhoto,
   requestPhotoUpload,
+  setPostPinned,
   setPostStatus,
   updatePost,
   uploadPhoto,
@@ -45,6 +46,7 @@ export default function ClubFeed({ clubId }) {
   const managesClub = canManageClub(user, clubId);
 
   const [posts, setPosts] = useState([]);
+  const [pinned, setPinned] = useState(null);
   const [nextCursor, setNextCursor] = useState(null);
   const [status, setStatus] = useState("loading"); // loading | ok | error
   const [error, setError] = useState("");
@@ -56,6 +58,7 @@ export default function ClubFeed({ clubId }) {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [pinningId, setPinningId] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [photoError, setPhotoError] = useState("");
   const [mediaEnabled, setMediaEnabled] = useState(false);
@@ -82,6 +85,7 @@ export default function ClubFeed({ clubId }) {
     getClubPosts(clubId)
       .then((data) => {
         setPosts(data.posts);
+        setPinned(data.pinned || null);
         setNextCursor(data.nextCursor);
         setMediaEnabled(Boolean(data.mediaEnabled));
         setStatus("ok");
@@ -214,23 +218,22 @@ export default function ClubFeed({ clubId }) {
     }
   }
 
+  function updatePostInPlace(postId, update) {
+    setPosts((current) => current.map((entry) => (entry.id === postId ? update(entry) : entry)));
+    setPinned((current) => (current?.id === postId ? update(current) : current));
+  }
+
   async function removeExistingPhoto(post, media) {
     if (!window.confirm("Remove this photo from the post?")) return;
     setBusyId(post.id);
     setNotice("");
     try {
       await removePostPhoto(post.id, media.id);
-      setPosts((current) =>
-        current.map((entry) =>
-          entry.id === post.id
-            ? {
-                ...entry,
-                media: (entry.media || []).filter((photo) => photo.id !== media.id),
-                photoCount: Math.max(0, entry.photoCount - 1),
-              }
-            : entry
-        )
-      );
+      updatePostInPlace(post.id, (entry) => ({
+        ...entry,
+        media: (entry.media || []).filter((photo) => photo.id !== media.id),
+        photoCount: Math.max(0, entry.photoCount - 1),
+      }));
       setNotice("Photo removed. The post stays published.");
     } catch (err) {
       setNotice(err.message);
@@ -250,7 +253,7 @@ export default function ClubFeed({ clubId }) {
     setNotice("");
     try {
       const updated = await updatePost(post.id, editDraft);
-      setPosts((current) => current.map((entry) => (entry.id === post.id ? updated : entry)));
+      updatePostInPlace(post.id, () => updated);
       setEditingId(null);
       setEditDraft("");
       setNotice("Post updated.");
@@ -270,6 +273,7 @@ export default function ClubFeed({ clubId }) {
     try {
       await setPostStatus(post.id, "hidden");
       setPosts((current) => current.filter((entry) => entry.id !== post.id));
+      setPinned((current) => (current?.id === post.id ? null : current));
       setNotice("Post hidden. It stays in the desk so you can restore it.");
     } catch (err) {
       setNotice(err.message);
@@ -277,6 +281,29 @@ export default function ClubFeed({ clubId }) {
       setBusyId(null);
     }
   }
+
+  async function togglePin(post) {
+    setPinningId(post.id);
+    setNotice("");
+    try {
+      const updated = await setPostPinned(post.id, !post.pinned);
+      if (updated.pinned) {
+        setPinned(updated);
+        setPosts((current) => current.filter((entry) => entry.id !== updated.id));
+        setNotice("Pinned as the club's standing notice.");
+      } else {
+        setPinned(null);
+        load();
+        setNotice("Post unpinned and back in date order.");
+      }
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setPinningId(null);
+    }
+  }
+
+  const visiblePosts = pinned ? [pinned, ...posts] : posts;
 
   return (
     <section id="feed" className={styles.section} aria-labelledby={`feed-${clubId}`}>
@@ -358,21 +385,25 @@ export default function ClubFeed({ clubId }) {
         </div>
       )}
 
-      {status === "ok" && posts.length === 0 && (
+      {status === "ok" && posts.length === 0 && !pinned && (
         <p className={styles.empty}>No updates from this club yet.</p>
       )}
 
-      {status === "ok" && posts.length > 0 && (
+      {status === "ok" && visiblePosts.length > 0 && (
         <ol className={styles.list}>
-          {posts.map((post) => {
+          {visiblePosts.map((post) => {
             const editing = editingId === post.id;
             const busy = busyId === post.id;
             return (
-              <li key={post.id} className={styles.post}>
+              <li
+                key={post.id}
+                className={`${styles.post}${post.pinned ? ` ${styles.pinnedPost}` : ""}`}
+              >
                 <article aria-labelledby={`post-${post.id}`}>
                   <header className={styles.meta}>
                     <h3 id={`post-${post.id}`} className={styles.author}>
                       {post.authorName}
+                      {post.pinned && <span className={styles.pinnedBadge}>Pinned</span>}
                     </h3>
                     <time dateTime={post.createdAt}>{formatPostTime(post.createdAt)}</time>
                   </header>
@@ -451,6 +482,14 @@ export default function ClubFeed({ clubId }) {
                           disabled={busy || editing}
                         >
                           Edit
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.textButton}
+                          onClick={() => togglePin(post)}
+                          disabled={busy || pinningId === post.id}
+                        >
+                          {post.pinned ? "Unpin" : "Pin"}
                         </button>
                         <button
                           type="button"

@@ -6,6 +6,7 @@ import {
   getManagedPosts,
   removePostPhoto,
   requestPhotoUpload,
+  setPostPinned,
   setPostStatus,
   updatePost,
   uploadPhoto,
@@ -51,6 +52,7 @@ export default function ClubPostsDesk({ clubId }) {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [pinningId, setPinningId] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [photoError, setPhotoError] = useState("");
   const [mediaEnabled, setMediaEnabled] = useState(false);
@@ -273,6 +275,29 @@ export default function ClubPostsDesk({ clubId }) {
     }
   }
 
+  async function togglePin(post) {
+    setPinningId(post.id);
+    setNotice("");
+    try {
+      const updated = await setPostPinned(post.id, !post.pinned);
+      setPosts((current) =>
+        current.map((entry) => {
+          if (entry.id === updated.id) return updated;
+          return updated.pinned ? { ...entry, pinned: false } : entry;
+        })
+      );
+      setNotice(
+        updated.pinned
+          ? "Pinned as the club's standing notice."
+          : "Post unpinned. It is back in date order."
+      );
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setPinningId(null);
+    }
+  }
+
   async function resolve(report, action) {
     if (
       action === "remove" &&
@@ -301,6 +326,7 @@ export default function ClubPostsDesk({ clubId }) {
                   ...entry,
                   status: action === "hide" ? "hidden" : "removed",
                   openReportCount: 0,
+                  pinned: action === "hide" ? entry.pinned : false,
                 }
               : entry
           )
@@ -464,6 +490,7 @@ export default function ClubPostsDesk({ clubId }) {
                     <span className={`${styles.status} ${styles[post.status]}`}>
                       {statusLabel(post.status)}
                     </span>
+                    {post.pinned && <span className={styles.pinnedBadge}>Pinned</span>}
                   </td>
                   <td>
                     <div className={styles.actions}>
@@ -475,6 +502,27 @@ export default function ClubPostsDesk({ clubId }) {
                       >
                         Edit
                       </button>
+                      {post.pinned ? (
+                        <button
+                          type="button"
+                          className={styles.textButton}
+                          onClick={() => togglePin(post)}
+                          disabled={busy || pinningId === post.id}
+                        >
+                          Unpin
+                        </button>
+                      ) : (
+                        post.status === "published" && (
+                          <button
+                            type="button"
+                            className={styles.textButton}
+                            onClick={() => togglePin(post)}
+                            disabled={busy || pinningId === post.id}
+                          >
+                            Pin
+                          </button>
+                        )
+                      )}
                       {post.status !== "published" && (
                         <button
                           type="button"

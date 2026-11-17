@@ -1,9 +1,9 @@
 # Phase 3 — the club feed, a design pass
 
-**Status:** 3a and 3b implemented 17 November 2026. 3c (reactions, pinning,
-search) is not built. Photo endpoints stay off until R2 credentials are set;
-the code path is tested, but no real bucket upload has been run in this
-environment.
+**Status:** 3a, 3b and the pinning part of 3c are implemented 17 November 2026.
+Reactions and campus-wide search remain deferred until there is evidence for
+them. Photo endpoints stay off until R2 credentials are set; the code path is
+tested, but no real bucket upload has been run in this environment.
 
 Phase 2 answered “will you show up?”. Phase 3 answers the quieter question
 between commitments: **what is this club doing?** The goal is a club
@@ -32,7 +32,8 @@ without reading a second inbox.
 ## Model
 
 The phase applied migrations `018_posts.sql`, `019_reports.sql`,
-`020_comments_post_target.sql` and `021_post_media.sql`.
+`020_comments_post_target.sql`, `021_post_media.sql` and
+`022_pin_posts.sql`.
 
 ### 018 — posts (applied)
 
@@ -48,8 +49,8 @@ The phase applied migrations `018_posts.sql`, `019_reports.sql`,
 | `updated_at`           | `DATETIME` auto-update                                      |
 
 Index `(club_id, status, created_at)` for the club page;
-`(status, created_at)` for a future review queue. `pinned_at` from the design
-is deferred to 3c.
+`(status, created_at)` for a future review queue. `pinned_at` arrives in
+migration 022 for the one standing notice.
 
 ### 019 — reports (applied)
 
@@ -100,11 +101,20 @@ Pending rows are uploads that exist before their post does. `post_id` is set
 only when `POST /posts` attaches them, and only after the API has checked the
 object's real size and content type with `HeadObject`.
 
+### 022 — pinned standing notice (applied)
+
+`posts.pinned_at DATETIME NULL` marks the club's one pinned dispatch. The API
+clears every other pin in the club inside the same transaction, so “one per
+club” is an application invariant rather than a database accident. A pinned
+post is returned separately from the paged column and is never repeated there.
+Removing a post clears its pin; hiding it leaves the pin for a later restore.
+
 ### Explicitly not modelled yet
 
 Reactions, follows, bookmarks, hashtags, mentions, direct messages, member
 posts. Each adds a surface or a notification stream; none is needed to prove
-the noticeboard works.
+the noticeboard works. Pinning is deliberately one editorial pin, not a
+reaction count.
 
 ## Surface
 
@@ -116,8 +126,8 @@ posts:
 - Date stamp and author line (`Amara Okafor · Chair`), body, up to three photos
   in 3b.
 - `N comments` as a link to the permalink; no like count.
-- Managers see `Edit` and `Hide` inline, in the same quiet mono style as the
-  commitment roster controls.
+- Managers see `Edit`, `Pin` / `Unpin` and `Hide` inline, in the same quiet
+  mono style as the commitment roster controls.
 - A manager-only `Post an update` button expands a composer with a labelled
   textarea, character count and `Publish`. No modal, matching the commitment
   composer.
@@ -125,7 +135,8 @@ posts:
   members cannot post.
 
 Pagination: first 10 posts, `Earlier updates` loads the next 10. No infinite
-scroll. The page ends.
+scroll. The page ends. A pinned post sits above the dated column with a written
+`Pinned` marker and is excluded from the paginated list so it never repeats.
 
 ### `/posts/:id` — permalink
 
@@ -138,7 +149,8 @@ club page is the reading surface, the permalink is the reference.
 A section after **Announcements**:
 
 - Table of the club’s posts (date, excerpt, author, comments, status) with
-  `Edit`, `Hide` / `Restore`, `Remove` and a link to the permalink.
+  `Edit`, `Pin` / `Unpin`, `Hide` / `Restore`, `Remove` and a link to the
+  permalink. `Pinned` is written next to the status, never colour alone.
 - `Open reports N` at the top when the club has any. Expanding shows the target
   excerpt, reason, note, reporter count (not reporter identity) and
   `Dismiss` / `Hide post` / `Remove post`.
@@ -210,8 +222,10 @@ URLs; setting a public bucket domain makes delivery URLs stable and cacheable.
 2. **3b — photos (implemented 17 November 2026).** R2/S3 presigned upload,
    alt-text gate, image rendering and the same moderation paths. Requires
    bucket credentials before the controls appear.
-3. **3c — only with evidence.** Reactions, pinning, search. Each needs a
-   measured reason, not a roadmap checkbox.
+3. **3c — editorial pinning (shipped 17 November 2026).** One standing notice
+   per club. Reactions and search are still held back: they need a measured
+   reason, not a roadmap checkbox, and reactions would contradict the
+   no-engagement-counter rule above.
 
 ## 3a implementation record
 
@@ -263,6 +277,27 @@ Not built in 3b: editing alt text after upload, image cropping/thumbnails,
 per-photo reports, and automated purging of abandoned pending uploads. Those
 objects expire only when someone discards them or the bucket's lifecycle rule
 removes them. Captions remain text and are not baked into images.
+
+## 3c implementation record
+
+- Migration `022_pin_posts.sql` adds `pinned_at` and an index for the club's
+  standing notice.
+- `PATCH /posts/:id/pin` is manager-only and takes `{ pinned: true|false }`.
+  Pinning locks the club row, clears every other pin in that club and sets the
+  target in one transaction. Only published posts can be pinned.
+- `GET /posts` returns `{ posts, pinned, nextCursor }`; `pinned` is a separate
+  published post and is excluded from the dated list. Manage and permalink
+  responses carry `pinned` / `pinnedAt` too.
+- The club page renders the pin first with a written `Pinned` badge and an
+  `Unpin` control for managers. The desk can pin or unpin any published post,
+  shows a `Pinned` marker next to status, and keeps the pin through a hide but
+  clears it on removal.
+- `server/tests/posts.test.mjs` covers the manager-only pin, the separate feed
+  slot, absence from the dated list, the manage/permalink flags and unpinning.
+
+Still deferred in 3c: reactions and campus-wide search. Reactions would add
+engagement counters the product explicitly avoids; search needs a query
+surface and a measured gap before it earns one.
 
 ### Bucket setup
 

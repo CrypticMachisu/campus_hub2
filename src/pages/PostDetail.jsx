@@ -118,6 +118,7 @@ export default function PostDetail() {
           <p className={styles.byline}>
             By {post.authorName} ·{" "}
             <time dateTime={post.createdAt}>{formatPostTime(post.createdAt)}</time>
+            {post.pinned && <span className={styles.pinnedBadge}>Pinned</span>}
           </p>
         </header>
 

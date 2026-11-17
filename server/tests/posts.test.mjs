@@ -169,6 +169,63 @@ test("posts: publish, comment, report and moderate", { timeout: 60_000 }, async 
   const withComment = await api(`/v2/posts/${post.id}`);
   assert.equal((await expectJson(withComment, 200, "post with comment")).post.commentCount, 1);
 
+  // Pinning is a manager choice and there is only one standing notice per club.
+  const forbiddenPin = await api(`/v2/posts/${post.id}/pin`, {
+    method: "PATCH",
+    token: sofia,
+    body: { pinned: true },
+  });
+  assert.equal(forbiddenPin.status, 403);
+
+  const pinned = await api(`/v2/posts/${post.id}/pin`, {
+    method: "PATCH",
+    token: admin,
+    body: { pinned: true },
+  });
+  const pinnedPost = (await expectJson(pinned, 200, "pin post")).post;
+  assert.equal(pinnedPost.pinned, true);
+  assert.ok(pinnedPost.pinnedAt);
+
+  const pinnedFeed = await expectJson(
+    await api("/v2/posts?clubId=club-01"),
+    200,
+    "feed with pinned post"
+  );
+  assert.equal(pinnedFeed.pinned.id, post.id);
+  assert.equal(
+    pinnedFeed.posts.some((entry) => entry.id === post.id),
+    false,
+    "the pinned post must not repeat in the dated list"
+  );
+  assert.equal(
+    (await expectJson(await api(`/v2/posts/${post.id}`), 200, "pinned detail")).post.pinned,
+    true
+  );
+  const pinnedManaged = await expectJson(
+    await api("/v2/posts/manage?clubId=club-01", { token: admin }),
+    200,
+    "managed pinned post"
+  );
+  assert.equal(pinnedManaged.posts.find((entry) => entry.id === post.id).pinned, true);
+
+  const unpinned = await api(`/v2/posts/${post.id}/pin`, {
+    method: "PATCH",
+    token: admin,
+    body: { pinned: false },
+  });
+  assert.equal((await expectJson(unpinned, 200, "unpin post")).post.pinned, false);
+  const unpinnedFeed = await expectJson(
+    await api("/v2/posts?clubId=club-01"),
+    200,
+    "feed after unpin"
+  );
+  assert.notEqual(unpinnedFeed.pinned?.id, post.id);
+  assert.equal(
+    unpinnedFeed.posts.some((entry) => entry.id === post.id),
+    true,
+    "an unpinned post returns to the dated list"
+  );
+
   // Report once; the same member cannot stack a duplicate.
   const reported = await api("/v2/reports", {
     method: "POST",

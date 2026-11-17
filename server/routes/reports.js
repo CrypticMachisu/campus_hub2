@@ -245,10 +245,15 @@ reportsRouter.patch("/:id/resolve", requireAuth, async (req, res) => {
     );
   } else {
     if (report.target_type === "post") {
-      await pool.query("UPDATE posts SET status = :status WHERE post_id = :id", {
-        status: action === "hide" ? "hidden" : "removed",
-        id: report.target_id,
-      });
+      await pool.query(
+        `UPDATE posts
+         SET status = :status${action === "remove" ? ", pinned_at = NULL" : ""}
+         WHERE post_id = :id`,
+        {
+          status: action === "hide" ? "hidden" : "removed",
+          id: report.target_id,
+        }
+      );
     } else {
       const [comments] = await pool.query(
         "SELECT comment_id FROM comments WHERE comment_id = :id",

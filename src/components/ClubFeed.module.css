@@ -54,6 +54,21 @@
   background: var(--paper-2);
 }
 
+.pinnedPost {
+  border-left: 3px solid var(--signal);
+  padding-left: 0.75rem;
+}
+
+.pinnedBadge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--signal);
+  font-size: 0.48rem;
+  letter-spacing: 0.07em;
+  color: var(--signal-deep);
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;

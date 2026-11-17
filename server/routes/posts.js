@@ -55,6 +55,8 @@ function rowToPost(row) {
     authorName: row.author_name_snapshot,
     body: row.body,
     status: row.status,
+    pinned: Boolean(row.pinned_at),
+    pinnedAt: row.pinned_at,
     commentCount: Number(row.comment_count || 0),
     openReportCount: Number(row.open_reports || 0),
     photoCount: Number(row.photo_count || 0),
@@ -426,9 +428,24 @@ postsRouter.get("/", async (req, res) => {
                         OR (p.created_at = :beforeCreated AND p.post_id < :before))`;
   }
 
+  const [pinnedRows] = await pool.query(
+    `${POST_QUERY}
+     WHERE p.club_id = :clubId AND p.status = 'published' AND p.pinned_at IS NOT NULL
+     ORDER BY p.pinned_at DESC
+     LIMIT 1`,
+    { clubId }
+  );
+  const pinned = pinnedRows[0] ? rowToPost(pinnedRows[0]) : null;
+  let pinnedClause = "";
+  if (pinned) {
+    params.pinnedId = pinned.id;
+    pinnedClause = "AND p.post_id <> :pinnedId";
+  }
+
   const [rows] = await pool.query(
     `${POST_QUERY}
-     WHERE p.club_id = :clubId AND p.status = 'published' ${cursorClause}
+     WHERE p.club_id = :clubId AND p.status = 'published'
+       ${pinnedClause} ${cursorClause}
      ORDER BY p.created_at DESC, p.post_id DESC
      LIMIT ${limit}`,
     params
@@ -436,8 +453,10 @@ postsRouter.get("/", async (req, res) => {
 
   const shaped = rows.map(rowToPost);
   await attachMedia(shaped);
+  if (pinned) await attachMedia([pinned]);
   res.json({
     posts: shaped,
+    pinned,
     nextCursor: rows.length === limit ? rows[rows.length - 1].post_id : null,
     mediaEnabled: mediaStorage.enabled,
   });
@@ -519,6 +538,80 @@ postsRouter.patch("/:id", requireAuth, async (req, res) => {
   res.json({ post: shaped, mediaEnabled: mediaStorage.enabled });
 });
 
+/**
+ * PATCH /posts/:id/pin — set or clear the club's one standing notice.
+ * Managers only. Pinning is a club-scoped editorial choice, not a reaction:
+ * pinning one post clears the previous pin in the same club.
+ */
+postsRouter.patch("/:id/pin", requireAuth, async (req, res) => {
+  const pinned = req.body?.pinned;
+  if (typeof pinned !== "boolean") {
+    return res.status(400).json({ error: "pinned must be true or false." });
+  }
+
+  const [rows] = await pool.query("SELECT * FROM posts WHERE post_id = :id", {
+    id: req.params.id,
+  });
+  const post = rows[0];
+  if (!post) return res.status(404).json({ error: "Post not found." });
+  if (!canManageClub(req.user, post.club_id)) {
+    return res.status(403).json({ error: "You don't have admin access to that club." });
+  }
+  if (pinned && post.status !== "published") {
+    return res.status(400).json({ error: "Publish this post before pinning it." });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    // Serialize pin changes per club. Without the club lock, two managers
+    // pinning different posts at once could leave two pins behind.
+    await connection.query("SELECT club_id FROM clubs WHERE club_id = :clubId FOR UPDATE", {
+      clubId: post.club_id,
+    });
+    const [locked] = await connection.query(
+      "SELECT status FROM posts WHERE post_id = :id FOR UPDATE",
+      { id: post.post_id }
+    );
+    if (!locked[0] || (pinned && locked[0].status !== "published")) {
+      await connection.rollback();
+      return res.status(400).json({ error: "Publish this post before pinning it." });
+    }
+
+    if (pinned) {
+      await connection.query(
+        "UPDATE posts SET pinned_at = NULL WHERE club_id = :clubId AND pinned_at IS NOT NULL",
+        { clubId: post.club_id }
+      );
+      await connection.query("UPDATE posts SET pinned_at = NOW() WHERE post_id = :id", {
+        id: post.post_id,
+      });
+    } else {
+      await connection.query("UPDATE posts SET pinned_at = NULL WHERE post_id = :id", {
+        id: post.post_id,
+      });
+    }
+    await connection.commit();
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+
+  const [updated] = await pool.query(`${POST_QUERY} WHERE p.post_id = :id`, {
+    id: post.post_id,
+  });
+  await recordAudit(req, {
+    action: pinned ? "post.pin" : "post.unpin",
+    targetType: "post",
+    targetId: post.post_id,
+    detail: { clubId: post.club_id, from: Boolean(post.pinned_at), to: pinned },
+  });
+  const [shaped] = await attachMedia([rowToPost(updated[0])]);
+  res.json({ post: shaped, mediaEnabled: mediaStorage.enabled });
+});
+
 /** PATCH /posts/:id/status — hide, restore or remove. Managers only. */
 postsRouter.patch("/:id/status", requireAuth, async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM posts WHERE post_id = :id", {
@@ -535,10 +628,12 @@ postsRouter.patch("/:id/status", requireAuth, async (req, res) => {
     return res.status(400).json({ error: `status must be one of: ${STATUSES.join(", ")}.` });
   }
 
-  await pool.query("UPDATE posts SET status = :status WHERE post_id = :id", {
-    status,
-    id: req.params.id,
-  });
+  await pool.query(
+    `UPDATE posts
+     SET status = :status${status === "removed" ? ", pinned_at = NULL" : ""}
+     WHERE post_id = :id`,
+    { status, id: req.params.id }
+  );
 
   // Hiding from the desk and hiding through the report queue must leave the
   // queue in the same state: no open reports on content that is no longer

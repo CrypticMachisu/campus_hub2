@@ -290,6 +290,7 @@ CREATE TABLE posts (
     author_name_snapshot VARCHAR(100) NOT NULL,
     body                 TEXT         NOT NULL,
     status               ENUM('published', 'hidden', 'removed') NOT NULL DEFAULT 'published',
+    pinned_at            DATETIME     NULL,             -- one standing notice per club
     created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_posts_club
@@ -299,7 +300,8 @@ CREATE TABLE posts (
         FOREIGN KEY (author_id) REFERENCES users(user_id)
         ON UPDATE CASCADE ON DELETE SET NULL,
     INDEX idx_posts_club_created (club_id, status, created_at),
-    INDEX idx_posts_status_created (status, created_at)
+    INDEX idx_posts_status_created (status, created_at),
+    INDEX idx_posts_club_pinned (club_id, status, pinned_at)
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------

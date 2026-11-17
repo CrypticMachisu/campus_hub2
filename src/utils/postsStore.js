@@ -76,6 +76,15 @@ export async function setPostStatus(postId, status) {
   ).post;
 }
 
+export async function setPostPinned(postId, pinned) {
+  return (
+    await apiFetch(`/posts/${encodeURIComponent(postId)}/pin`, {
+      method: "PATCH",
+      body: { pinned },
+    })
+  ).post;
+}
+
 export async function removePostPhoto(postId, mediaId) {
   await apiFetch(`/posts/${encodeURIComponent(postId)}/media/${encodeURIComponent(mediaId)}`, {
     method: "DELETE",

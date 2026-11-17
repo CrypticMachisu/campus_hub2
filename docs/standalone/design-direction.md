@@ -378,12 +378,13 @@ commitment: a dated activity with a host, a place and an optional capacity.
 - Attendance is marked by an officer on the roster. There is no member
   self-check-in, QR code or attendance export yet.
 
-## Phase 3 — club noticeboard (3a and 3b, 17 November 2026)
+## Phase 3 — club noticeboard (3a, 3b and 3c, 17 November 2026)
 
-Text posts and photos are implemented; reactions and pinning are not. Photo
-controls appear only when R2/S3 credentials are set, so the text noticeboard
-never depends on storage being available. The full design and setup notes live
-in [`phase-3-social.md`](./phase-3-social.md).
+Text posts, photos and one editorial pin per club are implemented; reactions and
+campus-wide search are not. Photo controls appear only when R2/S3 credentials
+are set, so the text noticeboard never depends on storage being available. The
+full design and setup notes live in
+[`phase-3-social.md`](./phase-3-social.md).
 
 ### Model
 
@@ -397,13 +398,15 @@ in [`phase-3-social.md`](./phase-3-social.md).
 - Migration `021_post_media.sql` adds up to three photos per post. A photo row
   starts pending when the API signs a direct upload; it becomes `ready` only
   after the post exists and the bucket confirms the object's size and type.
+- Migration `022_pin_posts.sql` adds `pinned_at`. A club can have one standing
+  notice; pinning another clears the previous pin in the same transaction.
 
 ### Surface
 
 - A club page now carries **From the club** after Commitments: a dated column
   of officer dispatches, with `Earlier updates` rather than infinite scroll.
-  Managers publish and edit inline and can hide a post without leaving the
-  page.
+  Managers publish and edit inline, can pin one standing notice above the
+  dated column, and can hide a post without leaving the page.
 - `/posts/:id` is the permalink: the dispatch, its club, the shared comment
   thread and a report control. A hidden or removed post is readable only by a
   manager and says so.
@@ -414,8 +417,9 @@ in [`phase-3-social.md`](./phase-3-social.md).
   permalink.
 - Editing a post can remove one photo without deleting the dispatch. Removing
   a photo deletes the stored object; the row is not kept.
-- The officer **Desk** has a **Posts** section: publish, edit, hide, restore,
-  remove, and a report queue showing the reason, note and number of reporters.
+- The officer **Desk** has a **Posts** section: publish, edit, pin/unpin, hide,
+  restore, remove, and a report queue showing the reason, note and number of
+  reporters.
   The queue never shows who reported. `Hide` is reversible; `Remove` closes the
   public thread but keeps the row for the audit trail.
 - Reports on post comments appear in the same queue; removing one deletes the
@@ -425,7 +429,7 @@ in [`phase-3-social.md`](./phase-3-social.md).
 
 ### Deferred
 
-- Reactions, pinning and search (3c).
+- Reactions and campus-wide search (the rest of 3c).
 - Editing alt text after upload, thumbnails, per-photo reports, and a purge for
   abandoned pending uploads.
 - The cross-club tier1 report aggregate; tier 1 can open each club's queue.
