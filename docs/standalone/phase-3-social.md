@@ -1,7 +1,7 @@
 # Phase 3 — the club feed, a design pass
 
-**Status:** proposal, not implemented. Written 17 November 2026, after the
-commitment loop shipped.
+**Status:** 3a implemented 17 November 2026. 3b (photos) and 3c (reactions,
+pinning, search) are not built.
 
 Phase 2 answered “will you show up?”. Phase 3 answers the quieter question
 between commitments: **what is this club doing?** The goal is a club
@@ -29,26 +29,54 @@ without reading a second inbox.
 
 ## Model
 
-Proposed migrations, in order. Numbers are indicative; the migration runner
-will assign the next free ones.
+3a applied as migrations `018_posts.sql`, `019_reports.sql` and
+`020_comments_post_target.sql`.
 
-### 018 — posts
+### 018 — posts (applied)
 
-| Column       | Type                                                        |
-| ------------ | ----------------------------------------------------------- |
-| `post_id`    | `VARCHAR(60)` primary key (`post-<timestamp>`)              |
-| `club_id`    | `VARCHAR(30)` foreign key to `clubs`, cascade               |
-| `author_id`  | `VARCHAR(30)` foreign key to `users`, set null on deletion  |
-| `body`       | `TEXT` not null, 1–2000 characters after trim               |
-| `status`     | `ENUM('published','hidden','removed')`, default `published` |
-| `created_at` | `DATETIME` default now                                      |
-| `updated_at` | `DATETIME` auto-update                                      |
-| `pinned_at`  | `DATETIME NULL` — reserved, not exposed in 3a               |
+| Column                 | Type                                                        |
+| ---------------------- | ----------------------------------------------------------- |
+| `post_id`              | `VARCHAR(64)` primary key (`post-<timestamp>`)              |
+| `club_id`              | `VARCHAR(30)` foreign key to `clubs`, cascade               |
+| `author_id`            | `VARCHAR(30)` foreign key to `users`, set null on deletion  |
+| `author_name_snapshot` | `VARCHAR(100)` not null                                     |
+| `body`                 | `TEXT` not null, 1–2000 characters after trim               |
+| `status`               | `ENUM('published','hidden','removed')`, default `published` |
+| `created_at`           | `DATETIME` default now                                      |
+| `updated_at`           | `DATETIME` auto-update                                      |
 
-Index `(club_id, created_at)` for the club page; index `(status, created_at)`
-for a future review queue.
+Index `(club_id, status, created_at)` for the club page;
+`(status, created_at)` for a future review queue. `pinned_at` from the design
+is deferred to 3c.
 
-### 019 — post media (3b)
+### 019 — reports (applied)
+
+| Column        | Type                                                  |
+| ------------- | ----------------------------------------------------- |
+| `report_id`   | `INT AUTO_INCREMENT` primary key                      |
+| `target_type` | `ENUM('post','comment')`                              |
+| `target_id`   | `VARCHAR(64)`                                         |
+| `club_id`     | denormalized owner, so the queue is one indexed read  |
+| `reporter_id` | foreign key to `users`, cascade                       |
+| `reason`      | `ENUM('spam','harassment','off_topic','other')`       |
+| `note`        | `VARCHAR(500) NULL`                                   |
+| `status`      | `ENUM('open','actioned','dismissed')`, default `open` |
+| `resolution`  | `ENUM('hidden','removed','dismissed') NULL`           |
+| `created_at`  | `DATETIME` default now                                |
+| `resolved_by` | `VARCHAR(30) NULL`, foreign key to `users`, set null  |
+| `resolved_at` | `DATETIME NULL`                                       |
+
+Unique key `(reporter_id, target_type, target_id)` so one person cannot pile
+reports onto the same item. Index `(club_id, status, created_at)` and
+`(target_type, target_id, status)`.
+
+### 020 — comments on posts (applied)
+
+Widened `comments.target_type` to `('event','club','commitment','post')` and
+extended `clubForTarget` / `targetTable` in `server/routes/comments.js`. Post
+comments are the existing thread, not a second comment system.
+
+### 021 — post media (3b, not applied)
 
 | Column        | Type                                               |
 | ------------- | -------------------------------------------------- |
@@ -60,33 +88,6 @@ for a future review queue.
 | `height`      | `INT`                                              |
 | `mime`        | `VARCHAR(80)`                                      |
 | `position`    | `TINYINT` default 0                                |
-
-### 020 — reports
-
-| Column        | Type                                                  |
-| ------------- | ----------------------------------------------------- |
-| `report_id`   | `INT AUTO_INCREMENT` primary key                      |
-| `target_type` | `ENUM('post','comment')`                              |
-| `target_id`   | `VARCHAR(60)`                                         |
-| `reporter_id` | foreign key to `users`, cascade                       |
-| `reason`      | `ENUM('spam','harassment','off_topic','other')`       |
-| `note`        | `VARCHAR(500) NULL`                                   |
-| `status`      | `ENUM('open','actioned','dismissed')`, default `open` |
-| `created_at`  | `DATETIME` default now                                |
-| `resolved_by` | `VARCHAR(30) NULL`, foreign key to `users`            |
-| `resolved_at` | `DATETIME NULL`                                       |
-
-Unique key `(reporter_id, target_type, target_id)` so one person cannot pile
-reports onto the same post. Index `(status, created_at)` and
-`(target_type, target_id)`.
-
-### 021 — comments on posts
-
-Widen `comments.target_type` to `('event','club','commitment','post')` and
-extend `clubForTarget` / `targetTable` in `server/routes/comments.js`. Post
-comments are the existing thread, not a second comment system. Deleting a post
-cascades its comments by explicit delete in the route (comments have no FK, as
-with commitments).
 
 ### Explicitly not modelled yet
 
@@ -191,12 +192,35 @@ client-supplied storage URL.
 
 ## Delivery order
 
-1. **3a — text noticeboard.** Posts table, comments-on-posts, club page column,
-   permalink, desk list, reports and the moderation queue. No new service.
+1. **3a — text noticeboard (shipped 17 November 2026).** Posts table,
+   comments-on-posts, club page column, permalink, desk list, reports and the
+   moderation queue. No new service.
 2. **3b — photos.** Storage choice, presigned upload, alt-text gate, image
    rendering and the same moderation paths.
 3. **3c — only with evidence.** Reactions, pinning, search. Each needs a
    measured reason, not a roadmap checkbox.
+
+## 3a implementation record
+
+- `server/routes/posts.js` — public paginated feed, manager-only manage list,
+  publish, edit (author or manager), and status changes (manager only).
+- `server/routes/reports.js` — one report per member per target, a
+  manager-only queue with no reporter identity, and dismiss/hide/remove that
+  closes every open report on the same item. Removing a comment deletes it;
+  hiding is only offered for posts because comments have no hidden state.
+- `server/routes/comments.js` — accepts `targetType=post` and keeps a hidden
+  post's thread unreadable. The existing thread component is reused.
+- `src/components/ClubFeed.jsx` — the public column and inline officer
+  composer/editor on the club page.
+- `src/pages/PostDetail.jsx` — the permalink and comment thread.
+- `src/components/ClubPostsDesk.jsx` — publish, edit, hide/restore/remove and
+  the report queue in the club desk.
+- `src/components/ReportButton.jsx` — a native dialog with reason and optional
+  note, reachable from posts and post comments.
+
+Not built in 3a: the cross-club tier1 report aggregate (tier 1 can manage each
+club's queue through the club switcher), author-initiated deletion (authors can
+edit; managers remove), photos, and reactions.
 
 ## Decisions still open
 

@@ -1,0 +1,134 @@
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) 1.625rem 4rem;
+}
+
+.breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+
+.breadcrumb a {
+  border-bottom: 1px solid var(--rule);
+}
+
+.breadcrumb a:hover {
+  color: var(--signal-deep);
+  border-bottom-color: var(--signal);
+}
+
+.post {
+  border-top: 3px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  padding: 1.1rem 0 1.2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 4vw, 2.45rem);
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.98;
+}
+
+.byline {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.statusNote {
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-left: 3px solid var(--signal);
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 0.84rem;
+}
+
+.body {
+  margin: 1.2rem 0;
+  max-width: 68ch;
+  font-size: 1.02rem;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 1.2rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed var(--rule);
+}
+
+.commentCount {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.discussion {
+  margin-top: 1.6rem;
+}
+
+.hiddenNote {
+  margin-top: 1.2rem;
+  padding: 0.9rem;
+  border: 1px dashed var(--rule);
+  color: var(--ink-2);
+  font-size: 0.86rem;
+}
+
+.backLink {
+  display: inline-block;
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--signal);
+}
+
+.skeletonTitle,
+.skeletonLine {
+  height: 1rem;
+  background: var(--paper-2);
+  margin-bottom: 0.8rem;
+}
+
+.skeletonTitle {
+  width: 55%;
+  height: 2.4rem;
+}
+
+.skeletonLine {
+  width: 100%;
+}
+
+.skeletonLine:last-child {
+  width: 70%;
+}

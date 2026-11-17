@@ -12,6 +12,7 @@ import { SkeletonGroup, ClubProfileSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
 import AgriClubSpotlight, { AGRI_CLUB_ID } from "../components/AgriClubSpotlight";
 import CommitmentsSection from "../components/CommitmentsSection";
+import ClubFeed from "../components/ClubFeed";
 import styles from "./ClubProfile.module.css";
 
 export default function ClubProfile() {
@@ -140,6 +141,9 @@ export default function ClubProfile() {
 
       {/* Every club's dated activities — the Agri-only panel is gone. */}
       <CommitmentsSection clubId={club.id} />
+
+      {/* The club's own dispatches, with comments at each permalink. */}
+      <ClubFeed clubId={club.id} />
 
       {/* Rule 2: Explicit semantic hr element divider separator */}
       <hr className={styles.sectionDivider} />

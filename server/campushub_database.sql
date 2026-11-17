@@ -14,6 +14,8 @@
 -- src/utils/storage.js   (signups)                      -> event_signups
 -- src/utils/commentsStore.js (event/club comments)      -> comments
 -- src/utils/dashboardStorage.js (announcements)         -> announcements
+-- src/utils/postsStore.js    (club dispatch, comments)  -> posts, comments
+-- src/utils/reportsStore.js  (report queue)             -> reports
 --
 -- Three-tier role system preserved exactly as in authStore.canManageClub():
 --   tier1  -> site-wide admin, can manage every club
@@ -202,7 +204,7 @@ CREATE TABLE event_signups (
 -- ----------------------------------------------------------------------------
 CREATE TABLE comments (
     comment_id      VARCHAR(30) PRIMARY KEY,       -- e.g. 'comment-<timestamp>'
-    target_type     ENUM('event', 'club', 'commitment') NOT NULL,
+    target_type     ENUM('event', 'club', 'commitment', 'post') NOT NULL,
     target_id       VARCHAR(30) NOT NULL,
     user_id         VARCHAR(30) NOT NULL,
     user_name_snapshot VARCHAR(100) NOT NULL,       -- mirrors the snapshot pattern used for signups
@@ -273,6 +275,65 @@ CREATE TABLE notifications (
     CONSTRAINT fk_notifications_user
         FOREIGN KEY (user_id) REFERENCES users(user_id)
         ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- posts
+-- Club dispatches for the Phase 3 noticeboard. Officers publish; the body is
+-- text only in 3a. Status is soft: hidden and removed rows stay for the audit
+-- trail and so their comment threads do not disappear into a dangling id.
+-- ----------------------------------------------------------------------------
+CREATE TABLE posts (
+    post_id              VARCHAR(64)  PRIMARY KEY,   -- e.g. 'post-<timestamp>'
+    club_id              VARCHAR(30)  NOT NULL,
+    author_id            VARCHAR(30)  NULL,
+    author_name_snapshot VARCHAR(100) NOT NULL,
+    body                 TEXT         NOT NULL,
+    status               ENUM('published', 'hidden', 'removed') NOT NULL DEFAULT 'published',
+    created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_posts_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_posts_author
+        FOREIGN KEY (author_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_posts_club_created (club_id, status, created_at),
+    INDEX idx_posts_status_created (status, created_at)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- reports
+-- A member's flag on a post or comment. target_type/target_id is polymorphic
+-- like comments; club_id is denormalized so the officer queue is one indexed
+-- read. One row per reporter per target; reportCount is the number of open
+-- reports on that target, not duplicate rows by the same person.
+-- ----------------------------------------------------------------------------
+CREATE TABLE reports (
+    report_id    INT AUTO_INCREMENT PRIMARY KEY,
+    target_type  ENUM('post', 'comment') NOT NULL,
+    target_id    VARCHAR(64) NOT NULL,
+    club_id      VARCHAR(30) NOT NULL,
+    reporter_id  VARCHAR(30) NOT NULL,
+    reason       ENUM('spam', 'harassment', 'off_topic', 'other') NOT NULL,
+    note         VARCHAR(500) NULL,
+    status       ENUM('open', 'actioned', 'dismissed') NOT NULL DEFAULT 'open',
+    resolution   ENUM('hidden', 'removed', 'dismissed') NULL,
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at  DATETIME NULL,
+    resolved_by  VARCHAR(30) NULL,
+    CONSTRAINT fk_reports_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_reports_reporter
+        FOREIGN KEY (reporter_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_reports_resolver
+        FOREIGN KEY (resolved_by) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    UNIQUE KEY uq_report_once (reporter_id, target_type, target_id),
+    INDEX idx_reports_club_status (club_id, status, created_at),
+    INDEX idx_reports_target (target_type, target_id, status)
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { getAllEvents, saveCustomEvent, deleteCustomEvent } from "../utils/eventsStore";
 import { getSignupsByEvent } from "../utils/storage";
 import { getAnnouncements, saveAnnouncement } from "../utils/dashboardStorage";
+import ClubPostsDesk from "../components/ClubPostsDesk";
 import { formatDateTime, formatEventDate } from "../utils/dateTime";
 import {
   COMMITMENT_KINDS,
@@ -520,10 +521,16 @@ export default function Dashboard() {
           </ul>
         </section>
 
-        {/* 6. Playbook — the club-specific bits members see ------------------- */}
+        {/* 6. Posts — the club page's dispatches and report queue ------------ */}
+        <section className={`${styles.section} ${styles.postsSection}`}>
+          <h2>Posts</h2>
+          <ClubPostsDesk clubId={club.id} />
+        </section>
+
+        {/* 7. Playbook — the club-specific bits members see ------------------- */}
         <ClubFocusSection club={club} className={styles.focusSection} />
 
-        {/* 7. Stats ----------------------------------------------------------- */}
+        {/* 8. Stats ----------------------------------------------------------- */}
         <section className={`${styles.section} ${styles.statsSection}`}>
           <h2>Stats</h2>
           <table className={styles.statsTable}>

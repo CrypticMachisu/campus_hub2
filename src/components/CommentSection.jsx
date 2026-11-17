@@ -8,6 +8,7 @@ import {
   setCommentPinned,
   deleteComment,
 } from "../utils/commentsStore";
+import ReportButton from "./ReportButton";
 import styles from "./CommentSection.module.css";
 
 const REACTION_CHOICES = ["👍", "❤️", "🎉", "😂"];
@@ -233,6 +234,10 @@ export default function CommentSection({
             >
               {comment.pinned ? "Unpin" : "Pin"}
             </button>
+          )}
+
+          {user && targetType === "post" && !comment.canModerate && (
+            <ReportButton targetType="comment" targetId={comment.id} />
           )}
 
           {canDelete && (

@@ -378,10 +378,45 @@ commitment: a dated activity with a host, a place and an optional capacity.
 - Attendance is marked by an officer on the roster. There is no member
   self-check-in, QR code or attendance export yet.
 
-## Phase 3 — social (design pass, 17 November 2026)
+## Phase 3 — club noticeboard (3a, 17 November 2026)
 
-A club noticeboard — officer-authored posts, the existing comment thread and a
-report queue — is designed in
-[`phase-3-social.md`](./phase-3-social.md). Text posts and moderation need no
-new infrastructure; photo posts wait on an object-storage decision. Nothing in
-that document is implemented yet, and no schema has been added for it.
+The text half of the social design is implemented; photos and reactions are
+not. The full design and the 3a record live in
+[`phase-3-social.md`](./phase-3-social.md).
+
+### Model
+
+- Migration `018_posts.sql` adds club posts (`published`, `hidden`, `removed`),
+  a named author snapshot and a body capped at 2000 characters.
+- Migration `019_reports.sql` adds member reports on posts and comments, one
+  per reporter per target, scoped to a club. `resolution` records whether the
+  item was hidden, removed or the report dismissed.
+- Migration `020_comments_post_target.sql` widens the existing thread to
+  `post`, so posts do not get a second discussion system.
+
+### Surface
+
+- A club page now carries **From the club** after Commitments: a dated column
+  of officer dispatches, with `Earlier updates` rather than infinite scroll.
+  Managers publish and edit inline and can hide a post without leaving the
+  page.
+- `/posts/:id` is the permalink: the dispatch, its club, the shared comment
+  thread and a report control. A hidden or removed post is readable only by a
+  manager and says so.
+- The officer **Desk** has a **Posts** section: publish, edit, hide, restore,
+  remove, and a report queue showing the reason, note and number of reporters.
+  The queue never shows who reported. `Hide` is reversible; `Remove` closes the
+  public thread but keeps the row for the audit trail.
+- Reports on post comments appear in the same queue; removing one deletes the
+  comment and closes every open report on it. Club, event and commitment
+  threads can be reported through the API but do not have a report control in
+  their own UI yet.
+
+### Deferred
+
+- Photos and object storage (3b), reactions, pinning and search (3c).
+- The cross-club tier1 report aggregate; tier 1 can open each club's queue.
+- Author-initiated deletion. Authors can edit their post; removal is a manager
+  action.
+- The home edition does not show posts. The club page and permalink remain the
+  only reading surfaces.

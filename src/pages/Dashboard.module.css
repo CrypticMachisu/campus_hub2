@@ -45,7 +45,8 @@
   grid-column: span 7;
 }
 
-.desk > .commitmentsSection {
+.desk > .commitmentsSection,
+.desk > .postsSection {
   grid-column: 1 / -1;
 }
 
