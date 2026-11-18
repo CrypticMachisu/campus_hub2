@@ -9,6 +9,7 @@
 import "dotenv/config";
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { pool } from "../db.js";
 
 const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:5000/api";
 const PASSWORD = process.env.TEST_PASSWORD || "campushub123";
@@ -245,5 +246,144 @@ test(
     );
     assert.ok(!ids.includes(comment.id), "the comment should be gone");
     assert.ok(!ids.includes(reply.id), "deleting a parent should cascade to its reply");
+  }
+);
+
+test(
+  "comment reports: club, event and commitment threads reach the queue and close on removal",
+  { timeout: 120_000 },
+  async (t) => {
+    const admin = await login(process.env.TEST_ADMIN_EMAIL || "amara.okafor@campus.edu");
+    const sofia = await login(process.env.TEST_MEMBER_EMAIL || "sofia.ramirez@campus.edu");
+    if (!admin || !sofia) {
+      t.skip("seed logins unavailable — run npm run set-passwords first");
+      return;
+    }
+
+    const stamp = Date.now();
+    let eventId = null;
+    let commitmentId = null;
+    const comments = [];
+
+    t.after(async () => {
+      if (eventId) {
+        await api(`/events/${eventId}`, { method: "DELETE", token: admin });
+      }
+      if (commitmentId) {
+        await api(`/v2/commitments/${commitmentId}`, { method: "DELETE", token: admin });
+      }
+      for (const comment of comments) {
+        await pool.query("DELETE FROM reports WHERE target_type = 'comment' AND target_id = ?", [
+          comment.id,
+        ]);
+        await pool.query("DELETE FROM comments WHERE comment_id = ?", [comment.id]);
+      }
+      await pool.end();
+    });
+
+    const eventCreated = await api("/events", {
+      method: "POST",
+      token: admin,
+      body: {
+        clubId: "club-01",
+        title: `Report parity event ${stamp}`,
+        description: "Created by the comment report test; deleted afterwards.",
+        category: "Academic",
+        date: "2030-07-01",
+        time: "10:00",
+        location: "Room 2",
+      },
+    });
+    eventId = (await expectJson(eventCreated, 201, "create report-test event")).event.id;
+
+    const commitmentCreated = await api("/v2/commitments", {
+      method: "POST",
+      token: admin,
+      body: {
+        clubId: "club-01",
+        kind: "workshop",
+        title: `Report parity commitment ${stamp}`,
+        description: "Created by the comment report test; deleted afterwards.",
+        date: "2030-07-02",
+        time: "09:00",
+        location: "Block C",
+        hostName: "Amara Okafor",
+        capacity: 5,
+      },
+    });
+    commitmentId = (await expectJson(commitmentCreated, 201, "create report-test commitment"))
+      .commitment.id;
+
+    const targets = [
+      { targetType: "club", targetId: "club-01" },
+      { targetType: "event", targetId: eventId },
+      { targetType: "commitment", targetId: commitmentId },
+    ];
+
+    for (const target of targets) {
+      const text = `Report parity ${target.targetType} ${stamp}`;
+      const created = await api("/comments", {
+        method: "POST",
+        token: sofia,
+        body: { ...target, text },
+      });
+      const comment = (await expectJson(created, 201, `${target.targetType} comment`)).comment;
+      comments.push(comment);
+
+      const reported = await api("/v2/reports", {
+        method: "POST",
+        token: admin,
+        body: {
+          targetType: "comment",
+          targetId: comment.id,
+          reason: "off_topic",
+          note: "Parity check for every comment thread.",
+        },
+      });
+      await expectJson(reported, 201, `${target.targetType} comment report`);
+    }
+
+    const queue = await api("/v2/reports?clubId=club-01", { token: admin });
+    const queueBody = await expectJson(queue, 200, "comment report queue");
+
+    for (const comment of comments) {
+      const item = queueBody.reports.find(
+        (entry) => entry.targetType === "comment" && entry.targetId === comment.id
+      );
+      assert.ok(item, `the ${comment.text} report should be in the queue`);
+      assert.equal(item.clubId, "club-01");
+      assert.equal(item.targetText, comment.text);
+
+      const resolved = await api(`/v2/reports/${item.id}/resolve`, {
+        method: "PATCH",
+        token: admin,
+        body: { action: "remove" },
+      });
+      const resolvedBody = await expectJson(resolved, 200, `${comment.text} resolution`);
+      assert.equal(resolvedBody.action, "remove");
+    }
+
+    const after = await api("/v2/reports?clubId=club-01", { token: admin });
+    const afterBody = await expectJson(after, 200, "queue after comment removals");
+    for (const comment of comments) {
+      assert.equal(
+        afterBody.reports.some(
+          (entry) => entry.targetType === "comment" && entry.targetId === comment.id
+        ),
+        false
+      );
+    }
+
+    for (const [index, target] of targets.entries()) {
+      const thread = await api(
+        `/comments?targetType=${target.targetType}&targetId=${encodeURIComponent(target.targetId)}`
+      );
+      const threadBody = await expectJson(thread, 200, `${target.targetType} thread after removal`);
+      assert.equal(
+        threadBody.comments.some((entry) => entry.id === comments[index].id),
+        false,
+        `the ${target.targetType} comment should be gone`
+      );
+    }
   }
 );

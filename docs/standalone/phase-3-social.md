@@ -399,6 +399,19 @@ surface and a measured gap before it earns one.
 - The test bucket now proves the WebP is fetchable, keyed and deleted with the
   photo.
 
+## Follow-up — reports on every comment thread (implemented 18 November 2026)
+
+- The shared `CommentSection` now offers Report on club, event, commitment and
+  post comments. Signed-in readers see it unless they wrote the comment or can
+  moderate the club; the trigger still opens the same native report dialog.
+- The report API and both moderation queues already resolved each comment to
+  its club and removed the comment generically, so this follow-up needed no
+  server route change. A row that names a club, event or commitment comment now
+  reaches the club desk and the tier 1 aggregate with its thread text.
+- `signups-comments.test.mjs` creates one comment on each target type, reports
+  it, finds it in the queue and removes it through the queue. The test also
+  proves the thread no longer contains any of the three comments.
+
 ### Bucket setup
 
 Set these in `server/.env` (R2 names; use `S3_*` for another provider):

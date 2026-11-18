@@ -422,10 +422,10 @@ full design and setup notes live in
   reporters.
   The queue never shows who reported. `Hide` is reversible; `Remove` closes the
   public thread but keeps the row for the audit trail.
-- Reports on post comments appear in the same queue; removing one deletes the
-  comment and closes every open report on it. Club, event and commitment
-  threads can be reported through the API but do not have a report control in
-  their own UI yet.
+- Reports on comments appear in the same queue; removing one deletes the
+  comment and closes every open report on it. The shared thread offers Report
+  on club, event, commitment and post comments to signed-in readers who are
+  neither the author nor a club manager.
 
 ### Deferred
 
