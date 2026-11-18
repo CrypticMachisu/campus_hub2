@@ -45,8 +45,18 @@ export async function optionalAuth(req, res, next) {
 export function canManageClub(user, clubId) {
   if (!user) return false;
   if (user.role === "tier1") return true;
-  if (user.role === "tier2") return user.adminForClubs.includes(clubId);
+  if (["tier2", "campus_admin"].includes(user.role)) {
+    return user.adminForClubs.includes(clubId);
+  }
   return false;
+}
+
+/** Rejects with 403 unless the caller is tier1 or a campus admin. */
+export function requireCampusAdmin(req, res, next) {
+  if (!["tier1", "campus_admin"].includes(req.user?.role)) {
+    return res.status(403).json({ error: "Campus admin access required." });
+  }
+  next();
 }
 
 /** Rejects with 403 unless the caller is a tier1 (platform) admin. */

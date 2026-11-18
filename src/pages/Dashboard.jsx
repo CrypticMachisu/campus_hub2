@@ -28,6 +28,8 @@ import {
   demoteFromClubAdmin,
   approveAdminRequest,
   denyAdminRequest,
+  promoteToCampusAdmin,
+  removeCampusAdmin,
 } from "../utils/adminStore";
 import { canManageClub } from "../utils/authStore";
 import { SkeletonGroup, SkeletonListRow, CardStackSkeleton } from "../components/Skeleton";
@@ -35,6 +37,13 @@ import ErrorState from "../components/ErrorState";
 import styles from "./Dashboard.module.css";
 
 const FALLBACK_IMAGE = "https://placehold.co/600x300";
+
+const ROLE_LABELS = {
+  tier1: "Tier 1",
+  campus_admin: "Campus admin",
+  tier2: "Club admin",
+  member: "Member",
+};
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -70,6 +79,7 @@ export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const club = clubs.find((c) => c.id === clubId);
   const authorized = canManageClub(user, clubId);
+  const isCampusAdmin = ["tier1", "campus_admin"].includes(user?.role);
 
   const [allEvents, setAllEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
@@ -266,7 +276,7 @@ export default function Dashboard() {
             <p className={styles.eyebrow}>Club Admin</p>
             <h1>{club.name} Dashboard</h1>
             <p className={styles.subtitle}>
-              Logged in as {user.name} ({user.role === "tier1" ? "Tier 1" : "Tier 2"})
+              Logged in as {user.name} ({ROLE_LABELS[user.role]}) · {user.campusName}
             </p>
           </div>
           <div className={styles.headerStamp} aria-hidden="true">
@@ -298,16 +308,16 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Create a new club (tier1 only) ------------------------------------ */}
-        {user.role === "tier1" && (
+        {/* Create a new club (tier1 and campus admins) ----------------------- */}
+        {isCampusAdmin && (
           <CreateClubSection onCreated={(newClub) => navigate(`/dashboard/${newClub.id}`)} />
         )}
 
-        {/* Admin management (tier1 only) ------------------------------------ */}
-        {user.role === "tier1" && <AdminManagementSection clubId={clubId} />}
+        {/* Admin management (tier1 and campus admins) ----------------------- */}
+        {isCampusAdmin && <AdminManagementSection clubId={clubId} />}
 
-        {/* Cross-club moderation (tier1 only) ------------------------------- */}
-        {user.role === "tier1" && <Tier1ReportQueue />}
+        {/* Cross-club moderation (tier1 and campus admins) ------------------ */}
+        {isCampusAdmin && <Tier1ReportQueue />}
 
         {saveMessage && <div className={styles.toast}>{saveMessage}</div>}
 
@@ -1371,12 +1381,15 @@ function SignupsTable({ eventId }) {
   );
 }
 
-// Tier1-only panel: review pending admin requests for this club, revoke
-// or grant tier2 admin access for it.
+// Tier1 and campus-admin panel: review pending admin requests for this club,
+// revoke or grant tier2 admin access for it. The API scopes a campus admin to
+// their own campus's users and clubs.
 function AdminManagementSection({ clubId }) {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedCampusAdminId, setSelectedCampusAdminId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -1392,7 +1405,11 @@ function AdminManagementSection({ clubId }) {
   }, [refresh]);
 
   const currentAdmins = users.filter((u) => u.adminForClubs.includes(clubId));
-  const promotableUsers = users.filter((u) => !u.adminForClubs.includes(clubId));
+  const promotableUsers = users.filter(
+    (u) => !u.adminForClubs.includes(clubId) && u.role !== "campus_admin"
+  );
+  const campusAdmins = users.filter((u) => u.role === "campus_admin");
+  const campusCandidates = users.filter((u) => u.role !== "campus_admin");
 
   async function handleApprove(requestId) {
     await approveAdminRequest(requestId);
@@ -1420,6 +1437,23 @@ function AdminManagementSection({ clubId }) {
     if (!confirmed) return;
     await demoteFromClubAdmin(userId, clubId);
     setMessage("Admin access revoked for this club.");
+    await refresh();
+  }
+
+  async function handlePromoteCampusAdmin(e) {
+    e.preventDefault();
+    if (!selectedCampusAdminId) return;
+    const updated = await promoteToCampusAdmin(selectedCampusAdminId);
+    setMessage(`${updated.name} can now manage every club on ${updated.campusName}.`);
+    setSelectedCampusAdminId("");
+    await refresh();
+  }
+
+  async function handleRemoveCampusAdmin(userId) {
+    const confirmed = window.confirm("Remove this user's campus-admin rights?");
+    if (!confirmed) return;
+    const updated = await removeCampusAdmin(userId);
+    setMessage(`${updated.name} is now a ${ROLE_LABELS[updated.role] || "member"}.`);
     await refresh();
   }
 
@@ -1490,7 +1524,7 @@ function AdminManagementSection({ clubId }) {
             <option value="">Select a user…</option>
             {promotableUsers.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} ({u.email}) — {u.role === "tier2" ? "Tier 2 admin" : "Member"}
+                {u.name} ({u.email}) — {ROLE_LABELS[u.role] || "Member"}
               </option>
             ))}
           </select>
@@ -1501,6 +1535,61 @@ function AdminManagementSection({ clubId }) {
           </button>
         </div>
       </form>
+
+      {user?.role === "tier1" && (
+        <>
+          <h3>Campus administration</h3>
+          <p className={styles.emptyState}>
+            A campus admin manages every club on their campus. Tier 1 remains the only platform-wide
+            role.
+          </p>
+          {campusAdmins.length === 0 && <p className={styles.emptyState}>No campus admins yet.</p>}
+          <ul className={styles.eventList}>
+            {campusAdmins.map((u) => (
+              <li key={u.id} className={styles.eventRow}>
+                <span>
+                  {u.name} <span className={styles.eventMeta}>({u.email})</span>
+                </span>
+                <span className={styles.rowActions}>
+                  <button
+                    type="button"
+                    className={styles.dangerButton}
+                    onClick={() => handleRemoveCampusAdmin(u.id)}
+                  >
+                    Remove
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <form className={styles.form} onSubmit={handlePromoteCampusAdmin}>
+            <label>
+              User
+              <select
+                value={selectedCampusAdminId}
+                onChange={(e) => setSelectedCampusAdminId(e.target.value)}
+              >
+                <option value="">Select a user…</option>
+                {campusCandidates.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email}) — {ROLE_LABELS[u.role] || "Member"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className={styles.formActions}>
+              <button
+                type="submit"
+                className={styles.primaryButton}
+                disabled={!selectedCampusAdminId}
+              >
+                Make campus admin
+              </button>
+            </div>
+          </form>
+        </>
+      )}
     </section>
   );
 }
@@ -1662,8 +1751,9 @@ const emptyClubForm = {
   tags: "",
 };
 
-// Tier1-only panel: create a brand-new club, then hand it off (via
-// onCreated) so the caller can navigate straight to its dashboard.
+// Tier1 and campus-admin panel: create a brand-new club, then hand it off (via
+// onCreated) so the caller can navigate straight to its dashboard. The server
+// pins a campus admin to their own campus.
 function CreateClubSection({ onCreated }) {
   const { refresh } = useClubs();
   const [form, setForm] = useState(emptyClubForm);

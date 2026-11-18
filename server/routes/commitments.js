@@ -12,6 +12,7 @@
 // owning club.
 import { pool } from "../db.js";
 import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
+import { readCampusScope } from "../campus.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 import { recordAudit } from "../audit.js";
 import { parseStartTime } from "./events.js";
@@ -45,10 +46,12 @@ export function kindLabel(kind) {
 }
 
 const COMMITMENT_QUERY = `
-  SELECT c.*, DATE_FORMAT(c.starts_at, '%Y-%m-%dT%H:%i') AS starts_local,
+  SELECT c.*, cl.campus_id AS club_campus_id,
+         DATE_FORMAT(c.starts_at, '%Y-%m-%dT%H:%i') AS starts_local,
          (SELECT COUNT(*) FROM commitment_signups s
            WHERE s.commitment_id = c.commitment_id) AS signup_count
   FROM commitments c
+  JOIN clubs cl ON cl.club_id = c.club_id
 `;
 
 /** Commitment row -> API shape. `startsAt` follows the v2 events convention. */
@@ -163,11 +166,18 @@ commitmentsRouter.get("/mine", requireAuth, async (req, res) => {
  * officer view; the edition defaults to upcoming only.
  */
 commitmentsRouter.get("/", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+
   const clubId = typeof req.query.clubId === "string" ? req.query.clubId.trim() : "";
   const includePast = req.query.upcoming === "0";
 
   const where = [];
   const params = {};
+  if (scope.campusId) {
+    where.push("cl.campus_id = :campusId");
+    params.campusId = scope.campusId;
+  }
   if (clubId) {
     where.push("c.club_id = :clubId");
     params.clubId = clubId;
@@ -187,10 +197,15 @@ commitmentsRouter.get("/", optionalAuth, async (req, res) => {
 
 /** GET /commitments/:id — one commitment, plus the reader's own signup. */
 commitmentsRouter.get("/:id", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+
   const [rows] = await pool.query(`${COMMITMENT_QUERY} WHERE c.commitment_id = :id`, {
     id: req.params.id,
   });
-  if (!rows[0]) return res.status(404).json({ error: "Commitment not found." });
+  if (!rows[0] || (scope.campusId && rows[0].club_campus_id !== scope.campusId)) {
+    return res.status(404).json({ error: "Commitment not found." });
+  }
 
   const commitment = rowToCommitment(rows[0], await joinedIdsFor(req.user));
   let signup = null;
@@ -519,11 +534,17 @@ commitmentsRouter.delete("/:id", requireAuth, async (req, res) => {
  */
 commitmentsRouter.post("/:id/signup", requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    "SELECT commitment_id, capacity FROM commitments WHERE commitment_id = :id",
+    `SELECT c.commitment_id, c.capacity, cl.campus_id
+     FROM commitments c
+     JOIN clubs cl ON cl.club_id = c.club_id
+     WHERE c.commitment_id = :id`,
     { id: req.params.id }
   );
   const commitment = rows[0];
   if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (req.user.role !== "tier1" && commitment.campus_id !== req.user.campusId) {
+    return res.status(403).json({ error: "That commitment belongs to another campus." });
+  }
 
   const [existing] = await pool.query(
     "SELECT * FROM commitment_signups WHERE commitment_id = :id AND user_id = :userId",

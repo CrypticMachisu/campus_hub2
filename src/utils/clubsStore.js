@@ -14,9 +14,9 @@ export const CATEGORIES = [
   "Social",
 ];
 
-/** All clubs. */
+/** Clubs on the signed-in reader's campus (or the default campus when signed out). */
 export async function getAllClubs() {
-  const { clubs } = await apiFetch("/clubs", { auth: false });
+  const { clubs } = await apiFetch("/clubs");
   return clubs;
 }
 

@@ -460,5 +460,6 @@ image bodies; a CORS failure means the browser never reaches the bucket.
 ## Out of scope
 
 Direct messages, follows, a global or algorithmic feed, video, stories,
-member-authored posts, and cross-campus feeds. Phase 4 owns campus scoping; the
-feed should inherit it rather than invent a parallel visibility rule.
+member-authored posts, and cross-campus feeds. Phase 4 now scopes the clubs,
+events and commitments by campus; the post feed inherits that club boundary
+rather than inventing a parallel visibility rule.

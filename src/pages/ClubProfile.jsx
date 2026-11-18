@@ -109,7 +109,7 @@ export default function ClubProfile() {
         </div>
       </header>
 
-      {user && user.role !== "tier1" && <MembershipBar club={club} />}
+      {user && !["tier1", "campus_admin"].includes(user.role) && <MembershipBar club={club} />}
 
       {user && club && !canManageClub(user, club.id) && <AdminRequestButton clubId={club.id} />}
 

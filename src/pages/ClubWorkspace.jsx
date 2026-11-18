@@ -459,7 +459,11 @@ export default function ClubWorkspace() {
                         </span>
                         {member.role !== "member" && (
                           <span className={styles.roleTag}>
-                            {member.role === "tier1" ? "Tier 1" : "Admin"}
+                            {member.role === "tier1"
+                              ? "Tier 1"
+                              : member.role === "campus_admin"
+                                ? "Campus admin"
+                                : "Club admin"}
                           </span>
                         )}
                       </li>

@@ -96,13 +96,17 @@ export function saveLoginPath(email, path) {
  * links to show); the server independently re-checks this on every
  * mutating request, so this is a convenience, not a security boundary.
  * - tier1: can manage any club.
+ * - campus_admin: can manage every club on their campus (the API fills
+ *   adminForClubs with that campus's clubs).
  * - tier2: can manage only clubs listed in their adminForClubs.
  * - member or missing user: never.
  */
 export function canManageClub(user, clubId) {
   if (!user) return false;
   if (user.role === "tier1") return true;
-  if (user.role === "tier2") return user.adminForClubs.includes(clubId);
+  if (["tier2", "campus_admin"].includes(user.role)) {
+    return user.adminForClubs.includes(clubId);
+  }
   return false;
 }
 
@@ -114,7 +118,9 @@ export function isClubMember(user, clubId) {
 /**
  * Clubs that belong to this user's world: ones they joined plus ones they
  * admin. Tier 1 admins are excluded on purpose — they keep the platform-wide
- * view rather than being dropped into a single club's workspace.
+ * view rather than being dropped into a single club's workspace. Campus admins
+ * keep the platform chrome too, but their adminForClubs still lists every club
+ * on their campus for the desk.
  */
 export function clubsForUser(user, clubs) {
   if (!user || user.role === "tier1") return [];

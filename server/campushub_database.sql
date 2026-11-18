@@ -17,10 +17,11 @@
 -- src/utils/postsStore.js    (club dispatch, comments)  -> posts, comments
 -- src/utils/reportsStore.js  (report queue)             -> reports
 --
--- Three-tier role system preserved exactly as in authStore.canManageClub():
---   tier1  -> site-wide admin, can manage every club
---   tier2  -> club-scoped admin, can manage only clubs in club_admins
---   member -> no management rights
+-- Four-role system after Phase 4:
+--   tier1        -> platform-wide admin, can manage every campus and club
+--   campus_admin -> manages every club on their own campus
+--   tier2        -> club-scoped admin, can manage only clubs in club_admins
+--   member       -> no management rights
 -- ============================================================================
 
 DROP DATABASE IF EXISTS campushub_standalone;
@@ -38,6 +39,26 @@ CREATE TABLE categories (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
+-- campuses
+-- Phase 4 boundary. A user and a club each belong to exactly one campus; a
+-- campus may own several email domains so signup can join the right one.
+-- ----------------------------------------------------------------------------
+CREATE TABLE campuses (
+    campus_id  VARCHAR(30) PRIMARY KEY,
+    name       VARCHAR(150) NOT NULL,
+    slug       VARCHAR(80) NOT NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE campus_email_domains (
+    domain    VARCHAR(190) PRIMARY KEY,
+    campus_id VARCHAR(30) NOT NULL,
+    CONSTRAINT fk_campus_domain_campus
+        FOREIGN KEY (campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
 -- users
 -- Backs mockUsers.js + authStore.signup() and the real password auth added by
 -- migrations 001/002 (see authStore.js login()/getCurrentUser()). Seed hashes
@@ -48,13 +69,18 @@ CREATE TABLE users (
     user_id       VARCHAR(30)  PRIMARY KEY,      -- e.g. 'user-01', or 'user-<timestamp>' from signup()
     name          VARCHAR(100) NOT NULL,
     email         VARCHAR(150) NOT NULL UNIQUE,
-    role          ENUM('tier1', 'tier2', 'member') NOT NULL DEFAULT 'member',
+    role          ENUM('tier1', 'campus_admin', 'tier2', 'member') NOT NULL DEFAULT 'member',
+    campus_id     VARCHAR(30) NOT NULL,
     -- Password auth (migrations 001 + 002). Empty hash = can't log in until
     -- `npm run set-passwords` has run.
     password_hash       VARCHAR(255) NOT NULL DEFAULT '',
     reset_token_hash    VARCHAR(64)  NULL,
     reset_token_expires DATETIME     NULL,
-    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_users_campus
+        FOREIGN KEY (campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    INDEX idx_users_campus (campus_id)
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
@@ -63,6 +89,7 @@ CREATE TABLE users (
 -- ----------------------------------------------------------------------------
 CREATE TABLE clubs (
     club_id          VARCHAR(30) PRIMARY KEY,      -- e.g. 'club-01'
+    campus_id        VARCHAR(30) NOT NULL,
     name             VARCHAR(150) NOT NULL,
     category_id      INT NOT NULL,
     description      TEXT,
@@ -80,7 +107,11 @@ CREATE TABLE clubs (
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_clubs_category
         FOREIGN KEY (category_id) REFERENCES categories(category_id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_clubs_campus
+        FOREIGN KEY (campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    INDEX idx_clubs_campus (campus_id)
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
@@ -411,45 +442,53 @@ INSERT INTO categories (name) VALUES
     ('Community Service'),
     ('Social');
 
+-- Campuses (Phase 4)
+INSERT INTO campuses (campus_id, name, slug) VALUES
+    ('campus-01', 'Strathmore University', 'strathmore');
+
+INSERT INTO campus_email_domains (domain, campus_id) VALUES
+    ('strathmore.edu', 'campus-01'),
+    ('campus.edu', 'campus-01');
+
 -- Users (mockUsers.js)
-INSERT INTO users (user_id, name, email, role) VALUES
-    ('user-01', 'Amara Okafor',   'amara.okafor@campus.edu',   'tier1'),
-    ('user-02', 'Leo Fischer',    'leo.fischer@campus.edu',    'tier2'),
-    ('user-03', 'Priya Nair',     'priya.nair@campus.edu',     'tier2'),
-    ('user-04', 'Denis Mwangi',   'denis.mwangi@campus.edu',   'tier2'),
-    ('user-05', 'Sofia Ramirez',  'sofia.ramirez@campus.edu',  'member'),
-    ('user-06', 'Jamal Green',    'jamal.green@campus.edu',    'member'),
-    ('user-07', 'Yuki Tanaka',    'yuki.tanaka@campus.edu',    'member'),
-    ('user-08', 'Nadia Haddad',   'nadia.haddad@campus.edu',   'member');
+INSERT INTO users (user_id, name, email, role, campus_id) VALUES
+    ('user-01', 'Amara Okafor',   'amara.okafor@campus.edu',   'tier1',  'campus-01'),
+    ('user-02', 'Leo Fischer',    'leo.fischer@campus.edu',    'tier2',  'campus-01'),
+    ('user-03', 'Priya Nair',     'priya.nair@campus.edu',     'tier2',  'campus-01'),
+    ('user-04', 'Denis Mwangi',   'denis.mwangi@campus.edu',   'tier2',  'campus-01'),
+    ('user-05', 'Sofia Ramirez',  'sofia.ramirez@campus.edu',  'member', 'campus-01'),
+    ('user-06', 'Jamal Green',    'jamal.green@campus.edu',    'member', 'campus-01'),
+    ('user-07', 'Yuki Tanaka',    'yuki.tanaka@campus.edu',    'member', 'campus-01'),
+    ('user-08', 'Nadia Haddad',   'nadia.haddad@campus.edu',   'member', 'campus-01');
 
 -- Clubs (mockData.js `clubs`)
-INSERT INTO clubs (club_id, name, category_id, description, logo_url, meeting_time, meeting_location) VALUES
-    ('club-01', 'Debate & Rhetoric Society',
+INSERT INTO clubs (club_id, campus_id, name, category_id, description, logo_url, meeting_time, meeting_location) VALUES
+    ('club-01', 'campus-01', 'Debate & Rhetoric Society',
         (SELECT category_id FROM categories WHERE name = 'Academic'),
         'Weekly parliamentary-style debates and coaching for regional and national tournaments.',
         '/images/clubs/club-01.jpg',
         'Tuesdays, 6:00 PM', 'Humanities Hall, Room 214'),
-    ('club-02', 'Lens Collective',
+    ('club-02', 'campus-01', 'Lens Collective',
         (SELECT category_id FROM categories WHERE name = 'Arts & Culture'),
         'A photography and film club for students who want to shoot, edit, and screen their work together.',
         '/images/clubs/club-02.jpg',
         'Wednesdays, 5:30 PM', 'Fine Arts Building, Studio 3'),
-    ('club-03', 'Trailblazers Running Club',
+    ('club-03', 'campus-01', 'Trailblazers Running Club',
         (SELECT category_id FROM categories WHERE name = 'Sports & Fitness'),
         'Casual and competitive group runs around campus and the river trail, all paces welcome.',
         '/images/clubs/club-03.jpg',
         'Mon/Thu, 6:30 AM', 'Meet at the Rec Center steps'),
-    ('club-04', 'Byte Club',
+    ('club-04', 'campus-01', 'Byte Club',
         (SELECT category_id FROM categories WHERE name = 'Technology'),
         'Hands-on workshops, hackathon prep, and project nights for anyone into building software.',
         '/images/clubs/club-04.jpg',
         'Thursdays, 7:00 PM', 'Engineering Building, Lab 108'),
-    ('club-05', 'Neighborhood Tutors',
+    ('club-05', 'campus-01', 'Neighborhood Tutors',
         (SELECT category_id FROM categories WHERE name = 'Community Service'),
         'Student-run tutoring for local middle schoolers in math and reading, transport provided.',
         '/images/clubs/club-05.jpg',
         'Saturdays, 10:00 AM', 'Vans depart from Student Union'),
-    ('club-06', 'Night Market Society',
+    ('club-06', 'campus-01', 'Night Market Society',
         (SELECT category_id FROM categories WHERE name = 'Social'),
         'Monthly themed hangouts, game nights, and pop-up food events for meeting people outside your major.',
         '/images/clubs/club-06.jpg',

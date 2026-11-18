@@ -16,6 +16,9 @@ export function rowToUser(row) {
     name: row.name,
     email: row.email,
     role: row.role,
+    campusId: row.campus_id,
+    campusName: row.campus_name || "",
+    campusSlug: row.campus_slug || "",
     adminForClubs: splitIds(row.admin_club_ids),
     memberOfClubs: splitIds(row.member_club_ids),
   };
@@ -30,6 +33,8 @@ function splitIds(value) {
 export function rowToClub(row) {
   return {
     id: row.club_id,
+    campusId: row.campus_id,
+    campusName: row.campus_name || "",
     name: row.name,
     category: row.category_name,
     description: row.description,

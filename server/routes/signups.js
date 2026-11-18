@@ -69,10 +69,17 @@ signupsRouter.post("/", requireAuth, async (req, res) => {
   const { eventId } = req.body;
   if (!eventId) return res.status(400).json({ error: "eventId is required." });
 
-  const [eventRows] = await pool.query("SELECT event_id FROM events WHERE event_id = :eventId", {
-    eventId,
-  });
+  const [eventRows] = await pool.query(
+    `SELECT e.event_id, c.campus_id
+     FROM events e
+     JOIN clubs c ON c.club_id = e.club_id
+     WHERE e.event_id = :eventId`,
+    { eventId }
+  );
   if (!eventRows[0]) return res.status(404).json({ error: "Event not found." });
+  if (req.user.role !== "tier1" && eventRows[0].campus_id !== req.user.campusId) {
+    return res.status(403).json({ error: "That event belongs to another campus." });
+  }
 
   const [existing] = await pool.query(
     "SELECT * FROM event_signups WHERE event_id = :eventId AND user_id = :userId",

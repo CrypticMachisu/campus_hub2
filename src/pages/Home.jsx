@@ -59,7 +59,9 @@ export default function Home() {
   const { clubs, loading: clubsLoading, error: clubsError, refresh: refreshClubs } = useClubs();
   const { user } = useAuth();
   const hasNoClub =
-    Boolean(user) && user.role !== "tier1" && clubsForUser(user, clubs).length === 0;
+    Boolean(user) &&
+    !["tier1", "campus_admin"].includes(user.role) &&
+    clubsForUser(user, clubs).length === 0;
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState("");

@@ -3,9 +3,9 @@ import { getReports, resolveReport } from "../utils/reportsStore";
 import styles from "./Tier1ReportQueue.module.css";
 
 /**
- * Platform-wide moderation queue. Tier 1 already has every club's desk through
- * the switcher; this puts every open report in one place so a report cannot
- * disappear behind the currently selected club.
+ * Cross-club moderation queue. Tier 1 sees every campus; a campus admin sees
+ * their own campus. Either way, every open report they can moderate is in one
+ * place, so it cannot disappear behind the currently selected club.
  */
 export default function Tier1ReportQueue() {
   const [reports, setReports] = useState([]);
@@ -83,8 +83,8 @@ export default function Tier1ReportQueue() {
         </button>
       </div>
       <p className={styles.lede}>
-        Every open report, whichever club it belongs to. One action closes every report on that
-        item.
+        Every open report you can moderate, whichever club it belongs to. One action closes every
+        report on that item.
       </p>
 
       <p className="visually-hidden" role="status">
@@ -103,7 +103,7 @@ export default function Tier1ReportQueue() {
       {status === "loading" && <p className={styles.state}>Loading reports…</p>}
 
       {status === "ok" && reports.length === 0 && (
-        <p className={styles.state}>No open reports across any club.</p>
+        <p className={styles.state}>No open reports across your clubs.</p>
       )}
 
       {status === "ok" && reports.length > 0 && (

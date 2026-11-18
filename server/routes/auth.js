@@ -2,7 +2,8 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
-import { findUserById, findUserRowByEmail } from "../queries.js";
+import { findUserById, findUserRowByEmail, hydrateCampusAdmin } from "../queries.js";
+import { findCampusByEmailDomain } from "../campus.js";
 import { rowToUser } from "../rowMappers.js";
 import { requireAuth } from "../middleware/auth.js";
 import { isValidEmail } from "../validation.js";
@@ -19,6 +20,8 @@ function signToken(user) {
  * Creates a new member account. Mirrors the old authStore.signup():
  * trims name/email, rejects if either is empty, rejects duplicate
  * emails (case-insensitive) — but now also requires + hashes a password.
+ * The email domain decides the campus; an unknown domain is rejected rather
+ * than creating an account that cannot see any campus content.
  */
 authRouter.post("/register", async (req, res) => {
   const name = (req.body.name || "").trim();
@@ -40,13 +43,18 @@ authRouter.post("/register", async (req, res) => {
     return res.status(409).json({ error: "That email is already registered." });
   }
 
+  const campus = await findCampusByEmailDomain(email);
+  if (!campus) {
+    return res.status(400).json({ error: "Use your campus email address to sign up." });
+  }
+
   const id = `user-${Date.now()}`;
   const passwordHash = await bcrypt.hash(password, 10);
 
   await pool.query(
-    `INSERT INTO users (user_id, name, email, password_hash, role)
-    VALUES (:id, :name, :email, :passwordHash, 'member')`,
-    { id, name, email, passwordHash }
+    `INSERT INTO users (user_id, name, email, password_hash, role, campus_id)
+    VALUES (:id, :name, :email, :passwordHash, 'member', :campusId)`,
+    { id, name, email, passwordHash, campusId: campus.id }
   );
 
   const user = await findUserById(id);
@@ -71,7 +79,7 @@ authRouter.post("/login", async (req, res) => {
   const valid = row.password_hash && (await bcrypt.compare(password, row.password_hash));
   if (!valid) return res.status(401).json({ error: "Invalid email or password." });
 
-  const user = rowToUser(row);
+  const user = await hydrateCampusAdmin(rowToUser(row));
   res.json({ token: signToken(user), user });
 });
 

@@ -12,7 +12,8 @@ function linkClass({ isActive }) {
 
 const ROLE_LABELS = {
   tier1: "Tier 1",
-  tier2: "Tier 2",
+  campus_admin: "Campus admin",
+  tier2: "Club admin",
   member: "Member",
 };
 
@@ -43,10 +44,11 @@ export default function Navbar() {
   // page's "user path") get an explicit button to jump to the desk.
   const loggedViaUserPath = Boolean(user) && getRememberedLoginPath(user.email) === "user";
 
-  // Tier1 only. Re-checks on every navigation (rather than polling) so the
-  // badge stays fresh after approving/denying a request on the Dashboard.
+  // Tier1 and campus admins. Re-checks on every navigation (rather than
+  // polling) so the badge stays fresh after approving/denying a request on the
+  // Dashboard.
   useEffect(() => {
-    if (user?.role !== "tier1") {
+    if (!["tier1", "campus_admin"].includes(user?.role)) {
       setPendingRequestCount(0);
       return;
     }
@@ -70,7 +72,7 @@ export default function Navbar() {
       </a>
       <div className={styles.edition}>
         <div className={`container ${styles.editionInner}`}>
-          <span>Vol. 01 · Nairobi · Main campus</span>
+          <span>Vol. 01 · {user?.campusName || "Strathmore University"}</span>
           <span className={styles.editionDate}>{editionDate()}</span>
           <span className={styles.live}>
             <i aria-hidden="true" /> Campus live

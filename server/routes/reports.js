@@ -166,17 +166,22 @@ reportsRouter.post("/", requireAuth, async (req, res) => {
   const [managers] = await pool.query("SELECT user_id FROM club_admins WHERE club_id = :clubId", {
     clubId: target.clubId,
   });
+  const [campusAdmins] = await pool.query(
+    `SELECT u.user_id
+     FROM users u
+     JOIN clubs c ON c.campus_id = u.campus_id
+     WHERE u.role = 'campus_admin' AND c.club_id = :clubId`,
+    { clubId: target.clubId }
+  );
+  const recipients = [...new Set([...managers, ...campusAdmins].map((row) => row.user_id))];
   const noun = targetType === "media" ? "photo" : targetType;
   try {
-    await notifyUsers(
-      managers.map((row) => row.user_id),
-      {
-        kind: "content_reported",
-        title: `A ${noun} was reported`,
-        body: `${reasonLabel(reason)}. Review it from the club desk.`,
-        link: `/dashboard/${target.clubId}`,
-      }
-    );
+    await notifyUsers(recipients, {
+      kind: "content_reported",
+      title: `A ${noun} was reported`,
+      body: `${reasonLabel(reason)}. Review it from the club desk.`,
+      link: `/dashboard/${target.clubId}`,
+    });
   } catch (err) {
     console.error("Could not notify managers about a report:", err.message);
   }
@@ -191,8 +196,9 @@ reportsRouter.post("/", requireAuth, async (req, res) => {
 });
 
 /**
- * GET /reports?clubId=… — open reports for one club, or every club for tier 1.
- * Club managers must name a club they manage.
+ * GET /reports?clubId=… — open reports for one club, or every club for tier 1
+ * and every club on their campus for a campus admin. Club managers must name a
+ * club they manage.
  */
 reportsRouter.get("/", requireAuth, async (req, res) => {
   const clubId = typeof req.query.clubId === "string" ? req.query.clubId.trim() : "";
@@ -201,7 +207,7 @@ reportsRouter.get("/", requireAuth, async (req, res) => {
     if (!canManageClub(req.user, clubId)) {
       return res.status(403).json({ error: "You don't have admin access to that club." });
     }
-  } else if (req.user.role !== "tier1") {
+  } else if (!["tier1", "campus_admin"].includes(req.user.role)) {
     return res.status(400).json({ error: "clubId is required." });
   }
 
@@ -210,6 +216,9 @@ reportsRouter.get("/", requireAuth, async (req, res) => {
   if (clubId) {
     where.push("r.club_id = :clubId");
     params.clubId = clubId;
+  } else if (req.user.role === "campus_admin") {
+    where.push("cl.campus_id = :campusId");
+    params.campusId = req.user.campusId;
   }
 
   const [rows] = await pool.query(

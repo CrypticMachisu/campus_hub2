@@ -7,6 +7,7 @@
 import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
 import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
+import { readCampusScope } from "../campus.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 import { recordAudit } from "../audit.js";
 import {
@@ -25,7 +26,7 @@ const MAX_ALT = 300;
 const STATUSES = ["published", "hidden", "removed"];
 
 const POST_QUERY = `
-  SELECT p.*, cl.name AS club_name,
+  SELECT p.*, cl.name AS club_name, cl.campus_id AS club_campus_id,
          (SELECT COUNT(*) FROM comments c
            WHERE c.target_type = 'post' AND c.target_id = p.post_id) AS comment_count,
          (SELECT COUNT(*) FROM post_media m
@@ -520,10 +521,21 @@ async function clubExists(clubId) {
  * Public, published posts only, newest first. `before` is the last post id the
  * reader already has; `nextCursor` is null when the page was short.
  */
-postsRouter.get("/", async (req, res) => {
+postsRouter.get("/", optionalAuth, async (req, res) => {
   const clubId = typeof req.query.clubId === "string" ? req.query.clubId.trim() : "";
   if (!clubId) return res.status(400).json({ error: "clubId is required." });
-  if (!(await clubExists(clubId))) return res.status(404).json({ error: "Club not found." });
+
+  const [clubRows] = await pool.query(
+    "SELECT club_id, campus_id FROM clubs WHERE club_id = :clubId",
+    { clubId }
+  );
+  if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
+
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+  if (scope.campusId && clubRows[0].campus_id !== scope.campusId) {
+    return res.status(404).json({ error: "Club not found." });
+  }
 
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
   const before = typeof req.query.before === "string" ? req.query.before.trim() : "";
@@ -602,9 +614,14 @@ postsRouter.get("/manage", requireAuth, async (req, res) => {
 
 /** GET /posts/:id — public while published; managers can read hidden rows. */
 postsRouter.get("/:id", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+
   const [rows] = await pool.query(`${POST_QUERY} WHERE p.post_id = :id`, { id: req.params.id });
   const row = rows[0];
-  if (!row) return res.status(404).json({ error: "Post not found." });
+  if (!row || (scope.campusId && row.club_campus_id !== scope.campusId)) {
+    return res.status(404).json({ error: "Post not found." });
+  }
 
   const canManage = canManageClub(req.user, row.club_id);
   if (row.status !== "published" && !canManage) {

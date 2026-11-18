@@ -6,45 +6,77 @@ import {
   addClubMember,
   removeClubMember,
 } from "../queries.js";
-import { requireAuth, requireTier1, canManageClub } from "../middleware/auth.js";
+import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
+import { campusExists, defaultCampusId, readCampusScope } from "../campus.js";
 import { recordAudit } from "../audit.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 
 export const clubsRouter = createApiRouter();
 
-/** GET /api/clubs — all clubs, with category name and tags joined in. */
-clubsRouter.get("/", async (req, res) => {
+/** GET /api/clubs — clubs the reader is allowed to discover, grouped by campus. */
+clubsRouter.get("/", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+
+  const where = [];
+  const params = {};
+  if (scope.campusId) {
+    where.push("c.campus_id = :campusId");
+    params.campusId = scope.campusId;
+  }
+
   const [rows] = await pool.query(
-    `SELECT c.*, cat.name AS category_name, GROUP_CONCAT(DISTINCT ct.tag) AS tags
+    `SELECT c.*, camp.name AS campus_name, cat.name AS category_name,
+            GROUP_CONCAT(DISTINCT ct.tag) AS tags
     FROM clubs c
+    JOIN campuses camp ON camp.campus_id = c.campus_id
     JOIN categories cat ON cat.category_id = c.category_id
     LEFT JOIN club_tags ct ON ct.club_id = c.club_id
-    GROUP BY c.club_id
-    ORDER BY c.name`
+    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+    GROUP BY c.club_id, camp.name
+    ORDER BY c.name`,
+    params
   );
   res.json({ clubs: rows.map(rowToClub) });
 });
 
 /**
- * POST /api/clubs — tier1 only. Creates a new club (+ optional tags).
- * tags can be a comma-separated string or an array; either way it's
- * normalized to a trimmed, deduped list before insert.
+ * POST /api/clubs — tier1 or a campus admin creates a club.
+ * A campus admin is pinned to their own campus; tier1 may name a campus and
+ * defaults to the first one. tags can be a comma-separated string or an array;
+ * either way it's normalized to a trimmed, deduped list before insert.
  */
-clubsRouter.post("/", requireAuth, requireTier1, async (req, res) => {
+clubsRouter.post("/", requireAuth, async (req, res) => {
+  if (!["tier1", "campus_admin"].includes(req.user.role)) {
+    return res.status(403).json({ error: "Campus admin access required." });
+  }
+
   const { name, description, category, logoUrl, meetingTime, meetingLocation, tags } = req.body;
 
   const trimmedName = (name || "").trim();
   if (!trimmedName) return res.status(400).json({ error: "Club name is required." });
+
+  const requestedCampusId =
+    req.user.role === "tier1" ? req.body.campusId || (await defaultCampusId()) : req.user.campusId;
+  if (!requestedCampusId) {
+    return res.status(400).json({ error: "campusId is required." });
+  }
+  if (!(await campusExists(requestedCampusId))) {
+    return res.status(404).json({ error: "Campus not found." });
+  }
 
   const categoryId = await findCategoryIdByName(category);
   if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
 
   const id = `club-${Date.now()}`;
   await pool.query(
-    `INSERT INTO clubs (club_id, name, category_id, description, logo_url, meeting_time, meeting_location)
-    VALUES (:id, :name, :categoryId, :description, :logoUrl, :meetingTime, :meetingLocation)`,
+    `INSERT INTO clubs
+      (club_id, campus_id, name, category_id, description, logo_url, meeting_time, meeting_location)
+    VALUES
+      (:id, :campusId, :name, :categoryId, :description, :logoUrl, :meetingTime, :meetingLocation)`,
     {
       id,
+      campusId: requestedCampusId,
       name: trimmedName,
       categoryId,
       description: (description || "").trim(),
@@ -69,12 +101,14 @@ clubsRouter.post("/", requireAuth, requireTier1, async (req, res) => {
   }
 
   const [rows] = await pool.query(
-    `SELECT c.*, cat.name AS category_name, GROUP_CONCAT(DISTINCT ct.tag) AS tags
+    `SELECT c.*, camp.name AS campus_name, cat.name AS category_name,
+            GROUP_CONCAT(DISTINCT ct.tag) AS tags
     FROM clubs c
+    JOIN campuses camp ON camp.campus_id = c.campus_id
     JOIN categories cat ON cat.category_id = c.category_id
     LEFT JOIN club_tags ct ON ct.club_id = c.club_id
     WHERE c.club_id = :id
-    GROUP BY c.club_id`,
+    GROUP BY c.club_id, camp.name`,
     { id }
   );
   res.status(201).json({ club: rowToClub(rows[0]) });
@@ -160,12 +194,14 @@ clubsRouter.put("/:clubId", requireAuth, async (req, res) => {
   });
 
   const [rows] = await pool.query(
-    `SELECT c.*, cat.name AS category_name, GROUP_CONCAT(DISTINCT ct.tag) AS tags
+    `SELECT c.*, camp.name AS campus_name, cat.name AS category_name,
+            GROUP_CONCAT(DISTINCT ct.tag) AS tags
     FROM clubs c
+    JOIN campuses camp ON camp.campus_id = c.campus_id
     JOIN categories cat ON cat.category_id = c.category_id
     LEFT JOIN club_tags ct ON ct.club_id = c.club_id
     WHERE c.club_id = :clubId
-    GROUP BY c.club_id`,
+    GROUP BY c.club_id, camp.name`,
     { clubId }
   );
   res.json({ club: rowToClub(rows[0]) });
@@ -205,10 +241,14 @@ clubsRouter.get("/:clubId/members", requireAuth, async (req, res) => {
 clubsRouter.post("/:clubId/members", requireAuth, async (req, res) => {
   const { clubId } = req.params;
 
-  const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
-    clubId,
-  });
+  const [clubRows] = await pool.query(
+    "SELECT club_id, campus_id FROM clubs WHERE club_id = :clubId",
+    { clubId }
+  );
   if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
+  if (req.user.role !== "tier1" && clubRows[0].campus_id !== req.user.campusId) {
+    return res.status(403).json({ error: "That club belongs to another campus." });
+  }
 
   const user = await addClubMember(req.user.id, clubId);
   res.status(201).json({ user });

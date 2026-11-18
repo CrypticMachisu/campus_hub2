@@ -48,7 +48,8 @@ function AppRoutes() {
   }
 
   const myClubs = clubsForUser(user, clubs);
-  const isMemberView = Boolean(user) && user.role !== "tier1" && myClubs.length > 0;
+  const keepsPlatformChrome = Boolean(user) && ["tier1", "campus_admin"].includes(user.role);
+  const isMemberView = Boolean(user) && !keepsPlatformChrome && myClubs.length > 0;
 
   if (isMemberView) {
     const homeClubId = myClubs[0].id;
@@ -108,7 +109,11 @@ function AppRoutes() {
           <Route
             path="/workspace/:clubId"
             element={
-              user && user.role !== "tier1" ? <ClubWorkspace /> : <Navigate to="/" replace />
+              user && !["tier1", "campus_admin"].includes(user.role) ? (
+                <ClubWorkspace />
+              ) : (
+                <Navigate to="/" replace />
+              )
             }
           />
           <Route path="/my-events" element={<MyEvents />} />

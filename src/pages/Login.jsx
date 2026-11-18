@@ -187,7 +187,7 @@ export default function Login() {
             </div>
             <p className={styles.rolePathHint}>
               {rolePath === "admin"
-                ? "Admin path — your account needs tier1 or tier2 admin rights (e.g. you were recently promoted). Successful logins land on the Dashboard."
+                ? "Admin path — your account needs tier1, campus admin or tier2 club admin rights (e.g. you were recently promoted). Successful logins land on the Dashboard."
                 : "User path — clubs, events and RSVPs. Successful logins land on the home feed."}
             </p>
           </div>
@@ -275,10 +275,13 @@ export default function Login() {
               className={styles.select}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="jordan.smith@campus.edu"
+              placeholder="jordan.smith@strathmore.edu"
               autoComplete="email"
               required
             />
+            <p className={styles.rolePathHint}>
+              Use your campus email — the domain decides which campus you join.
+            </p>
 
             <label className={styles.label} htmlFor="signup-password">
               Password <span className={styles.optional}>(at least 8 characters)</span>

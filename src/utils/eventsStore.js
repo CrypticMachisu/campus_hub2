@@ -17,9 +17,9 @@ export function toUiEvent(event) {
   return { ...rest, date, time: clock.slice(0, 5) };
 }
 
-/** All events — seed events and custom events from the backend. */
+/** Events on the signed-in reader's campus (or the default campus when signed out). */
 export async function getAllEvents() {
-  const { events } = await apiFetch("/events", { auth: false });
+  const { events } = await apiFetch("/events");
   return events.map(toUiEvent);
 }
 

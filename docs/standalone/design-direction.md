@@ -206,10 +206,11 @@ package name until the name clears a trademark and domain check.
 | **1. Foundation**   | Brand, tokens, shell/nav, this-week home, club page, event page, auth screens                                  | None — current schema is enough                                                                         |
 | **2. Commitments**  | Opportunities become commitments with spots, hosts and attendance; officer view gains capacity/waitlist tables | Rename `agro_opportunities`/`agro_interest` conceptually; migrate to `commitments`/`commitment_signups` |
 | **3. Social**       | Club feed, threaded comments, photo posts, moderation flags                                                    | Posts, media and moderation tables                                                                      |
-| **4. Multi-campus** | Campus entity, switcher, per-campus discovery, cross-campus commitments                                        | `campuses` table, `campus_id` on clubs, events and memberships                                          |
+| **4. Multi-campus** | Campus entity, campus-scoped discovery, campus admin; cross-campus discovery later                             | `campuses`, email domains, `campus_id` on users and clubs                                               |
 
-Phases 3 and 4 need their own design passes; they are named here so the
-foundation doesn't paint us into a single-campus, single-feed corner.
+Phase 3 and Phase 4 now have implementation notes. Phase 4 deliberately stops
+at the campus boundary: one campus per person and per club, no cross-campus
+switcher yet. See [`phase-4-campus.md`](./phase-4-campus.md).
 
 ### Skills for the build
 
@@ -432,3 +433,20 @@ full design and setup notes live in
 - Reactions and campus-wide search (the rest of 3c).
 - The home edition does not show posts. The club page and permalink remain the
   only reading surfaces.
+
+## Phase 4 — campus boundary (18 November 2026)
+
+One account belongs to one campus, one club belongs to one campus, and a reader
+sees the clubs, events and commitments on their own campus. Strathmore
+University is the seeded campus. Registration resolves the campus from the
+email domain; an unknown domain is rejected rather than creating an account
+with no campus.
+
+The permission ladder is now `tier1` → `campus_admin` → `tier2` (club manager)
+→ `member`. A campus admin manages every club on their campus, sees that
+campus's reports and admin requests, and cannot reach another campus. Tier 1
+remains platform-wide and assigns the campus role from the Dashboard.
+
+Cross-campus discovery, a public campus switcher, multi-campus clubs and
+multi-campus users are deferred to the cross-university phase. The full model
+and verification notes live in [`phase-4-campus.md`](./phase-4-campus.md).

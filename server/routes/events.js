@@ -1,7 +1,8 @@
 import { pool } from "../db.js";
 import { rowToEvent } from "../rowMappers.js";
 import { findCategoryIdByName } from "../queries.js";
-import { requireAuth, canManageClub } from "../middleware/auth.js";
+import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
+import { readCampusScope } from "../campus.js";
 import { recordAudit } from "../audit.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 
@@ -10,6 +11,7 @@ export const eventsRouter = createApiRouter();
 const EVENT_LIST_QUERY = `
   SELECT e.*, cat.name AS category_name, COUNT(s.signup_id) AS signup_count
   FROM events e
+  JOIN clubs cl ON cl.club_id = e.club_id
   JOIN categories cat ON cat.category_id = e.category_id
   LEFT JOIN event_signups s ON s.event_id = e.event_id
 `;
@@ -87,10 +89,21 @@ function validateEventFields(body) {
   return { title, start, bringNote, capacity };
 }
 
-/** GET /api/events — list all events. */
-eventsRouter.get("/", async (req, res) => {
+/** GET /api/events — events on the reader's campus (tier 1 may see every campus). */
+eventsRouter.get("/", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+
+  const params = {};
+  let where = "";
+  if (scope.campusId) {
+    where = "WHERE cl.campus_id = :campusId";
+    params.campusId = scope.campusId;
+  }
+
   const [rows] = await pool.query(
-    `${EVENT_LIST_QUERY} GROUP BY e.event_id ORDER BY e.event_date, e.event_time`
+    `${EVENT_LIST_QUERY} ${where} GROUP BY e.event_id ORDER BY e.event_date, e.event_time`,
+    params
   );
   res.json({ events: rows.map(rowToEvent) });
 });
