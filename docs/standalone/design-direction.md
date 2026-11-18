@@ -457,12 +457,13 @@ clubs, users or campus deletion.
 
 ## Phase 5 — cross-university design (18 November 2026)
 
-The cross-university phase is designed, with its affiliation foundation now
-implemented. The recommended model is a **club family with one chapter per
-campus**, and a user with one home campus plus approved affiliations. Members
-request additional campuses at `/campus-access`; the campus admin for that
-campus or tier 1 approves. Tier 1 can switch the edition between one campus and
-all campuses; members' discovery still defaults to local, and a network scope
+The cross-university phase is designed, with its schema and affiliation flow
+installed behind a disabled feature flag. Migration `027` adds club families,
+chapter links and family admins; migration `026` adds affiliations. With
+`CROSS_UNIVERSITY_ENABLED=false`, the affiliation API and `/campus-access` are
+absent. When enabled, members request additional campuses and the campus admin
+or tier 1 approves. Tier 1 can switch the edition between one campus and all
+campuses; members' discovery still defaults to local, and a network scope
 appears only for affiliated campuses. Content must deliberately opt into a
 network audience.
 

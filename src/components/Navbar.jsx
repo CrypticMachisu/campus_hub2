@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useClubs } from "../context/ClubsContext";
 import { canManageClub, getRememberedLoginPath } from "../utils/authStore";
+import { CROSS_UNIVERSITY_ENABLED } from "../utils/features";
 import { getPendingAdminRequests } from "../utils/adminStore";
 import styles from "./Navbar.module.css";
 
@@ -97,7 +98,7 @@ export default function Navbar() {
               Commitments
             </NavLink>
           )}
-          {user && (
+          {CROSS_UNIVERSITY_ENABLED && user && (
             <NavLink to="/campus-access" className={linkClass}>
               Campus access
             </NavLink>

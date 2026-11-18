@@ -90,6 +90,13 @@ test(
       await pool.end();
     });
 
+    // The endpoints are unmounted while CROSS_UNIVERSITY_ENABLED is false.
+    // Run this file against an enabled server to exercise the flow.
+    if ((await api("/v2/campus-affiliations/me")).status === 404) {
+      t.skip("CROSS_UNIVERSITY_ENABLED is off — start an enabled API to run this flow");
+      return;
+    }
+
     await pool.query("INSERT INTO campuses (campus_id, name, slug) VALUES (?, ?, ?)", [
       campusId,
       `Affiliation Campus ${stamp}`,

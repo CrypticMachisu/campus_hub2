@@ -114,12 +114,53 @@ CREATE TABLE user_campus_affiliations (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
+-- club_families
+-- Phase 5 foundation. A family owns a multi-campus club's shared identity;
+-- each campus still has its own clubs row (the chapter). No family rows are
+-- seeded until the cross-university feature is enabled.
+-- ----------------------------------------------------------------------------
+CREATE TABLE club_families (
+    family_id      VARCHAR(30) PRIMARY KEY,
+    name           VARCHAR(150) NOT NULL,
+    slug           VARCHAR(80) NOT NULL UNIQUE,
+    description    TEXT NULL,
+    logo_url       VARCHAR(500) NULL,
+    home_campus_id VARCHAR(30) NOT NULL,
+    status         ENUM('active', 'archived') NOT NULL DEFAULT 'active',
+    created_by     VARCHAR(30) NULL,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_club_family_home_campus
+        FOREIGN KEY (home_campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_club_family_creator
+        FOREIGN KEY (created_by) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_club_families_status (status, name)
+) ENGINE=InnoDB;
+
+-- Delegated family identity editors (Phase 5 foundation; no routes yet).
+CREATE TABLE club_family_admins (
+    family_id VARCHAR(30) NOT NULL,
+    user_id   VARCHAR(30) NOT NULL,
+    role      ENUM('lead', 'editor') NOT NULL DEFAULT 'lead',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (family_id, user_id),
+    CONSTRAINT fk_family_admin_family
+        FOREIGN KEY (family_id) REFERENCES club_families(family_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_family_admin_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
 -- clubs
 -- Backs the `clubs` array in mockData.js.
 -- ----------------------------------------------------------------------------
 CREATE TABLE clubs (
     club_id          VARCHAR(30) PRIMARY KEY,      -- e.g. 'club-01'
     campus_id        VARCHAR(30) NOT NULL,
+    family_id        VARCHAR(30) NULL,             -- Phase 5 chapter link
     name             VARCHAR(150) NOT NULL,
     category_id      INT NOT NULL,
     description      TEXT,
@@ -141,7 +182,12 @@ CREATE TABLE clubs (
     CONSTRAINT fk_clubs_campus
         FOREIGN KEY (campus_id) REFERENCES campuses(campus_id)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    INDEX idx_clubs_campus (campus_id)
+    CONSTRAINT fk_clubs_family
+        FOREIGN KEY (family_id) REFERENCES club_families(family_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_clubs_campus (campus_id),
+    INDEX idx_clubs_family (family_id),
+    UNIQUE KEY uq_club_family_campus (family_id, campus_id)
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------

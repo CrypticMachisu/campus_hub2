@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { canManageClub } from "../utils/authStore";
+import { CROSS_UNIVERSITY_ENABLED } from "../utils/features";
 import styles from "./MemberShell.module.css";
 
 /** "Debate & Rhetoric Society" -> "DR" (skips short joining words). */
@@ -131,9 +132,11 @@ export default function MemberShell({ myClubs }) {
             <NavLink to="/my-events" className={utilityClass}>
               My commitments
             </NavLink>
-            <NavLink to="/campus-access" className={utilityClass}>
-              Campus access
-            </NavLink>
+            {CROSS_UNIVERSITY_ENABLED && (
+              <NavLink to="/campus-access" className={utilityClass}>
+                Campus access
+              </NavLink>
+            )}
             {activeClub && canManageClub(user, activeClub.id) && (
               <NavLink to={`/dashboard/${activeClub.id}`} className={utilityClass}>
                 The desk

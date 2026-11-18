@@ -1,10 +1,15 @@
 # Phase 5 — the cross-university network
 
-Design plus a first implemented slice. The campus affiliation foundation —
-home-campus backfill, member requests, cancellation, and campus-admin/tier-1
-approval — is live at `/campus-access`. Tier 1 also has a discovery-only campus
-switcher on the edition. Club families, member network discovery and network
-audiences remain design only.
+Design plus a dark schema foundation. Migration `026` includes campus
+affiliations and migration `027` installs club families, chapter links and
+family admins. The member-facing affiliation surface — home-campus backfill,
+requests, cancellation and campus-admin/tier-1 approval — is implemented, but
+both its API and the `/campus-access` entry point are behind
+`CROSS_UNIVERSITY_ENABLED=false` / `VITE_CROSS_UNIVERSITY_ENABLED=false`.
+
+No family API or UI is mounted yet. Club families, member network discovery and
+network audiences remain design only. Tier 1's discovery-only campus switcher
+is a Phase 4 control and is not gated by this flag.
 
 Phase 4 gave every account and club one campus. Phase 5 lets a person belong
 to more than one campus and lets one club exist as a family of campus chapters.
@@ -93,13 +98,21 @@ Who can add an affiliation:
 This avoids a free-for-all where anyone can claim any university and read its
 network content.
 
-### Implemented foundation
+### Schema and gated affiliation foundation
 
-Migration `026_campus_affiliations.sql` adds the table and backfills every
-existing user's home row. New registrations insert their home affiliation at
-the same time as the account.
+Migration `026_campus_affiliations.sql` adds the affiliation table and backfills
+every existing user's home row. New registrations insert their home affiliation
+at the same time as the account. Migration `027_club_families.sql` adds
+`club_families`, nullable `clubs.family_id`, the unique chapter-per-campus link
+and `club_family_admins`; it seeds no family and attaches no existing club.
 
-The live screen is `/campus-access`:
+The affiliation screen and API are implemented but disabled by default. Set
+`CROSS_UNIVERSITY_ENABLED=true` in `server/.env` and
+`VITE_CROSS_UNIVERSITY_ENABLED=true` in the client, then rebuild/restart. The
+route is unmounted while the server flag is off; the client flag hides the
+Campus access link and route.
+
+When enabled, the screen is `/campus-access`:
 
 - Members see their home campus, active affiliations, pending requests and
   denied/revoked requests, and can request another campus with a relationship
@@ -339,8 +352,9 @@ Ship schema dark, then turn on read, then participation.
 2. **Read-only network** — family pages, chapter links, scope switch, network
    audiences. `CROSS_CAMPUS_ENABLED=false` keeps the UI hidden on a single
    campus. Test against a temporary second campus before enabling.
-3. **Affiliations** — **implemented:** campus-admin approval flow and the
-   `/campus-access` screen. Still no cross-campus writes or network discovery.
+3. **Affiliations** — **implemented behind the flag:** campus-admin approval
+   flow and the `/campus-access` screen. Still no cross-campus writes or network
+   discovery.
 4. **Participation** — network RSVP/join and network commitments. Start with
    one host chapter/one roster.
 5. **Public directory** — only after family verification and moderation are

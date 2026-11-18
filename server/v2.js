@@ -25,6 +25,7 @@ import { postsRouter } from "./routes/posts.js";
 import { reportsRouter } from "./routes/reports.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { limiter } from "./middleware/apiGuards.js";
+import { crossUniversityEnabled } from "./features.js";
 
 export const v2Router = Router();
 
@@ -33,7 +34,11 @@ v2Router.use("/auth", authRouter);
 v2Router.use("/users", usersRouter);
 v2Router.use("/admin-requests", adminRequestsRouter);
 v2Router.use("/campuses", campusesRouter);
-v2Router.use("/campus-affiliations", campusAffiliationsRouter);
+// Phase 5 foundation. The schema is present, but the member affiliation
+// surface stays unmounted until the operator enables the flag and restarts.
+if (crossUniversityEnabled()) {
+  v2Router.use("/campus-affiliations", campusAffiliationsRouter);
+}
 v2Router.use("/clubs", clubsRouter);
 v2Router.use("/signups", signupsRouter);
 v2Router.use("/comments", commentsRouter);

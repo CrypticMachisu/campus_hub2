@@ -18,6 +18,7 @@ import MyEvents from "./pages/MyEvents";
 import Dashboard from "./pages/Dashboard";
 import CampusSettings from "./pages/CampusSettings";
 import CampusAccess from "./pages/CampusAccess";
+import { CROSS_UNIVERSITY_ENABLED } from "./utils/features";
 import ClubWorkspace from "./pages/ClubWorkspace";
 import NotFound from "./pages/NotFound";
 import styles from "./App.module.css";
@@ -73,7 +74,7 @@ function AppRoutes() {
           <Route path="/commitments/:commitmentId" element={<CommitmentDetail />} />
           <Route path="/posts/:postId" element={<PostDetail />} />
           <Route path="/my-events" element={<MyEvents />} />
-          <Route path="/campus-access" element={<CampusAccess />} />
+          {CROSS_UNIVERSITY_ENABLED && <Route path="/campus-access" element={<CampusAccess />} />}
           <Route path="/dashboard/:clubId" element={<Dashboard />} />
           <Route
             path="/dashboard"
@@ -120,7 +121,7 @@ function AppRoutes() {
             }
           />
           <Route path="/my-events" element={<MyEvents />} />
-          <Route path="/campus-access" element={<CampusAccess />} />
+          {CROSS_UNIVERSITY_ENABLED && <Route path="/campus-access" element={<CampusAccess />} />}
           <Route path="/settings/campuses" element={<CampusSettings />} />
           <Route path="/dashboard/:clubId" element={<Dashboard />} />
           <Route path="/dashboard" element={<Navigate to="/dashboard/club-01" replace />} />

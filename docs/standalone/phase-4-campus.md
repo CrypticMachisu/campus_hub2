@@ -109,6 +109,11 @@ domains.
 
 ## Campus affiliations
 
+This Phase 5 surface is implemented but disabled by default. The server route
+is unmounted unless `CROSS_UNIVERSITY_ENABLED=true`, and the client link/route
+requires `VITE_CROSS_UNIVERSITY_ENABLED=true`. With the flags off, `/campus-access`
+is not part of the app.
+
 Signed-in members can request an additional campus at `/campus-access`. The
 request records a relationship kind and a short note, and stays pending until
 the campus admin for that campus or tier 1 approves or denies it. Members can
