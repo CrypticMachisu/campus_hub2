@@ -102,8 +102,14 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
   });
 
   const postIds = [];
+  const reportedMediaIds = [];
 
   t.after(async () => {
+    for (const mediaId of reportedMediaIds) {
+      await pool.query("DELETE FROM reports WHERE target_type = 'media' AND target_id = ?", [
+        mediaId,
+      ]);
+    }
     for (const id of postIds) {
       await pool.query("DELETE FROM posts WHERE post_id = ?", [id]);
     }
@@ -306,6 +312,7 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
   // club and the photo, and removing it through moderation deletes the object
   // and closes the report.
   const remainingPhoto = after.body.post.media[0];
+  reportedMediaIds.push(remainingPhoto.id);
   const [[remainingRow]] = await pool.query(
     "SELECT storage_key FROM post_media WHERE media_id = ?",
     [remainingPhoto.id]
