@@ -247,8 +247,8 @@ URLs; setting a public bucket domain makes delivery URLs stable and cacheable.
 - `src/components/ReportButton.jsx` — a native dialog with reason and optional
   note, reachable from posts and post comments.
 
-Not built in 3a: the cross-club tier1 report aggregate (tier 1 can manage each
-club's queue through the club switcher) and reactions. Photos shipped in 3b.
+Not built in 3a: reactions. The cross-club tier 1 report aggregate was added
+later; photos shipped in 3b.
 
 ## 3b implementation record
 
@@ -334,6 +334,17 @@ surface and a measured gap before it earns one.
 - The API test reassigns a post to a non-manager author to cover editing,
   unrelated-member refusal, the author's refusal to hide, and the author's
   successful soft removal.
+
+## Follow-up — tier 1 cross-club reports (implemented 18 November 2026)
+
+- The existing `GET /reports` without a `clubId` already returned every open
+  report to tier 1; the dashboard now surfaces it in a dedicated moderation
+  section instead of hiding it behind the selected club.
+- The queue shows the club, target type, reason, reporter count, target excerpt
+  and note. Tier 1 can dismiss, hide a post or remove a post/comment from the
+  same list, and one action still closes every open report on that target.
+- Club managers still get only their club's queue; a tier 2 request without a
+  `clubId` remains a 400.
 
 ### Bucket setup
 

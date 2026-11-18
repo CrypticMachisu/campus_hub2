@@ -81,7 +81,7 @@ test("posts: publish, comment, report and moderate", { timeout: 60_000 }, async 
       await pool.query("DELETE FROM posts WHERE post_id = ?", [id]);
     }
     await pool.query(
-      "DELETE FROM notifications WHERE kind = 'content_reported' AND link = '/dashboard/club-01'"
+      "DELETE FROM notifications WHERE kind = 'content_reported' AND link IN ('/dashboard/club-01', '/dashboard/club-02')"
     );
     await pool.end();
   });
@@ -428,4 +428,50 @@ test("posts: publish, comment, report and moderate", { timeout: 60_000 }, async 
   });
   assert.equal((await expectJson(authorRemoved, 200, "author removal")).post.status, "removed");
   assert.equal((await api(`/v2/posts/${authoredPost.id}`)).status, 404);
+
+  // Tier 1 can read and resolve the open reports across every club, not only
+  // the club currently selected in the dashboard.
+  const otherClubPost = await api("/v2/posts", {
+    method: "POST",
+    token: admin,
+    body: { clubId: "club-02", text: `Cross-club report test ${Date.now()}` },
+  });
+  const crossPost = (await expectJson(otherClubPost, 201, "other club post")).post;
+  postIds.push(crossPost.id);
+  const crossReport = await api("/v2/reports", {
+    method: "POST",
+    token: sofia,
+    body: {
+      targetType: "post",
+      targetId: crossPost.id,
+      reason: "off_topic",
+      note: "This belongs in another club.",
+    },
+  });
+  assert.equal(crossReport.status, 201);
+
+  const noClubId = await api("/v2/reports", { token: sofia });
+  assert.equal(noClubId.status, 400);
+  const allQueues = await api("/v2/reports", { token: admin });
+  const allQueueBody = await expectJson(allQueues, 200, "cross-club report queue");
+  const crossItem = allQueueBody.reports.find((entry) => entry.targetId === crossPost.id);
+  assert.ok(crossItem, "the other club's report should be in the tier 1 queue");
+  assert.equal(crossItem.clubId, "club-02");
+  assert.ok(crossItem.clubName);
+
+  const crossResolved = await api(`/v2/reports/${crossItem.id}/resolve`, {
+    method: "PATCH",
+    token: admin,
+    body: { action: "dismiss" },
+  });
+  assert.equal((await expectJson(crossResolved, 200, "tier 1 resolve")).action, "dismiss");
+  const afterCross = await expectJson(
+    await api("/v2/reports", { token: admin }),
+    200,
+    "queue after tier 1 resolve"
+  );
+  assert.equal(
+    afterCross.reports.some((entry) => entry.targetId === crossPost.id),
+    false
+  );
 });

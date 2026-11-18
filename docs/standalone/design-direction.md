@@ -432,6 +432,5 @@ full design and setup notes live in
 - Reactions and campus-wide search (the rest of 3c).
 - Thumbnails and per-photo reports. Abandoned pending uploads are purged by
   the cleanup worker (24-hour default).
-- The cross-club tier1 report aggregate; tier 1 can open each club's queue.
 - The home edition does not show posts. The club page and permalink remain the
   only reading surfaces.

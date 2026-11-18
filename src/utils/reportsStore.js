@@ -8,9 +8,10 @@ export async function reportContent({ targetType, targetId, reason, note = "" })
   });
 }
 
-/** Open reports for a managed club. */
-export async function getReports(clubId) {
-  const data = await apiFetch(`/reports?clubId=${encodeURIComponent(clubId)}`);
+/** Open reports for one managed club, or every club for a tier 1 admin. */
+export async function getReports(clubId = "") {
+  const query = clubId ? `?clubId=${encodeURIComponent(clubId)}` : "";
+  const data = await apiFetch(`/reports${query}`);
   return data.reports;
 }
 

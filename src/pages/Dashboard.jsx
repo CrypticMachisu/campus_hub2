@@ -8,6 +8,7 @@ import { getAllEvents, saveCustomEvent, deleteCustomEvent } from "../utils/event
 import { getSignupsByEvent } from "../utils/storage";
 import { getAnnouncements, saveAnnouncement } from "../utils/dashboardStorage";
 import ClubPostsDesk from "../components/ClubPostsDesk";
+import Tier1ReportQueue from "../components/Tier1ReportQueue";
 import { formatDateTime, formatEventDate } from "../utils/dateTime";
 import {
   COMMITMENT_KINDS,
@@ -304,6 +305,9 @@ export default function Dashboard() {
 
         {/* Admin management (tier1 only) ------------------------------------ */}
         {user.role === "tier1" && <AdminManagementSection clubId={clubId} />}
+
+        {/* Cross-club moderation (tier1 only) ------------------------------- */}
+        {user.role === "tier1" && <Tier1ReportQueue />}
 
         {saveMessage && <div className={styles.toast}>{saveMessage}</div>}
 
