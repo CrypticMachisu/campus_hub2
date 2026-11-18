@@ -298,7 +298,7 @@ reportsRouter.patch("/:id/resolve", requireAuth, async (req, res) => {
       );
     } else if (report.target_type === "media") {
       const [mediaRows] = await pool.query(
-        "SELECT media_id, storage_key FROM post_media WHERE media_id = :id",
+        "SELECT media_id, storage_key, thumbnail_key FROM post_media WHERE media_id = :id",
         { id: report.target_id }
       );
       if (!mediaRows[0]) {
@@ -307,6 +307,9 @@ reportsRouter.patch("/:id/resolve", requireAuth, async (req, res) => {
       await pool.query("DELETE FROM post_media WHERE media_id = :id", { id: report.target_id });
       try {
         await mediaStorage.remove(mediaRows[0].storage_key);
+        if (mediaRows[0].thumbnail_key) {
+          await mediaStorage.remove(mediaRows[0].thumbnail_key);
+        }
       } catch (err) {
         console.error(`Could not delete reported photo ${report.target_id}:`, err.message);
       }

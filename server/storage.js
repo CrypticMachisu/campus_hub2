@@ -131,6 +131,31 @@ export function createMediaStorage(config = storageConfigFromEnv()) {
       return getSignedUrl(client, command, { expiresIn: MEDIA_URL_TTL_SECONDS });
     },
 
+    /** Read an object for a one-time derivative, such as a thumbnail. */
+    async getObject(key) {
+      const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      if (!result.Body) throw new Error(`Object ${key} had no body.`);
+      return Buffer.from(await result.Body.transformToByteArray());
+    },
+
+    /** Write a generated object directly; uploads still use presigned PUTs. */
+    async putObject(
+      key,
+      body,
+      contentType,
+      { cacheControl = "public, max-age=31536000, immutable" } = {}
+    ) {
+      await client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: body,
+          ContentType: contentType,
+          CacheControl: cacheControl,
+        })
+      );
+    },
+
     async remove(key) {
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
     },

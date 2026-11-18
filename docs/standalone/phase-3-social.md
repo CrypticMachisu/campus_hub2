@@ -2,7 +2,7 @@
 
 **Status:** 3a, 3b and the pinning part of 3c are implemented 17 November 2026,
 along with the purge for abandoned photo uploads, editing a published photo's
-description and per-photo moderation. Reactions and campus-wide search remain deferred until
+description, stored WebP thumbnails and per-photo moderation. Reactions and campus-wide search remain deferred until
 there is evidence for them. Photo endpoints stay off until R2 credentials are
 set; the code path is tested, but no real bucket upload has been run in this
 environment.
@@ -118,6 +118,14 @@ without removing the whole dispatch. The API checks that the photo is `ready`
 and its post is published before accepting the report. Removing the photo
 through moderation deletes the row and stored object and closes every report on
 it; hiding or removing its post closes those photo reports too.
+
+### 024 — photo thumbnails (applied)
+
+`post_media.thumbnail_key` points at a generated 640px WebP. Publishing decodes
+the uploaded object with `sharp`, stores the derivative next to the original
+and keeps the original for permalinks and as the fallback. Existing rows have
+`NULL` and continue to use the original. Removing a photo or its parent deletes
+both objects.
 
 ### Explicitly not modelled yet
 
@@ -276,9 +284,13 @@ later; photos shipped in 3b.
   it decorative. The author or a club manager may edit it; clearing the
   description without choosing decorative is rejected. The dialog is available
   beside each photo in both the club-page editor and the desk.
-- The feed and permalink return `media` with fresh URLs, alt text, dimensions
-  and orientation-free ordering. The club feed, permalink and officer desk all
-  render the same photo band.
+- Publishing generates one 640px WebP thumbnail per photo with `sharp`, stores
+  it next to the original, and records `thumbnail_key`. Generation is bounded by
+  input pixels and a failure falls back to the original instead of blocking the
+  post.
+- The feed and permalink return `media` with fresh original and thumbnail URLs,
+  alt text, dimensions and orientation-free ordering. The club feed, permalink
+  and officer desk all render the same photo band.
 - The composer offers a labelled file picker, per-photo description, an
   explicit decorative checkbox, a remove control and a 3-photo count. The file
   input is keyboard reachable; there is no drag-only path.
@@ -286,9 +298,9 @@ later; photos shipped in 3b.
   PUTs, public URLs and signed GETs. `server/tests/posts.test.mjs` covers the
   text-only fallback when storage is absent.
 
-Not built in 3b: image cropping and derived thumbnails. Abandoned pending
-uploads are now handled by the cleanup worker described below. Captions remain
-text and are not baked into images.
+Not built in 3b: interactive cropping. Derived thumbnails arrived in the
+follow-up below. Abandoned pending uploads are handled by the cleanup worker.
+Captions remain text and are not baked into images.
 
 ## Follow-up — abandoned uploads (implemented 17 November 2026)
 
@@ -370,6 +382,22 @@ surface and a measured gap before it earns one.
   removing a photo directly from the edit panel closes its reports.
 - `server/tests/media.test.mjs` covers the member report, queue shape, removal
   and object cleanup.
+
+## Follow-up — photo thumbnails (implemented 18 November 2026)
+
+- Migration `024_post_media_thumbnail.sql` adds `post_media.thumbnail_key`.
+- `POST /posts` downloads each verified object once, generates a 640px WebP
+  with `sharp` (EXIF orientation applied, metadata dropped, 40M pixel limit),
+  uploads it with a long-lived cache header and stores the key. A failed
+  thumbnail is logged and the original is used instead; it never blocks the
+  post.
+- If the database transaction fails after generation, the generated objects are
+  deleted. Removing a photo, removing a post's photo through moderation or
+  deleting the original from storage also removes the thumbnail.
+- The client uses `thumbnailUrl` in published photo grids and editor previews,
+  falling back to `url` for older rows or failed generation.
+- The test bucket now proves the WebP is fetchable, keyed and deleted with the
+  photo.
 
 ### Bucket setup
 

@@ -252,7 +252,14 @@ export default function ClubFeed({ clubId }) {
       updatePostInPlace(post.id, (entry) => ({
         ...entry,
         media: (entry.media || []).map((photo) =>
-          photo.id === media.id ? { ...photo, ...updated, url: updated.url || photo.url } : photo
+          photo.id === media.id
+            ? {
+                ...photo,
+                ...updated,
+                url: updated.url || photo.url,
+                thumbnailUrl: updated.thumbnailUrl || photo.thumbnailUrl,
+              }
+            : photo
         ),
       }));
       setNotice("Photo description updated.");
@@ -467,7 +474,7 @@ export default function ClubFeed({ clubId }) {
                           <ul className={styles.editPhotoList}>
                             {post.media.map((media, index) => (
                               <li key={media.id}>
-                                <img src={media.url} alt="" />
+                                <img src={media.thumbnailUrl || media.url} alt="" />
                                 <PostPhotoAltEditor
                                   media={media}
                                   photoNumber={index + 1}

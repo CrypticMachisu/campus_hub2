@@ -212,10 +212,27 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
   assert.equal(post.media[0].decorative, false);
   assert.equal(post.media[1].decorative, true);
   assert.equal(post.media[1].altText, "");
+  assert.match(post.media[0].thumbnailUrl, /^http:\/\/127\.0\.0\.1:/);
 
   const image = await fetch(post.media[0].url);
   assert.equal(image.status, 200);
   assert.equal(Buffer.from(await image.arrayBuffer()).toString("base64"), PNG.toString("base64"));
+
+  const thumbnail = await fetch(post.media[0].thumbnailUrl);
+  assert.equal(thumbnail.status, 200);
+  assert.match(thumbnail.headers.get("content-type") || "", /image\/webp/);
+  assert.equal(
+    Buffer.from(await thumbnail.arrayBuffer())
+      .subarray(0, 4)
+      .toString(),
+    "RIFF"
+  );
+  const [[firstThumbRow]] = await pool.query(
+    "SELECT thumbnail_key FROM post_media WHERE media_id = ?",
+    [post.media[0].id]
+  );
+  assert.ok(firstThumbRow.thumbnail_key);
+  assert.equal(s3.objects.has(firstThumbRow.thumbnail_key), true);
 
   const edited = await call(`/posts/${post.id}`, {
     method: "PATCH",
@@ -307,6 +324,7 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
   assert.equal(after.status, 200);
   assert.equal(after.body.post.media.length, 1);
   assert.equal(after.body.post.photoCount, 1);
+  assert.equal(s3.objects.has(firstThumbRow.thumbnail_key), false);
 
   // A photo can be reported without removing the dispatch. The queue names the
   // club and the photo, and removing it through moderation deletes the object
@@ -314,9 +332,11 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
   const remainingPhoto = after.body.post.media[0];
   reportedMediaIds.push(remainingPhoto.id);
   const [[remainingRow]] = await pool.query(
-    "SELECT storage_key FROM post_media WHERE media_id = ?",
+    "SELECT storage_key, thumbnail_key FROM post_media WHERE media_id = ?",
     [remainingPhoto.id]
   );
+  assert.ok(remainingRow.thumbnail_key);
+  assert.equal(s3.objects.has(remainingRow.thumbnail_key), true);
   const photoReport = await call("/reports", {
     method: "POST",
     token: member,
@@ -349,6 +369,7 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
   assert.equal(afterReportedPhoto.body.post.media.length, 0);
   assert.equal(afterReportedPhoto.body.post.photoCount, 0);
   assert.equal(s3.objects.has(remainingRow.storage_key), false);
+  assert.equal(s3.objects.has(remainingRow.thumbnail_key), false);
   const queueAfterPhoto = await call("/reports?clubId=club-01", { token: admin });
   assert.equal(
     queueAfterPhoto.body.reports.some((entry) => entry.targetId === remainingPhoto.id),

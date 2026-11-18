@@ -16,6 +16,7 @@ import {
   MAX_MEDIA_BYTES,
   MAX_POST_MEDIA,
 } from "../storage.js";
+import { createThumbnail, thumbnailKeyFor, THUMBNAIL_MIME } from "../thumbnails.js";
 
 export const postsRouter = createApiRouter();
 
@@ -65,7 +66,7 @@ function rowToPost(row) {
   };
 }
 
-function mediaRowToJson(row, url) {
+function mediaRowToJson(row, url, thumbnailUrl = null) {
   return {
     id: row.media_id,
     altText: row.alt_text,
@@ -75,7 +76,18 @@ function mediaRowToJson(row, url) {
     mime: row.mime,
     position: row.position,
     url,
+    thumbnailUrl,
   };
+}
+
+async function signPhoto(key, mediaId, label) {
+  if (!key) return null;
+  try {
+    return await mediaStorage.getUrl(key);
+  } catch (err) {
+    console.error(`Could not sign ${label} ${mediaId}:`, err.message);
+    return null;
+  }
 }
 
 /** Attach ready media and fresh delivery URLs to already-shaped posts. */
@@ -95,13 +107,11 @@ async function attachMedia(posts) {
   // signature resolves would let network timing reshuffle the photos.
   const prepared = await Promise.all(
     rows.map(async (row) => {
-      let url = null;
-      try {
-        url = await mediaStorage.getUrl(row.storage_key);
-      } catch (err) {
-        console.error(`Could not sign photo ${row.media_id}:`, err.message);
-      }
-      return { postId: row.post_id, entry: mediaRowToJson(row, url) };
+      const [url, thumbnailUrl] = await Promise.all([
+        signPhoto(row.storage_key, row.media_id, "photo"),
+        signPhoto(row.thumbnail_key, row.media_id, "thumbnail"),
+      ]);
+      return { postId: row.post_id, entry: mediaRowToJson(row, url, thumbnailUrl) };
     })
   );
 
@@ -133,10 +143,25 @@ function cleanDimension(value) {
 }
 
 async function discardObject(key) {
+  if (!key) return;
   try {
     await mediaStorage.remove(key);
   } catch (err) {
     console.error(`Could not delete photo ${key}:`, err.message);
+  }
+}
+
+/** Generate and store a bounded WebP. A failure must not block publishing. */
+async function createPhotoThumbnail(media) {
+  try {
+    const body = await mediaStorage.getObject(media.storage_key);
+    const thumbnail = await createThumbnail(body);
+    const key = thumbnailKeyFor(media.storage_key);
+    await mediaStorage.putObject(key, thumbnail, THUMBNAIL_MIME);
+    return key;
+  } catch (err) {
+    console.error(`Could not create thumbnail for ${media.media_id}:`, err.message);
+    return null;
   }
 }
 
@@ -248,6 +273,7 @@ postsRouter.delete("/media/:mediaId", requireAuth, async (req, res) => {
     mediaId: media.media_id,
   });
   await discardObject(media.storage_key);
+  await discardObject(media.thumbnail_key);
   res.status(204).end();
 });
 
@@ -323,6 +349,15 @@ postsRouter.post("/", requireAuth, async (req, res) => {
     }
   }
 
+  const generatedThumbnails = [];
+  for (const media of pending) {
+    const thumbnailKey = await createPhotoThumbnail(media);
+    if (thumbnailKey) {
+      media.thumbnail_key = thumbnailKey;
+      generatedThumbnails.push(thumbnailKey);
+    }
+  }
+
   const id = `post-${Date.now()}`;
   const connection = await pool.getConnection();
   try {
@@ -336,9 +371,15 @@ postsRouter.post("/", requireAuth, async (req, res) => {
     for (const [index, media] of pending.entries()) {
       const [attached] = await connection.query(
         `UPDATE post_media
-         SET post_id = :id, status = 'ready', position = :position
+         SET post_id = :id, status = 'ready', position = :position,
+             thumbnail_key = :thumbnailKey
          WHERE media_id = :mediaId AND status = 'pending'`,
-        { id, position: index, mediaId: media.media_id }
+        {
+          id,
+          position: index,
+          mediaId: media.media_id,
+          thumbnailKey: media.thumbnail_key || null,
+        }
       );
       if (attached.affectedRows !== 1) {
         throw new Error("A photo was already attached to another post.");
@@ -347,6 +388,7 @@ postsRouter.post("/", requireAuth, async (req, res) => {
     await connection.commit();
   } catch (err) {
     await connection.rollback();
+    for (const key of generatedThumbnails) await discardObject(key);
     throw err;
   } finally {
     connection.release();
@@ -414,14 +456,16 @@ postsRouter.patch("/:id/media/:mediaId", requireAuth, async (req, res) => {
     },
   });
 
-  let url = null;
-  try {
-    url = await mediaStorage.getUrl(media.storage_key);
-  } catch (err) {
-    console.error(`Could not sign photo ${media.media_id}:`, err.message);
-  }
+  const [url, thumbnailUrl] = await Promise.all([
+    signPhoto(media.storage_key, media.media_id, "photo"),
+    signPhoto(media.thumbnail_key, media.media_id, "thumbnail"),
+  ]);
   res.json({
-    media: mediaRowToJson({ ...media, alt_text: altText, decorative: decorative ? 1 : 0 }, url),
+    media: mediaRowToJson(
+      { ...media, alt_text: altText, decorative: decorative ? 1 : 0 },
+      url,
+      thumbnailUrl
+    ),
   });
 });
 
@@ -447,6 +491,7 @@ postsRouter.delete("/:id/media/:mediaId", requireAuth, async (req, res) => {
     mediaId: media.media_id,
   });
   await discardObject(media.storage_key);
+  await discardObject(media.thumbnail_key);
   await pool.query(
     `UPDATE reports
      SET status = 'actioned', resolution = 'removed',

@@ -316,6 +316,7 @@ CREATE TABLE post_media (
     club_id        VARCHAR(30)  NOT NULL,
     uploader_id    VARCHAR(30)  NULL,
     storage_key    VARCHAR(255) NOT NULL,
+    thumbnail_key  VARCHAR(255) NULL,
     alt_text       VARCHAR(300) NOT NULL DEFAULT '',
     decorative     TINYINT(1)   NOT NULL DEFAULT 0,
     width          INT          NULL,

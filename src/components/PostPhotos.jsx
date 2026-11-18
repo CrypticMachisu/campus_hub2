@@ -15,7 +15,7 @@ export default function PostPhotos({
       {photos.map((photo) => (
         <li key={photo.id} className={styles.item}>
           <img
-            src={photo.url}
+            src={photo.thumbnailUrl || photo.url}
             alt={photo.decorative ? "" : photo.altText}
             width={photo.width || undefined}
             height={photo.height || undefined}

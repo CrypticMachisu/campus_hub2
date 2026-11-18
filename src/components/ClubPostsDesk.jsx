@@ -239,7 +239,12 @@ export default function ClubPostsDesk({ clubId }) {
                 ...entry,
                 media: (entry.media || []).map((photo) =>
                   photo.id === media.id
-                    ? { ...photo, ...updated, url: updated.url || photo.url }
+                    ? {
+                        ...photo,
+                        ...updated,
+                        url: updated.url || photo.url,
+                        thumbnailUrl: updated.thumbnailUrl || photo.thumbnailUrl,
+                      }
                     : photo
                 ),
               }
@@ -499,7 +504,7 @@ export default function ClubPostsDesk({ clubId }) {
                             <ul className={styles.editPhotoList}>
                               {post.media.map((media, index) => (
                                 <li key={media.id}>
-                                  <img src={media.url} alt="" />
+                                  <img src={media.thumbnailUrl || media.url} alt="" />
                                   <PostPhotoAltEditor
                                     media={media}
                                     photoNumber={index + 1}
