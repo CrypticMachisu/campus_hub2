@@ -9,6 +9,7 @@ import { requireAuth, canManageClub } from "../middleware/auth.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 import { recordAudit } from "../audit.js";
 import { notifyUsers } from "../notify.js";
+import { mediaStorage } from "../storage.js";
 
 export const reportsRouter = createApiRouter();
 
@@ -44,6 +45,25 @@ async function resolveTarget(targetType, targetId) {
       text: post.text,
       status: post.status,
       targetType: "post",
+    };
+  }
+
+  if (targetType === "media") {
+    const [rows] = await pool.query(
+      `SELECT m.media_id AS id, m.club_id, m.alt_text, p.status
+       FROM post_media m
+       JOIN posts p ON p.post_id = m.post_id
+       WHERE m.media_id = :targetId AND m.status = 'ready'`,
+      { targetId }
+    );
+    const media = rows[0];
+    if (!media || media.status !== "published") return null;
+    return {
+      id: media.id,
+      clubId: media.club_id,
+      text: media.alt_text || "Photo attached to a post.",
+      status: "published",
+      targetType: "media",
     };
   }
 
@@ -112,7 +132,7 @@ reportsRouter.post("/", requireAuth, async (req, res) => {
   const reason = typeof body.reason === "string" ? body.reason : "";
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) : "";
 
-  if (!["post", "comment"].includes(targetType) || !targetId) {
+  if (!["post", "comment", "media"].includes(targetType) || !targetId) {
     return res.status(400).json({ error: "targetType and targetId are required." });
   }
   if (!REASONS.includes(reason)) {
@@ -146,12 +166,13 @@ reportsRouter.post("/", requireAuth, async (req, res) => {
   const [managers] = await pool.query("SELECT user_id FROM club_admins WHERE club_id = :clubId", {
     clubId: target.clubId,
   });
+  const noun = targetType === "media" ? "photo" : targetType;
   try {
     await notifyUsers(
       managers.map((row) => row.user_id),
       {
         kind: "content_reported",
-        title: `A ${targetType} was reported`,
+        title: `A ${noun} was reported`,
         body: `${reasonLabel(reason)}. Review it from the club desk.`,
         link: `/dashboard/${target.clubId}`,
       }
@@ -193,8 +214,13 @@ reportsRouter.get("/", requireAuth, async (req, res) => {
 
   const [rows] = await pool.query(
     `SELECT r.*, cl.name AS club_name,
-            CASE WHEN r.target_type = 'post' THEN p.body ELSE c.comment_text END AS target_text,
-            CASE WHEN r.target_type = 'post' THEN p.status ELSE 'published' END AS target_status,
+            CASE WHEN r.target_type = 'post' THEN p.body
+                 WHEN r.target_type = 'media'
+                   THEN COALESCE(NULLIF(m.alt_text, ''), 'Photo attached to a post.')
+                 ELSE c.comment_text END AS target_text,
+            CASE WHEN r.target_type = 'post' THEN p.status
+                 WHEN r.target_type = 'media' THEN mp.status
+                 ELSE 'published' END AS target_status,
             (SELECT COUNT(*) FROM reports r2
               WHERE r2.target_type = r.target_type AND r2.target_id = r.target_id
                 AND r2.status = 'open') AS report_count
@@ -202,9 +228,13 @@ reportsRouter.get("/", requireAuth, async (req, res) => {
      JOIN clubs cl ON cl.club_id = r.club_id
      LEFT JOIN posts p ON r.target_type = 'post' AND p.post_id = r.target_id
      LEFT JOIN comments c ON r.target_type = 'comment' AND c.comment_id = r.target_id
+     LEFT JOIN post_media m ON r.target_type = 'media' AND m.media_id = r.target_id
+     LEFT JOIN posts mp ON r.target_type = 'media' AND mp.post_id = m.post_id
      WHERE ${where.join(" AND ")}
        AND ((r.target_type = 'post' AND p.post_id IS NOT NULL)
-         OR (r.target_type = 'comment' AND c.comment_id IS NOT NULL))
+         OR (r.target_type = 'comment' AND c.comment_id IS NOT NULL)
+         OR (r.target_type = 'media' AND m.media_id IS NOT NULL
+             AND mp.status = 'published'))
      ORDER BY r.created_at ASC, r.report_id ASC
      LIMIT 100`,
     params
@@ -231,8 +261,8 @@ reportsRouter.patch("/:id/resolve", requireAuth, async (req, res) => {
   if (!ACTIONS.includes(action)) {
     return res.status(400).json({ error: `action must be one of: ${ACTIONS.join(", ")}.` });
   }
-  if (action === "hide" && report.target_type === "comment") {
-    return res.status(400).json({ error: "Comments can be removed, not hidden." });
+  if (action === "hide" && report.target_type !== "post") {
+    return res.status(400).json({ error: "Only posts can be hidden." });
   }
 
   if (action === "dismiss") {
@@ -254,6 +284,32 @@ reportsRouter.patch("/:id/resolve", requireAuth, async (req, res) => {
           id: report.target_id,
         }
       );
+      await pool.query(
+        `UPDATE reports
+         SET status = 'actioned', resolution = :resolution,
+             resolved_at = NOW(), resolved_by = :userId
+         WHERE target_type = 'media' AND status = 'open'
+           AND target_id IN (SELECT media_id FROM post_media WHERE post_id = :id)`,
+        {
+          resolution: action === "hide" ? "hidden" : "removed",
+          userId: req.user.id,
+          id: report.target_id,
+        }
+      );
+    } else if (report.target_type === "media") {
+      const [mediaRows] = await pool.query(
+        "SELECT media_id, storage_key FROM post_media WHERE media_id = :id",
+        { id: report.target_id }
+      );
+      if (!mediaRows[0]) {
+        return res.status(409).json({ error: "That photo has already been removed." });
+      }
+      await pool.query("DELETE FROM post_media WHERE media_id = :id", { id: report.target_id });
+      try {
+        await mediaStorage.remove(mediaRows[0].storage_key);
+      } catch (err) {
+        console.error(`Could not delete reported photo ${report.target_id}:`, err.message);
+      }
     } else {
       const [comments] = await pool.query(
         "SELECT comment_id FROM comments WHERE comment_id = :id",

@@ -216,6 +216,9 @@ export default function ClubPostsDesk({ clubId }) {
             : entry
         )
       );
+      setReports((current) =>
+        current.filter((entry) => !(entry.targetType === "media" && entry.targetId === media.id))
+      );
       setNotice("Photo removed. The post stays published.");
     } catch (err) {
       setNotice(err.message);
@@ -287,8 +290,13 @@ export default function ClubPostsDesk({ clubId }) {
       const updated = await setPostStatus(post.id, nextStatus);
       setPosts((current) => current.map((entry) => (entry.id === post.id ? updated : entry)));
       if (nextStatus !== "published") {
+        const mediaIds = new Set((post.media || []).map((photo) => photo.id));
         setReports((current) =>
-          current.filter((entry) => !(entry.targetType === "post" && entry.targetId === post.id))
+          current.filter(
+            (entry) =>
+              !(entry.targetType === "post" && entry.targetId === post.id) &&
+              !(entry.targetType === "media" && mediaIds.has(entry.targetId))
+          )
         );
       }
       setNotice(
@@ -334,7 +342,9 @@ export default function ClubPostsDesk({ clubId }) {
       !window.confirm(
         report.targetType === "comment"
           ? "Remove this comment and close every report on it?"
-          : "Remove this post and close every report on it?"
+          : report.targetType === "media"
+            ? "Remove this photo and close every report on it?"
+            : "Remove this post and close every report on it?"
       )
     ) {
       return;
@@ -349,6 +359,11 @@ export default function ClubPostsDesk({ clubId }) {
         )
       );
       if (report.targetType === "post" && action !== "dismiss") {
+        const mediaIds = new Set(
+          (posts.find((entry) => entry.id === report.targetId)?.media || []).map(
+            (photo) => photo.id
+          )
+        );
         setPosts((current) =>
           current.map((entry) =>
             entry.id === report.targetId
@@ -360,6 +375,21 @@ export default function ClubPostsDesk({ clubId }) {
                 }
               : entry
           )
+        );
+        setReports((current) =>
+          current.filter(
+            (entry) =>
+              !(entry.targetType === "post" && entry.targetId === report.targetId) &&
+              !(entry.targetType === "media" && mediaIds.has(entry.targetId))
+          )
+        );
+      } else if (report.targetType === "media" && action !== "dismiss") {
+        setPosts((current) =>
+          current.map((entry) => ({
+            ...entry,
+            media: (entry.media || []).filter((photo) => photo.id !== report.targetId),
+            photoCount: Math.max(0, entry.photoCount - 1),
+          }))
         );
       }
       setNotice(
@@ -607,7 +637,9 @@ export default function ClubPostsDesk({ clubId }) {
             {reports.map((report) => (
               <li key={report.id} className={styles.report}>
                 <div className={styles.reportHead}>
-                  <span className={styles.reportKind}>{report.targetType}</span>
+                  <span className={styles.reportKind}>
+                    {report.targetType === "media" ? "photo" : report.targetType}
+                  </span>
                   <span className={styles.reportReason}>{report.reasonLabel}</span>
                   <span className={styles.reportCount}>
                     {report.reportCount} {report.reportCount === 1 ? "report" : "reports"}
@@ -632,7 +664,7 @@ export default function ClubPostsDesk({ clubId }) {
                     onClick={() => resolve(report, "remove")}
                     disabled={busyId === `report-${report.id}`}
                   >
-                    Remove {report.targetType}
+                    Remove {report.targetType === "media" ? "photo" : report.targetType}
                   </button>
                   <button
                     type="button"

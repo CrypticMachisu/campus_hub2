@@ -1,7 +1,12 @@
+import ReportButton from "./ReportButton";
 import styles from "./PostPhotos.module.css";
 
 /** Up to three photos attached to a post, in their saved order. */
-export default function PostPhotos({ media = [], label = "Photos with this post" }) {
+export default function PostPhotos({
+  media = [],
+  label = "Photos with this post",
+  showReport = false,
+}) {
   const photos = media.filter((entry) => entry.url);
   if (!photos.length) return null;
 
@@ -17,6 +22,11 @@ export default function PostPhotos({ media = [], label = "Photos with this post"
             loading="lazy"
             decoding="async"
           />
+          {showReport && (
+            <div className={styles.report}>
+              <ReportButton targetType="media" targetId={photo.id} label="Report photo" />
+            </div>
+          )}
         </li>
       ))}
     </ul>

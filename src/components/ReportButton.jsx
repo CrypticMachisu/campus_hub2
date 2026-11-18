@@ -19,6 +19,7 @@ const REASONS = [
  */
 export default function ReportButton({ targetType, targetId, label = "Report" }) {
   const { user } = useAuth();
+  const noun = targetType === "media" ? "photo" : targetType;
   const dialogRef = useRef(null);
   const headingId = useId();
   const [reason, setReason] = useState("spam");
@@ -78,7 +79,7 @@ export default function ReportButton({ targetType, targetId, label = "Report" })
         }}
       >
         <form className={styles.form} onSubmit={handleSubmit}>
-          <h2 id={headingId}>Report this {targetType}</h2>
+          <h2 id={headingId}>Report this {noun}</h2>
           <p className={styles.intro}>
             A club manager will review it. Your name is not shown to them.
           </p>

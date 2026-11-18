@@ -430,7 +430,7 @@ full design and setup notes live in
 ### Deferred
 
 - Reactions and campus-wide search (the rest of 3c).
-- Thumbnails and per-photo reports. Abandoned pending uploads are purged by
-  the cleanup worker (24-hour default).
+- Derived thumbnails. Abandoned pending uploads are purged by the cleanup
+  worker (24-hour default).
 - The home edition does not show posts. The club page and permalink remain the
   only reading surfaces.

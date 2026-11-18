@@ -1,8 +1,8 @@
 # Phase 3 — the club feed, a design pass
 
 **Status:** 3a, 3b and the pinning part of 3c are implemented 17 November 2026,
-along with the purge for abandoned photo uploads and editing a published
-photo's description. Reactions and campus-wide search remain deferred until
+along with the purge for abandoned photo uploads, editing a published photo's
+description and per-photo moderation. Reactions and campus-wide search remain deferred until
 there is evidence for them. Photo endpoints stay off until R2 credentials are
 set; the code path is tested, but no real bucket upload has been run in this
 environment.
@@ -59,7 +59,7 @@ migration 022 for the one standing notice.
 | Column        | Type                                                  |
 | ------------- | ----------------------------------------------------- |
 | `report_id`   | `INT AUTO_INCREMENT` primary key                      |
-| `target_type` | `ENUM('post','comment')`                              |
+| `target_type` | `ENUM('post','comment','media')`                      |
 | `target_id`   | `VARCHAR(64)`                                         |
 | `club_id`     | denormalized owner, so the queue is one indexed read  |
 | `reporter_id` | foreign key to `users`, cascade                       |
@@ -110,6 +110,14 @@ clears every other pin in the club inside the same transaction, so “one per
 club” is an application invariant rather than a database accident. A pinned
 post is returned separately from the paged column and is never repeated there.
 Removing a post clears its pin; hiding it leaves the pin for a later restore.
+
+### 023 — photo reports (applied)
+
+Widens `reports.target_type` to include `media`, so one photo can be reported
+without removing the whole dispatch. The API checks that the photo is `ready`
+and its post is published before accepting the report. Removing the photo
+through moderation deletes the row and stored object and closes every report on
+it; hiding or removing its post closes those photo reports too.
 
 ### Explicitly not modelled yet
 
@@ -278,9 +286,9 @@ later; photos shipped in 3b.
   PUTs, public URLs and signed GETs. `server/tests/posts.test.mjs` covers the
   text-only fallback when storage is absent.
 
-Not built in 3b: image cropping/thumbnails and per-photo reports. Abandoned
-pending uploads are now handled by the cleanup worker described below.
-Captions remain text and are not baked into images.
+Not built in 3b: image cropping and derived thumbnails. Abandoned pending
+uploads are now handled by the cleanup worker described below. Captions remain
+text and are not baked into images.
 
 ## Follow-up — abandoned uploads (implemented 17 November 2026)
 
@@ -341,10 +349,27 @@ surface and a measured gap before it earns one.
   report to tier 1; the dashboard now surfaces it in a dedicated moderation
   section instead of hiding it behind the selected club.
 - The queue shows the club, target type, reason, reporter count, target excerpt
-  and note. Tier 1 can dismiss, hide a post or remove a post/comment from the
-  same list, and one action still closes every open report on that target.
+  and note. Tier 1 can dismiss, hide a post or remove a post/comment/photo from
+  the same list, and one action still closes every open report on that target.
 - Club managers still get only their club's queue; a tier 2 request without a
   `clubId` remains a 400.
+
+## Follow-up — photo reports (implemented 18 November 2026)
+
+- Migration `023_report_media_target.sql` widens `reports.target_type` to
+  `('post','comment','media')`. A report can name one ready photo on a published
+  post; the club is resolved from the photo's post.
+- The photo band on the club page and permalink carries `Report photo` for
+  signed-in readers who are not the author or a manager. The report dialog says
+  “photo” rather than “media”.
+- The club desk and the tier 1 aggregate show photo reports with a written
+  `photo` kind. A photo report can be dismissed or removed, not hidden; removal
+  deletes the stored object and the row, and one action closes every report on
+  that photo.
+- Hiding or removing a post also closes every open report on its photos, and
+  removing a photo directly from the edit panel closes its reports.
+- `server/tests/media.test.mjs` covers the member report, queue shape, removal
+  and object cleanup.
 
 ### Bucket setup
 

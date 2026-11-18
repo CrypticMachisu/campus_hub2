@@ -447,6 +447,13 @@ postsRouter.delete("/:id/media/:mediaId", requireAuth, async (req, res) => {
     mediaId: media.media_id,
   });
   await discardObject(media.storage_key);
+  await pool.query(
+    `UPDATE reports
+     SET status = 'actioned', resolution = 'removed',
+         resolved_at = NOW(), resolved_by = :userId
+     WHERE target_type = 'media' AND target_id = :mediaId AND status = 'open'`,
+    { mediaId: media.media_id, userId: req.user.id }
+  );
   await recordAudit(req, {
     action: "post.media.remove",
     targetType: "post",
@@ -716,6 +723,18 @@ postsRouter.patch("/:id/status", requireAuth, async (req, res) => {
        SET status = 'actioned', resolution = :resolution,
            resolved_at = NOW(), resolved_by = :userId
        WHERE target_type = 'post' AND target_id = :id AND status = 'open'`,
+      {
+        resolution: status === "removed" ? "removed" : "hidden",
+        userId: req.user.id,
+        id: req.params.id,
+      }
+    );
+    await pool.query(
+      `UPDATE reports
+       SET status = 'actioned', resolution = :resolution,
+           resolved_at = NOW(), resolved_by = :userId
+       WHERE target_type = 'media' AND status = 'open'
+         AND target_id IN (SELECT media_id FROM post_media WHERE post_id = :id)`,
       {
         resolution: status === "removed" ? "removed" : "hidden",
         userId: req.user.id,

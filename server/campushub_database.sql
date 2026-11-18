@@ -347,7 +347,7 @@ CREATE TABLE post_media (
 -- ----------------------------------------------------------------------------
 CREATE TABLE reports (
     report_id    INT AUTO_INCREMENT PRIMARY KEY,
-    target_type  ENUM('post', 'comment') NOT NULL,
+    target_type  ENUM('post', 'comment', 'media') NOT NULL,
     target_id    VARCHAR(64) NOT NULL,
     club_id      VARCHAR(30) NOT NULL,
     reporter_id  VARCHAR(30) NOT NULL,

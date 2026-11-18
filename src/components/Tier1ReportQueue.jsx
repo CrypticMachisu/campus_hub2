@@ -114,7 +114,9 @@ export default function Tier1ReportQueue() {
               <li key={report.id} className={styles.report}>
                 <div className={styles.meta}>
                   <span className={styles.club}>{report.clubName}</span>
-                  <span className={styles.kind}>{report.targetType}</span>
+                  <span className={styles.kind}>
+                    {report.targetType === "media" ? "photo" : report.targetType}
+                  </span>
                   <span className={styles.reason}>{report.reasonLabel}</span>
                   <span className={styles.count}>
                     {report.reportCount} {report.reportCount === 1 ? "report" : "reports"}
@@ -139,7 +141,7 @@ export default function Tier1ReportQueue() {
                     onClick={() => resolve(report, "remove")}
                     disabled={busy}
                   >
-                    Remove {report.targetType}
+                    Remove {report.targetType === "media" ? "photo" : report.targetType}
                   </button>
                   <button
                     type="button"

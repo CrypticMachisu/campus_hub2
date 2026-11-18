@@ -130,7 +130,11 @@ export default function PostDetail() {
         )}
 
         <p className={styles.body}>{post.body}</p>
-        <PostPhotos media={post.media} label={`Photos with this update from ${post.clubName}`} />
+        <PostPhotos
+          media={post.media}
+          label={`Photos with this update from ${post.clubName}`}
+          showReport={Boolean(user) && !post.canManage && post.authorId !== user.id}
+        />
 
         <footer className={styles.foot}>
           <span className={styles.commentCount}>

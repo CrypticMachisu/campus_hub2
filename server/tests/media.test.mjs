@@ -107,6 +107,9 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
     for (const id of postIds) {
       await pool.query("DELETE FROM posts WHERE post_id = ?", [id]);
     }
+    await pool.query(
+      "DELETE FROM notifications WHERE kind = 'content_reported' AND link = '/dashboard/club-01'"
+    );
     await pool.end();
     await api.close();
     await new Promise((done) => s3.server.close(done));
@@ -298,6 +301,52 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
   assert.equal(after.status, 200);
   assert.equal(after.body.post.media.length, 1);
   assert.equal(after.body.post.photoCount, 1);
+
+  // A photo can be reported without removing the dispatch. The queue names the
+  // club and the photo, and removing it through moderation deletes the object
+  // and closes the report.
+  const remainingPhoto = after.body.post.media[0];
+  const [[remainingRow]] = await pool.query(
+    "SELECT storage_key FROM post_media WHERE media_id = ?",
+    [remainingPhoto.id]
+  );
+  const photoReport = await call("/reports", {
+    method: "POST",
+    token: member,
+    body: {
+      targetType: "media",
+      targetId: remainingPhoto.id,
+      reason: "off_topic",
+      note: "This image does not belong on the club page.",
+    },
+  });
+  assert.equal(photoReport.status, 201);
+  const mediaQueue = await call("/reports?clubId=club-01", { token: admin });
+  assert.equal(mediaQueue.status, 200);
+  const mediaReport = mediaQueue.body.reports.find(
+    (entry) => entry.targetType === "media" && entry.targetId === remainingPhoto.id
+  );
+  assert.ok(mediaReport, "the reported photo should be in the queue");
+  assert.equal(mediaReport.clubId, "club-01");
+  assert.equal(mediaReport.targetStatus, "published");
+  assert.match(mediaReport.targetText, /photo attached/i);
+
+  const removedReported = await call(`/reports/${mediaReport.id}/resolve`, {
+    method: "PATCH",
+    token: admin,
+    body: { action: "remove" },
+  });
+  assert.equal(removedReported.status, 200);
+  assert.equal(removedReported.body.action, "remove");
+  const afterReportedPhoto = await call(`/posts/${post.id}`);
+  assert.equal(afterReportedPhoto.body.post.media.length, 0);
+  assert.equal(afterReportedPhoto.body.post.photoCount, 0);
+  assert.equal(s3.objects.has(remainingRow.storage_key), false);
+  const queueAfterPhoto = await call("/reports?clubId=club-01", { token: admin });
+  assert.equal(
+    queueAfterPhoto.body.reports.some((entry) => entry.targetId === remainingPhoto.id),
+    false
+  );
 
   // Abandoned pending uploads expire; a fresh one is left for its author.
   const abandoned = await reserve({ altText: "An upload that was never published." });

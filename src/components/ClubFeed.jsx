@@ -512,6 +512,7 @@ export default function ClubFeed({ clubId }) {
                       <PostPhotos
                         media={post.media}
                         label={`Photos with ${post.authorName}'s update`}
+                        showReport={Boolean(user) && !canEdit}
                       />
                     </>
                   )}

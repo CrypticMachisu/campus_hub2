@@ -29,6 +29,21 @@
   object-fit: cover;
 }
 
+.report {
+  padding: 0.2rem 0.35rem 0.35rem;
+  background: var(--paper-2);
+}
+
+.report button {
+  min-height: 40px;
+}
+
+@media (max-width: 640px) {
+  .report button {
+    min-height: 44px;
+  }
+}
+
 @media (max-width: 640px) {
   .list,
   .list[data-count="2"],
