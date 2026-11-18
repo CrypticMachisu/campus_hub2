@@ -1,10 +1,11 @@
 # Phase 3 — the club feed, a design pass
 
 **Status:** 3a, 3b and the pinning part of 3c are implemented 17 November 2026,
-along with the purge for abandoned photo uploads. Reactions and campus-wide
-search remain deferred until there is evidence for them. Photo endpoints stay
-off until R2 credentials are set; the code path is tested, but no real bucket
-upload has been run in this environment.
+along with the purge for abandoned photo uploads and editing a published
+photo's description. Reactions and campus-wide search remain deferred until
+there is evidence for them. Photo endpoints stay off until R2 credentials are
+set; the code path is tested, but no real bucket upload has been run in this
+environment.
 
 Phase 2 answered “will you show up?”. Phase 3 answers the quieter question
 between commitments: **what is this club doing?** The goal is a club
@@ -264,6 +265,10 @@ edit; managers remove), and reactions. Photos shipped in 3b.
 - `DELETE /posts/media/:id` discards an upload that was never published;
   `DELETE /posts/:id/media/:id` removes one photo from a published post. Both
   delete the stored object.
+- `PATCH /posts/:id/media/:id` changes a published photo's description or marks
+  it decorative. The author or a club manager may edit it; clearing the
+  description without choosing decorative is rejected. The dialog is available
+  beside each photo in both the club-page editor and the desk.
 - The feed and permalink return `media` with fresh URLs, alt text, dimensions
   and orientation-free ordering. The club feed, permalink and officer desk all
   render the same photo band.
@@ -274,9 +279,9 @@ edit; managers remove), and reactions. Photos shipped in 3b.
   PUTs, public URLs and signed GETs. `server/tests/posts.test.mjs` covers the
   text-only fallback when storage is absent.
 
-Not built in 3b: editing alt text after upload, image cropping/thumbnails and
-per-photo reports. Abandoned pending uploads are now handled by the cleanup
-worker described below. Captions remain text and are not baked into images.
+Not built in 3b: image cropping/thumbnails and per-photo reports. Abandoned
+pending uploads are now handled by the cleanup worker described below.
+Captions remain text and are not baked into images.
 
 ## Follow-up — abandoned uploads (implemented 17 November 2026)
 

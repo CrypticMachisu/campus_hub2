@@ -216,6 +216,43 @@ test("post photos: reserve, upload, verify, render and remove", { timeout: 60_00
   assert.equal(edited.status, 200);
   assert.equal(edited.body.post.media.length, 2, "editing text must keep the photos");
 
+  // A photo's description can be corrected after publishing, but only by the
+  // author or a club manager, and not by clearing it without saying the photo
+  // is decorative.
+  const noAltEdit = await call(`/posts/${post.id}/media/${post.media[0].id}`, {
+    method: "PATCH",
+    token: member,
+    body: { altText: "Not my post to describe.", decorative: false },
+  });
+  assert.equal(noAltEdit.status, 403);
+  const emptyAltEdit = await call(`/posts/${post.id}/media/${post.media[0].id}`, {
+    method: "PATCH",
+    token: admin,
+    body: { altText: "   ", decorative: false },
+  });
+  assert.equal(emptyAltEdit.status, 400);
+
+  const madeDecorative = await call(`/posts/${post.id}/media/${post.media[0].id}`, {
+    method: "PATCH",
+    token: admin,
+    body: { altText: "This should be cleared.", decorative: true },
+  });
+  assert.equal(madeDecorative.status, 200);
+  assert.equal(madeDecorative.body.media.altText, "");
+  assert.equal(madeDecorative.body.media.decorative, true);
+
+  const described = await call(`/posts/${post.id}/media/${post.media[0].id}`, {
+    method: "PATCH",
+    token: admin,
+    body: { altText: "A tray of seedlings beside a watering can.", decorative: false },
+  });
+  assert.equal(described.status, 200);
+  assert.equal(described.body.media.altText, "A tray of seedlings beside a watering can.");
+  assert.equal(described.body.media.decorative, false);
+  assert.match(described.body.media.url, /^http:\/\/127\.0\.0\.1:/);
+  const afterAlt = await call(`/posts/${post.id}`);
+  assert.equal(afterAlt.body.post.media[0].altText, described.body.media.altText);
+
   const feed = await call("/posts?clubId=club-01");
   assert.equal(feed.status, 200);
   assert.equal(feed.body.mediaEnabled, true);

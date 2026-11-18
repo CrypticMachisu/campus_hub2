@@ -363,6 +363,68 @@ postsRouter.post("/", requireAuth, async (req, res) => {
   res.status(201).json({ post: created, mediaEnabled: mediaStorage.enabled });
 });
 
+/**
+ * PATCH /posts/:id/media/:mediaId — change a published photo's description.
+ * The author or a club manager may edit it; a decorative choice clears the
+ * description instead of leaving stale prose behind.
+ */
+postsRouter.patch("/:id/media/:mediaId", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT m.*, p.author_id, p.status AS post_status
+     FROM post_media m
+     JOIN posts p ON p.post_id = m.post_id
+     WHERE m.media_id = :mediaId AND m.post_id = :postId AND m.status = 'ready'`,
+    { mediaId: req.params.mediaId, postId: req.params.id }
+  );
+  const media = rows[0];
+  if (!media) return res.status(404).json({ error: "Photo not found on this post." });
+  if (!canManageClub(req.user, media.club_id) && media.author_id !== req.user.id) {
+    return res.status(403).json({ error: "You can't edit this photo's description." });
+  }
+  if (media.post_status === "removed" && !canManageClub(req.user, media.club_id)) {
+    return res.status(403).json({ error: "This post has been removed." });
+  }
+
+  const decorative = req.body?.decorative;
+  if (typeof decorative !== "boolean") {
+    return res.status(400).json({ error: "decorative must be true or false." });
+  }
+  const altText = decorative ? "" : cleanAlt(req.body?.altText);
+  if (!decorative && !altText) {
+    return res.status(400).json({
+      error: "Describe the photo for screen readers, or mark it as decorative.",
+    });
+  }
+
+  await pool.query(
+    `UPDATE post_media
+     SET alt_text = :altText, decorative = :decorative
+     WHERE media_id = :mediaId`,
+    { altText, decorative: decorative ? 1 : 0, mediaId: media.media_id }
+  );
+  await recordAudit(req, {
+    action: "post.media.update",
+    targetType: "post",
+    targetId: req.params.id,
+    detail: {
+      clubId: media.club_id,
+      mediaId: media.media_id,
+      decorative,
+      altLength: altText.length,
+    },
+  });
+
+  let url = null;
+  try {
+    url = await mediaStorage.getUrl(media.storage_key);
+  } catch (err) {
+    console.error(`Could not sign photo ${media.media_id}:`, err.message);
+  }
+  res.json({
+    media: mediaRowToJson({ ...media, alt_text: altText, decorative: decorative ? 1 : 0 }, url),
+  });
+});
+
 /** DELETE /posts/:id/media/:mediaId — detach and delete one ready photo. */
 postsRouter.delete("/:id/media/:mediaId", requireAuth, async (req, res) => {
   const [rows] = await pool.query(

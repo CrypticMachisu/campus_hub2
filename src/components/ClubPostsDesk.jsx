@@ -9,6 +9,7 @@ import {
   setPostPinned,
   setPostStatus,
   updatePost,
+  updatePostPhoto,
   uploadPhoto,
 } from "../utils/postsStore";
 import {
@@ -18,6 +19,7 @@ import {
   revokePhotoDraft,
 } from "../utils/photoFiles";
 import { getReports, resolveReport } from "../utils/reportsStore";
+import PostPhotoAltEditor from "./PostPhotoAltEditor";
 import PostPhotoPicker from "./PostPhotoPicker";
 import styles from "./ClubPostsDesk.module.css";
 
@@ -217,6 +219,34 @@ export default function ClubPostsDesk({ clubId }) {
       setNotice("Photo removed. The post stays published.");
     } catch (err) {
       setNotice(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function savePhotoDescription(post, media, values) {
+    setBusyId(post.id);
+    setNotice("");
+    try {
+      const updated = await updatePostPhoto(post.id, media.id, values);
+      setPosts((current) =>
+        current.map((entry) =>
+          entry.id === post.id
+            ? {
+                ...entry,
+                media: (entry.media || []).map((photo) =>
+                  photo.id === media.id
+                    ? { ...photo, ...updated, url: updated.url || photo.url }
+                    : photo
+                ),
+              }
+            : entry
+        )
+      );
+      setNotice("Photo description updated.");
+    } catch (err) {
+      setNotice(err.message);
+      throw err;
     } finally {
       setBusyId(null);
     }
@@ -440,6 +470,12 @@ export default function ClubPostsDesk({ clubId }) {
                               {post.media.map((media, index) => (
                                 <li key={media.id}>
                                   <img src={media.url} alt="" />
+                                  <PostPhotoAltEditor
+                                    media={media}
+                                    photoNumber={index + 1}
+                                    onSave={(values) => savePhotoDescription(post, media, values)}
+                                    disabled={busy}
+                                  />
                                   <button
                                     type="button"
                                     className={styles.textButton}

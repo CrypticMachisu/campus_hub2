@@ -430,8 +430,8 @@ full design and setup notes live in
 ### Deferred
 
 - Reactions and campus-wide search (the rest of 3c).
-- Editing alt text after upload, thumbnails and per-photo reports. Abandoned
-  pending uploads are purged by the cleanup worker (24-hour default).
+- Thumbnails and per-photo reports. Abandoned pending uploads are purged by
+  the cleanup worker (24-hour default).
 - The cross-club tier1 report aggregate; tier 1 can open each club's queue.
 - Author-initiated deletion. Authors can edit their post; removal is a manager
   action.

@@ -11,6 +11,7 @@ import {
   setPostPinned,
   setPostStatus,
   updatePost,
+  updatePostPhoto,
   uploadPhoto,
 } from "../utils/postsStore";
 import {
@@ -19,6 +20,7 @@ import {
   photoFileError,
   revokePhotoDraft,
 } from "../utils/photoFiles";
+import PostPhotoAltEditor from "./PostPhotoAltEditor";
 import PostPhotoPicker from "./PostPhotoPicker";
 import PostPhotos from "./PostPhotos";
 import ReportButton from "./ReportButton";
@@ -242,6 +244,26 @@ export default function ClubFeed({ clubId }) {
     }
   }
 
+  async function savePhotoDescription(post, media, values) {
+    setBusyId(post.id);
+    setNotice("");
+    try {
+      const updated = await updatePostPhoto(post.id, media.id, values);
+      updatePostInPlace(post.id, (entry) => ({
+        ...entry,
+        media: (entry.media || []).map((photo) =>
+          photo.id === media.id ? { ...photo, ...updated, url: updated.url || photo.url } : photo
+        ),
+      }));
+      setNotice("Photo description updated.");
+    } catch (err) {
+      setNotice(err.message);
+      throw err;
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function startEdit(post) {
     setEditingId(post.id);
     setEditDraft(post.body);
@@ -426,6 +448,12 @@ export default function ClubFeed({ clubId }) {
                             {post.media.map((media, index) => (
                               <li key={media.id}>
                                 <img src={media.url} alt="" />
+                                <PostPhotoAltEditor
+                                  media={media}
+                                  photoNumber={index + 1}
+                                  onSave={(values) => savePhotoDescription(post, media, values)}
+                                  disabled={busy}
+                                />
                                 <button
                                   type="button"
                                   className={styles.textButton}
