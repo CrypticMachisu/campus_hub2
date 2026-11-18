@@ -88,18 +88,34 @@ The client sends its bearer token on club and event reads so the server can
 scope them. `ClubsProvider` reloads when the session changes, which matters when
 a sign-in or promotion changes the visible campus set.
 
+## Campus settings
+
+Tier 1 has a **Campus settings** screen at `/settings/campuses`, linked from the
+Navbar. It lists each campus, its account and club counts, and its registration
+domains.
+
+- Names and URL slugs are editable. The stable `campus_id` never changes.
+- Domains can be added or removed. A campus must keep at least one domain.
+- Domains are unique across campuses. Removing one stops future signups from
+  that domain; existing accounts keep their campus.
+- The API is tier-1 only: `GET /v2/campuses/manage`, `POST /v2/campuses`,
+  `PATCH /v2/campuses/:id`, `POST /v2/campuses/:id/domains` and
+  `DELETE /v2/campuses/:id/domains/:domain`.
+- Creating a campus, changing its identity, and adding/removing a domain are
+  written to `audit_log`.
+
 ## Deliberately deferred
 
 - A public or multi-campus switcher and cross-campus discovery.
 - A club that serves two or more campuses.
 - A user who belongs to more than one campus.
-- Campus domains managed from the UI. Adding a campus or domain is currently a
-  migration/seed operation.
 - A full campus console: the campus admin uses the existing club desk with
   campus-scoped lists. There is no separate campus audit or analytics screen.
 - Cross-campus direct links are treated as not found. Sharing a Strathmore
   permalink with another campus is a cross-university feature, not a leak to
   preserve by accident.
+- The federation-and-chapters model for multi-campus clubs and users. The
+  design is in [`phase-5-cross-university.md`](./phase-5-cross-university.md).
 
 ## Verification
 
@@ -107,6 +123,9 @@ a sign-in or promotion changes the visible campus set.
   that anonymous and member reads exclude it, tier 1 can filter to it, domain
   registration joins Strathmore, unknown domains are rejected, and a campus
   admin can manage a Strathmore club but not the temporary campus's club.
+- `server/tests/campus-settings.test.mjs` proves the tier-1-only settings API,
+  slug/domain validation, the last-domain guard, and access refusal for a
+  member.
 - The Phase 2 and Phase 3 route suites still pass after the campus joins were
   added to their list queries.
 - `npm run lint` and `npm run build` pass.

@@ -16,6 +16,7 @@ import CommitmentDetail from "./pages/CommitmentDetail";
 import PostDetail from "./pages/PostDetail";
 import MyEvents from "./pages/MyEvents";
 import Dashboard from "./pages/Dashboard";
+import CampusSettings from "./pages/CampusSettings";
 import ClubWorkspace from "./pages/ClubWorkspace";
 import NotFound from "./pages/NotFound";
 import styles from "./App.module.css";
@@ -117,6 +118,7 @@ function AppRoutes() {
             }
           />
           <Route path="/my-events" element={<MyEvents />} />
+          <Route path="/settings/campuses" element={<CampusSettings />} />
           <Route path="/dashboard/:clubId" element={<Dashboard />} />
           <Route path="/dashboard" element={<Navigate to="/dashboard/club-01" replace />} />
           <Route path="*" element={<NotFound />} />

@@ -28,6 +28,62 @@ export async function listCampuses() {
   return rows;
 }
 
+/** Trim and lowercase a domain, and strip a pasted leading @. */
+export function normalizeCampusDomain(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, "");
+}
+
+/** A domain needs at least one dot; no wildcards, paths or unicode here. */
+export function isValidCampusDomain(domain) {
+  return (
+    domain.length <= 190 &&
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)
+  );
+}
+
+/** "My Campus" -> "my-campus". */
+export function normalizeCampusSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+}
+
+export function isValidCampusSlug(slug) {
+  return slug.length > 0 && slug.length <= 80 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}
+
+/** Tier-1 view: campus identity plus its domains and basic usage counts. */
+export async function listCampusSettings() {
+  const [campuses] = await pool.query(
+    `SELECT c.campus_id AS id, c.name, c.slug,
+       (SELECT COUNT(*) FROM users u WHERE u.campus_id = c.campus_id) AS user_count,
+       (SELECT COUNT(*) FROM clubs cl WHERE cl.campus_id = c.campus_id) AS club_count
+     FROM campuses c
+     ORDER BY c.name`
+  );
+  const [domains] = await pool.query(
+    "SELECT campus_id, domain FROM campus_email_domains ORDER BY domain"
+  );
+  const byCampus = new Map();
+  for (const row of domains) {
+    if (!byCampus.has(row.campus_id)) byCampus.set(row.campus_id, []);
+    byCampus.get(row.campus_id).push(row.domain);
+  }
+
+  return campuses.map((campus) => ({
+    id: campus.id,
+    name: campus.name,
+    slug: campus.slug,
+    domains: byCampus.get(campus.id) || [],
+    userCount: Number(campus.user_count),
+    clubCount: Number(campus.club_count),
+  }));
+}
+
 export async function defaultCampusId() {
   const [rows] = await pool.query(
     `SELECT campus_id FROM campuses

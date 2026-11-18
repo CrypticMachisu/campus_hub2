@@ -1,0 +1,384 @@
+# Phase 5 — the cross-university network
+
+Design only. Nothing in this document is implemented yet.
+
+Phase 4 gave every account and club one campus. Phase 5 lets a person belong
+to more than one campus and lets one club exist as a family of campus chapters.
+It should not turn the product into a global social network.
+
+The recommended shape is **federation plus chapters**:
+
+- One canonical club family owns the shared identity: name, mark, description
+  and the list of chapters.
+- Each campus has its own chapter row, with its own officers, members, posts,
+  events and commitments.
+- A person has one **home campus** plus zero or more verified **affiliations**.
+- Discovery defaults to local. "My network" is an explicit scope made from the
+  home campus and affiliations. There is no anonymous all-campus feed.
+
+That preserves the Phase 4 boundary and the existing moderation model. It also
+avoids the two bad alternatives: a single club row with many campus ids (every
+query becomes ambiguous), and completely unrelated clubs that happen to share
+a name (no way to follow the same organisation across campuses).
+
+## 1. What a multi-campus club means
+
+A family is not a super-club and does not own chapter content.
+
+| Layer       | Owns                                                              | Who manages it             |
+| ----------- | ----------------------------------------------------------------- | -------------------------- |
+| **Family**  | Shared name, slug, logo, description, chapter list, family page   | Tier 1 and family admins   |
+| **Chapter** | Campus, local name, officers, members, posts, events, commitments | That chapter's club admins |
+| **Campus**  | Discovery boundary, campus admin, reports, affiliation approvals  | That campus's campus admin |
+
+A chapter remains a normal `clubs` row. Existing club ids, links, memberships,
+events, commitments and posts keep working.
+
+Rules:
+
+- A chapter belongs to exactly one family, or to none.
+- A family has at most one chapter per campus in Phase 5. More than one chapter
+  at the same campus is a later exception, not a default.
+- A club can only be linked to a family by tier 1 (or by a family admin if we
+  add delegated linking later). A chapter cannot unilaterally join a family.
+- The family page aggregates chapters and network-visible content. It does not
+  merge rosters, reports or comment threads.
+- A family can exist with one chapter; that is how an existing club becomes
+  multi-campus later without changing its id.
+
+## 2. What a multi-campus user means
+
+Keep `users.campus_id` as the **home campus**. It remains required and still
+decides:
+
+- the default campus on sign-in,
+- the campus name in the masthead,
+- the account's primary campus-admin boundary,
+- where the email domain assigned them at registration.
+
+Add `user_campus_affiliations` for additional campuses:
+
+```text
+user_campus_affiliations
+  user_id        -> users.user_id
+  campus_id      -> campuses.campus_id
+  kind           home | exchange | dual | staff | alumni
+  status         active | pending | revoked
+  granted_by     -> users.user_id (nullable for backfill)
+  created_at
+  UNIQUE (user_id, campus_id)
+```
+
+Backfill one `home / active` row for every existing user. `users.campus_id`
+stays authoritative for home; the affiliation table is for the additional
+campuses.
+
+Who can add an affiliation:
+
+- **Tier 1** can grant or revoke any affiliation.
+- **A campus admin** can invite or approve an affiliation to their own campus.
+  They cannot revoke someone's home campus or grant an affiliation to another
+  campus.
+- **A member** can request an affiliation with proof (student/staff number or
+  campus email), but the request stays `pending` until a campus admin approves.
+  Self-service instant joins are not part of the first cut.
+
+This avoids a free-for-all where anyone can claim any university and read its
+network content.
+
+## 3. Network and audience
+
+A user's **network** is their active home campus plus active affiliations.
+A chapter can be discovered and used in these scopes:
+
+- `local` — the reader's current/home campus. This remains the default.
+- `network` — every campus in the reader's network. Requires a verified
+  affiliation; anonymous readers never get this scope.
+- `all` — tier 1 only, for platform administration. Not a member-facing global
+  feed.
+
+Add an `audience` field to the content that can travel:
+
+```text
+posts.audience       campus | network | public    default campus
+events.audience      campus | network | public    default campus
+commitments.audience campus | network | public    default campus
+```
+
+Semantics:
+
+- **`campus`** — visible while browsing the owning chapter's campus. This is
+  today's behaviour, including anonymous readers who land on that campus.
+- **`network`** — visible to signed-in users whose network includes any campus
+  where the owning family has a chapter. It also appears on the family page.
+  Anonymous readers cannot see it in the network scope; they can still see
+  campus-audience content on that campus.
+- **`public`** — intentionally available in the public directory and to
+  signed-in readers on any campus. This is opt-in per item and should be
+  rare. Public does not mean the item appears in a global algorithmic feed.
+
+A chapter that is not in a family treats `network` as `campus`; there is nowhere
+for it to travel. The API should reject `network`/`public` if the author is not
+allowed to publish at that scope.
+
+Default everything to `campus`. A network post should be a deliberate act, not
+the result of a composer default or a client bug.
+
+### Cross-campus commitments
+
+Start with one host chapter and one roster:
+
+- The commitment belongs to the host chapter.
+- `audience = network` makes it visible across the host family's network.
+- Eligible users can sign up; the roster is shared and ordered as today.
+- The host chapter's officers manage capacity, attendance and cancellation.
+
+Do **not** start with per-campus quotas, separate rosters, or a commitment
+jointly hosted by several chapters. Those need a different table and a much
+harder cancellation/attendance story. If demand appears later, add
+`commitment_chapters` and per-chapter allocations rather than overloading the
+existing signup table.
+
+## 4. Schema
+
+Proposed migration `026_cross_university.sql`:
+
+```text
+club_families
+  family_id       VARCHAR(30) PRIMARY KEY
+  name            VARCHAR(150) NOT NULL
+  slug            VARCHAR(80) NOT NULL UNIQUE
+  description     TEXT
+  logo_url        VARCHAR(500)
+  home_campus_id  VARCHAR(30) NOT NULL -> campuses
+  status          ENUM('active','archived') DEFAULT 'active'
+  created_by      VARCHAR(30) -> users
+  created_at
+
+clubs.family_id   VARCHAR(30) NULL -> club_families
+  UNIQUE (family_id, campus_id)   -- one chapter per campus per family
+
+club_family_admins
+  family_id       -> club_families
+  user_id         -> users
+  role            ENUM('lead','editor')
+  UNIQUE (family_id, user_id)
+
+user_campus_affiliations
+  ... as above ...
+
+posts.audience, events.audience, commitments.audience
+  ENUM('campus','network','public') NOT NULL DEFAULT 'campus'
+```
+
+Existing clubs start with `family_id = NULL`. No chapter is silently grouped
+by name. That would create false families such as two unrelated "Debate Clubs".
+
+Indexes:
+
+- `clubs (family_id, campus_id)` unique.
+- `clubs (campus_id)` already exists from Phase 4.
+- `user_campus_affiliations (campus_id, status)` for campus-admin lists.
+- `(audience, created_at)` on posts/events/commitments if the network feed
+  queries need it; measure before adding all three.
+
+`campuses` and `campus_email_domains` do not change. Registration still assigns
+the home campus from the domain. Additional affiliations are an explicit,
+approved relationship, not another email-domain guess.
+
+## 5. Roles
+
+| Role           | Phase 5 addition                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tier1`        | Creates families, links/unlinks chapters, appoints family admins, grants any affiliation, sees all campuses.                               |
+| `family_admin` | Edits family identity and family page. Does **not** inherit chapter content powers.                                                        |
+| `campus_admin` | Manages chapters on their campus, approves affiliations to their campus, sees that campus's reports. Cannot link chapters across campuses. |
+| `tier2`        | Manages one chapter's content, members and audience choices allowed by that chapter.                                                       |
+| `member`       | Joins eligible chapters, RSVPs to network content, requests affiliations.                                                                  |
+
+A person can hold more than one role by having the relevant link: for example,
+a campus admin at Strathmore can also be a chapter admin for one club. Do not
+invent a single global role hierarchy that overwrites those separate
+relationships.
+
+Family admin is a new link table rather than a new value in `users.role`.
+Content permissions stay chapter-scoped, so a family admin cannot edit a
+chapter's posts merely because they edit the family logo.
+
+## 6. API sketch
+
+Read:
+
+- `GET /api/v2/club-families?scope=local|network`
+- `GET /api/v2/club-families/:id` — family, chapters, network-visible
+  commitments/posts the reader may see.
+- `GET /api/v2/clubs?scope=local|network` — existing endpoint, one new scope.
+- `GET /api/v2/events?scope=local|network`
+- `GET /api/v2/commitments?scope=local|network`
+- `GET /api/v2/users/me/campuses` — home + active/pending affiliations.
+
+Admin:
+
+- `POST /api/v2/club-families` — tier 1.
+- `PATCH /api/v2/club-families/:id` — family admin or tier 1.
+- `POST /api/v2/club-families/:id/chapters` `{ clubId }` — tier 1.
+- `DELETE /api/v2/club-families/:id/chapters/:clubId` — tier 1.
+- `POST /api/v2/users/me/campus-affiliations` `{ campusId, kind, proof }` —
+  creates a pending request.
+- `GET /api/v2/campus-affiliations?campusId=…` — campus admin or tier 1.
+- `POST /api/v2/campus-affiliations/:id/approve|deny` — that campus's admin or
+  tier 1.
+
+Writes:
+
+- `POST/PATCH` on posts, events and commitments accept `audience`.
+- Server validation is authoritative:
+  - `campus` is always allowed for a chapter author.
+  - `network` requires the club to have a family and the author to manage the
+    chapter.
+  - `public` can be tier-1-only for the first cut, or a per-family setting.
+- Never trust a client-supplied `family_id`; derive it from `club_id`.
+
+## 7. UX
+
+### Discovery
+
+- Home keeps **This campus** as the default.
+- A scope control appears only when the reader has an active affiliation:
+  **This campus / My network**.
+- The masthead campus label becomes a menu:
+  - Home campus (fixed)
+  - Other campuses the reader is affiliated with
+  - "Request another campus" (if enabled)
+- Tier 1 gets **All campuses**; campus admins do not.
+
+### Club family page
+
+- Family mark, name and description.
+- Chapter strip: campus name, local officers, next event, "Visit chapter".
+- Network-visible upcoming commitments and posts, with the host chapter named.
+- A clear statement that each chapter has its own officers and moderation.
+
+### Chapter page
+
+- "Part of [Family]" with a link to the family page and a chapter switcher.
+- Local content remains the default; network content is labelled.
+- The composer audience selector:
+  - "This campus" (default)
+  - "My club network" (only for chapters in a family)
+  - "Public" (later, tier-1 only by default)
+- The selector explains the consequence in plain words, not only colour or a
+  small icon.
+
+### Accessibility
+
+- Campus and audience are always written text, never colour alone.
+- The scope control is a labelled radio group or select, not a custom dropdown
+  with no keyboard path.
+- Family and chapter links have distinct accessible names ("Strathmore chapter
+  of Debate & Rhetoric", not two links called "View").
+- Network-only content must still be reachable in a static list; no information
+  exists only in a carousel or animation.
+- Preserve focus and announce scope changes with a polite status message.
+
+## 8. Moderation and safety
+
+- Reports stay attached to the chapter/club. The campus admin for that chapter
+  sees them. Family admins do not automatically see chapter reports.
+- Network content that is reported in another campus's feed still belongs to
+  the host chapter. Add a `family_id` derived report view for tier 1, and later
+  for family admins if needed.
+- A campus admin cannot read another campus's roster, reports or member emails.
+- Do not return reporter identity, as today.
+- Audit every family link/unlink, family admin appointment, affiliation
+  approval/revocation and audience change.
+- A removed chapter should keep its family link for the audit trail but be
+  hidden from discovery and the family page; unlinking is a separate action.
+- Rate-limit affiliation requests and family creation. A family name/slug is
+  unique; do not allow a duplicate mark/name to impersonate an existing family.
+- Public audience is the riskiest setting. Keep it tier-1-controlled until
+  there is a review/verification path for families.
+
+## 9. Migration and rollout
+
+Ship schema dark, then turn on read, then participation.
+
+1. **Schema** — create families, affiliations and `audience` columns; backfill
+   home affiliations; leave every club `family_id = NULL`; default audience
+   `campus`. No visible change.
+2. **Read-only network** — family pages, chapter links, scope switch, network
+   audiences. `CROSS_CAMPUS_ENABLED=false` keeps the UI hidden on a single
+   campus. Test against a temporary second campus before enabling.
+3. **Affiliations** — campus-admin approval flow and profile display. Still no
+   cross-campus writes.
+4. **Participation** — network RSVP/join and network commitments. Start with
+   one host chapter/one roster.
+5. **Public directory** — only after family verification and moderation are
+   proven. This is a separate opt-in, not a switch on the same day.
+
+Each step needs a rollback story:
+
+- Schema additions are additive (nullable `family_id`, default audience).
+- Disabling the feature flag hides entry points but must also make the API
+  reject `scope=network` writes; never rely on the client.
+- `DELETE`/unlink is soft for audit; hard deletion only for genuinely empty
+  test data.
+
+## 10. Acceptance tests
+
+- A user with home campus A and active affiliation B sees B under **My
+  network**, but not campus C.
+- A user with no affiliation sees only their home campus and is rejected when
+  requesting `scope=network`.
+- A family with chapters on A and B shows both to a network reader; a chapter
+  on C is absent.
+- A campus admin at A can manage A chapters but receives 403 for B chapters,
+  B reports and B affiliation requests.
+- A local post stays off the network scope; a network post appears for A and B
+  but not C; a public post appears in the public directory.
+- A network commitment is visible to A and B, accepts a B signup, and keeps one
+  ordered roster; the host chapter can cancel and notify both campuses.
+- Unlinking a chapter removes it from discovery and the family page, keeps the
+  audit row, and does not delete the chapter's posts or events.
+- A family admin can edit the family identity but cannot edit a chapter post.
+- Anonymous readers still get the Phase 4 default campus and never receive
+  network-only content.
+- All existing Phase 1–4 tests continue to pass with the flag off.
+
+## 11. Non-goals
+
+- A global feed or recommendation algorithm.
+- Cross-campus direct messages, follows or stories.
+- A club belonging to multiple families.
+- Multiple chapters of one family on the same campus.
+- Jointly hosted commitments with per-campus quotas and separate rosters.
+- Automatic affiliation from a second email domain.
+- Public self-serve family creation.
+- Merging two existing clubs or transferring content between chapters.
+
+## 12. Open decisions
+
+Recommended answers are in parentheses.
+
+1. **Is cross-campus discovery affiliated-only or public?**
+   (Affiliated-only for network content; a separate public directory later.)
+2. **Can a member self-add a campus affiliation?**
+   (Request plus campus-admin approval; no instant self-join.)
+3. **Can a member join a chapter at a campus they are not affiliated with?**
+   (No by default; a chapter can opt into `network` or `public` join policy.)
+4. **Who creates and links chapters?**
+   (Tier 1 creates/links; family admins edit identity; campus admins manage
+   their own chapters.)
+5. **Is a cross-campus commitment one roster or many?**
+   (One host chapter, one roster for the first release.)
+6. **Does a family admin get moderation rights?**
+   (No. Chapter reports stay with chapter/campus admins; tier 1 can escalate.)
+7. **Do alumni/staff affiliations use the same flow?**
+   (Same table, different `kind`; verification policy can differ.)
+8. **When does public audience ship?**
+   (After the family verification path exists; tier-1-only until then.)
+
+The smallest useful Phase 5 is therefore: schema + read-only network discovery
+
+- approved affiliations. Participation and public directory follow only after
+  that boundary is proven.

@@ -105,6 +105,11 @@ export default function Navbar() {
               )}
             </NavLink>
           )}
+          {user?.role === "tier1" && (
+            <NavLink to="/settings/campuses" className={linkClass}>
+              Campuses
+            </NavLink>
+          )}
         </nav>
 
         <div className={styles.tools}>
