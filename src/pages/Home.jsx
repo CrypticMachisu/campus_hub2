@@ -7,6 +7,7 @@ import { clubsForUser } from "../utils/authStore";
 import { getAllEvents } from "../utils/eventsStore";
 import { getSignups } from "../utils/storage";
 import { getMyCommitments } from "../utils/commitmentsStore";
+import { getCampuses } from "../utils/campusesStore";
 import { isPastEvent } from "../utils/dateTime";
 import { SkeletonGroup, ClubSkeletonCard, EventSkeletonCard } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
@@ -66,6 +67,8 @@ export default function Home() {
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState("");
   const [eventsReloadKey, setEventsReloadKey] = useState(0);
+  const [campuses, setCampuses] = useState([]);
+  const [campusFilter, setCampusFilter] = useState("");
 
   const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
@@ -78,11 +81,31 @@ export default function Home() {
   // Rule 2: 300ms input debouncing execution
   const debouncedSearch = useDebounce(search, 300);
 
+  // Tier 1 needs the real campus list for the discovery switcher. Other roles
+  // are pinned to their own campus by the server, so there is nothing to load.
+  useEffect(() => {
+    if (user?.role !== "tier1") {
+      setCampuses([]);
+      return;
+    }
+    let cancelled = false;
+    getCampuses()
+      .then((rows) => {
+        if (!cancelled) setCampuses(rows);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.role]);
+
   useEffect(() => {
     let cancelled = false;
     setEventsLoading(true);
     setEventsError("");
-    getAllEvents()
+    getAllEvents({
+      campusId: user?.role === "tier1" && campusFilter ? campusFilter : undefined,
+    })
       .then((result) => {
         if (!cancelled) setEvents(result);
       })
@@ -95,7 +118,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [eventsReloadKey]);
+  }, [eventsReloadKey, campusFilter, user?.role]);
 
   // The reader's signed-up events, for the commitments rail. A failure here
   // leaves the rail empty rather than failing the edition.
@@ -135,8 +158,13 @@ export default function Home() {
 
   const searchLower = debouncedSearch.toLowerCase();
 
+  const scopedClubs =
+    user?.role === "tier1" && campusFilter
+      ? clubs.filter((club) => club.campusId === campusFilter)
+      : clubs;
+
   // Filter Clubs: Matches category, name, tags, and expanded description parameter
-  const filteredClubs = clubs.filter((club) => {
+  const filteredClubs = scopedClubs.filter((club) => {
     const matchesCategory = category === "All" || club.category === category;
 
     const matchesSearch =
@@ -196,6 +224,11 @@ export default function Home() {
     .slice(0, 3);
 
   const clubName = (clubId) => clubs.find((club) => club.id === clubId)?.name || "Campus event";
+  const selectedCampus = campuses.find((campus) => campus.id === campusFilter);
+  const editionCampus =
+    user?.role === "tier1"
+      ? selectedCampus?.name || "All campuses"
+      : user?.campusName || "Main campus";
 
   function handleCategory(next) {
     setCategory(next);
@@ -209,13 +242,33 @@ export default function Home() {
     <main className={styles.page}>
       <header className={styles.intro}>
         <p className={`eyebrow ${styles.kicker}`}>
-          Nairobi · Main campus · {shortDate(todayIso)} · Standalone edition
+          Nairobi · {editionCampus} · {shortDate(todayIso)} · Standalone edition
         </p>
         <h1 className={styles.pageTitle}>This week.</h1>
         <p className={styles.deck}>
           What is happening on campus, edited down to what you can actually show up for. Pick
           something, and it becomes a commitment rather than a bookmark.
         </p>
+        {user?.role === "tier1" && (
+          <div className={styles.campusSwitcher}>
+            <label htmlFor="discovery-campus">Campus edition</label>
+            <select
+              id="discovery-campus"
+              value={campusFilter}
+              onChange={(e) => setCampusFilter(e.target.value)}
+            >
+              <option value="">All campuses</option>
+              {campuses.map((campus) => (
+                <option key={campus.id} value={campus.id}>
+                  {campus.name}
+                </option>
+              ))}
+            </select>
+            <span className={styles.campusNote}>
+              Tier 1 view. Filters this edition&apos;s clubs and events only.
+            </span>
+          </div>
+        )}
       </header>
 
       {hasNoClub && (

@@ -76,7 +76,10 @@ still manage a club, otherwise `member`.
   A signed-in reader may not request another campus; tier 1 may name one or
   omit the filter to see every campus.
 - Signed-out readers get the default campus, currently Strathmore. There is no
-  public campus switcher yet; that belongs with the cross-university phase.
+  public campus switcher; that belongs with the cross-university phase. Tier 1
+  has a discovery-only campus switcher on the edition (`All campuses` or one
+  campus), which filters clubs and events without changing the reader's own
+  campus.
 - Joining a club, requesting club admin access, signing up for an event or
   commitment, and direct commitment/post reads reject another campus.
 - The Navbar edition line shows the signed-in reader's campus name instead of a

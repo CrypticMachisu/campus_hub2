@@ -29,6 +29,51 @@
   margin: 0;
 }
 
+/* Tier-1 discovery scope. A select, not a custom menu, so keyboard and
+   screen-reader behaviour stays native. */
+.campusSwitcher {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  margin-top: 1.2rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.campusSwitcher label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+}
+
+.campusSwitcher select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 2rem 0 0.65rem;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
+.campusSwitcher select:focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.campusNote {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 /* Not-in-a-club note */
 .dispatch {
   background: var(--tint);

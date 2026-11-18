@@ -17,9 +17,13 @@ export function toUiEvent(event) {
   return { ...rest, date, time: clock.slice(0, 5) };
 }
 
-/** Events on the signed-in reader's campus (or the default campus when signed out). */
-export async function getAllEvents() {
-  const { events } = await apiFetch("/events");
+/**
+ * Events on the signed-in reader's campus (or the default campus when signed
+ * out). Tier 1 may pass a campusId; the server rejects it for other roles.
+ */
+export async function getAllEvents({ campusId } = {}) {
+  const query = campusId ? `?campusId=${encodeURIComponent(campusId)}` : "";
+  const { events } = await apiFetch(`/events${query}`);
   return events.map(toUiEvent);
 }
 

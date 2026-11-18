@@ -2,8 +2,9 @@
 
 Design plus a first implemented slice. The campus affiliation foundation —
 home-campus backfill, member requests, cancellation, and campus-admin/tier-1
-approval — is live at `/campus-access`. Club families, network discovery and
-network audiences remain design only.
+approval — is live at `/campus-access`. Tier 1 also has a discovery-only campus
+switcher on the edition. Club families, member network discovery and network
+audiences remain design only.
 
 Phase 4 gave every account and club one campus. Phase 5 lets a person belong
 to more than one campus and lets one club exist as a family of campus chapters.

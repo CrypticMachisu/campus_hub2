@@ -461,9 +461,10 @@ The cross-university phase is designed, with its affiliation foundation now
 implemented. The recommended model is a **club family with one chapter per
 campus**, and a user with one home campus plus approved affiliations. Members
 request additional campuses at `/campus-access`; the campus admin for that
-campus or tier 1 approves. Discovery defaults to local; a network scope appears
-only for affiliated campuses, and content must deliberately opt into a network
-audience.
+campus or tier 1 approves. Tier 1 can switch the edition between one campus and
+all campuses; members' discovery still defaults to local, and a network scope
+appears only for affiliated campuses. Content must deliberately opt into a
+network audience.
 
 No global feed, public self-serve affiliation, or automatic merging of clubs by
 name is proposed. The full design, schema, API sketch, moderation rules,
