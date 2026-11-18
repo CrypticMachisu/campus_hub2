@@ -304,6 +304,24 @@ export default function ClubFeed({ clubId }) {
     }
   }
 
+  async function removeOwnPost(post) {
+    if (!window.confirm("Remove this post? It closes the public thread and its open reports.")) {
+      return;
+    }
+    setBusyId(post.id);
+    setNotice("");
+    try {
+      await setPostStatus(post.id, "removed");
+      setPosts((current) => current.filter((entry) => entry.id !== post.id));
+      setPinned((current) => (current?.id === post.id ? null : current));
+      setNotice("Post removed. The public thread is closed.");
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function togglePin(post) {
     setPinningId(post.id);
     setNotice("");
@@ -416,6 +434,8 @@ export default function ClubFeed({ clubId }) {
           {visiblePosts.map((post) => {
             const editing = editingId === post.id;
             const busy = busyId === post.id;
+            const isAuthor = post.authorId === user?.id;
+            const canEdit = managesClub || isAuthor;
             return (
               <li
                 key={post.id}
@@ -501,7 +521,7 @@ export default function ClubFeed({ clubId }) {
                       {post.commentCount === 1 ? "1 comment" : `${post.commentCount} comments`}
                     </Link>
 
-                    {managesClub ? (
+                    {canEdit ? (
                       <span className={styles.managerActions}>
                         <button
                           type="button"
@@ -511,22 +531,36 @@ export default function ClubFeed({ clubId }) {
                         >
                           Edit
                         </button>
-                        <button
-                          type="button"
-                          className={styles.textButton}
-                          onClick={() => togglePin(post)}
-                          disabled={busy || pinningId === post.id}
-                        >
-                          {post.pinned ? "Unpin" : "Pin"}
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.textButton}
-                          onClick={() => hidePost(post)}
-                          disabled={busy}
-                        >
-                          Hide
-                        </button>
+                        {managesClub && (
+                          <button
+                            type="button"
+                            className={styles.textButton}
+                            onClick={() => togglePin(post)}
+                            disabled={busy || pinningId === post.id}
+                          >
+                            {post.pinned ? "Unpin" : "Pin"}
+                          </button>
+                        )}
+                        {managesClub && (
+                          <button
+                            type="button"
+                            className={styles.textButton}
+                            onClick={() => hidePost(post)}
+                            disabled={busy}
+                          >
+                            Hide
+                          </button>
+                        )}
+                        {isAuthor && !managesClub && (
+                          <button
+                            type="button"
+                            className={styles.textButton}
+                            onClick={() => removeOwnPost(post)}
+                            disabled={busy}
+                          >
+                            Remove post
+                          </button>
+                        )}
                       </span>
                     ) : (
                       <ReportButton targetType="post" targetId={post.id} />

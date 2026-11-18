@@ -674,20 +674,30 @@ postsRouter.patch("/:id/pin", requireAuth, async (req, res) => {
   res.json({ post: shaped, mediaEnabled: mediaStorage.enabled });
 });
 
-/** PATCH /posts/:id/status — hide, restore or remove. Managers only. */
+/**
+ * PATCH /posts/:id/status — hide, restore or remove. Managers can set any
+ * status; an author can remove their own post but cannot hide or restore it.
+ */
 postsRouter.patch("/:id/status", requireAuth, async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM posts WHERE post_id = :id", {
     id: req.params.id,
   });
   const post = rows[0];
   if (!post) return res.status(404).json({ error: "Post not found." });
-  if (!canManageClub(req.user, post.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
-  }
 
   const status = typeof req.body?.status === "string" ? req.body.status : "";
   if (!STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${STATUSES.join(", ")}.` });
+  }
+
+  const canManage = canManageClub(req.user, post.club_id);
+  const isAuthor = post.author_id === req.user.id;
+  if (!canManage && (!isAuthor || status !== "removed")) {
+    return res.status(403).json({
+      error: isAuthor
+        ? "You can only remove your own post."
+        : "You don't have admin access to that club.",
+    });
   }
 
   await pool.query(

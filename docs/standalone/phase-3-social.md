@@ -248,8 +248,7 @@ URLs; setting a public bucket domain makes delivery URLs stable and cacheable.
   note, reachable from posts and post comments.
 
 Not built in 3a: the cross-club tier1 report aggregate (tier 1 can manage each
-club's queue through the club switcher), author-initiated deletion (authors can
-edit; managers remove), and reactions. Photos shipped in 3b.
+club's queue through the club switcher) and reactions. Photos shipped in 3b.
 
 ## 3b implementation record
 
@@ -323,6 +322,18 @@ MEDIA_CLEANUP=on
 Still deferred in 3c: reactions and campus-wide search. Reactions would add
 engagement counters the product explicitly avoids; search needs a query
 surface and a measured gap before it earns one.
+
+## Follow-up — author removal (implemented 18 November 2026)
+
+- `PATCH /posts/:id/status` now accepts `removed` from the post's author as well
+  as from a club manager. An author cannot hide or restore a post; those remain
+  manager actions. Removal still clears the pin and closes every open report.
+- The club page shows `Edit` and `Remove post` to an author who is no longer a
+  club manager, with a confirmation that names the closed thread. A manager
+  keeps the existing `Edit`, `Pin` and `Hide` controls and removes from the desk.
+- The API test reassigns a post to a non-manager author to cover editing,
+  unrelated-member refusal, the author's refusal to hide, and the author's
+  successful soft removal.
 
 ### Bucket setup
 

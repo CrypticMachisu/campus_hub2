@@ -433,7 +433,5 @@ full design and setup notes live in
 - Thumbnails and per-photo reports. Abandoned pending uploads are purged by
   the cleanup worker (24-hour default).
 - The cross-club tier1 report aggregate; tier 1 can open each club's queue.
-- Author-initiated deletion. Authors can edit their post; removal is a manager
-  action.
 - The home edition does not show posts. The club page and permalink remain the
   only reading surfaces.

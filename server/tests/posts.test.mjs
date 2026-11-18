@@ -378,4 +378,54 @@ test("posts: publish, comment, report and moderate", { timeout: 60_000 }, async 
     afterCommentBody.comments.some((entry) => entry.id === secondCommentBody.comment.id),
     false
   );
+
+  // An author who is no longer a club manager can still edit and remove their
+  // own post, but cannot hide or restore it and cannot touch another author's.
+  const authored = await api("/v2/posts", {
+    method: "POST",
+    token: admin,
+    body: { clubId: "club-01", text: `Author removal test ${Date.now()}` },
+  });
+  const authoredPost = (await expectJson(authored, 201, "authored post")).post;
+  postIds.push(authoredPost.id);
+  const [[sofiaRow]] = await pool.query("SELECT user_id FROM users WHERE email = ?", [
+    process.env.TEST_MEMBER_EMAIL || "sofia.ramirez@campus.edu",
+  ]);
+  assert.ok(sofiaRow, "the member login must have a user row");
+  await pool.query("UPDATE posts SET author_id = ? WHERE post_id = ?", [
+    sofiaRow.user_id,
+    authoredPost.id,
+  ]);
+
+  const authorEdit = await api(`/v2/posts/${authoredPost.id}`, {
+    method: "PATCH",
+    token: sofia,
+    body: { text: "Edited by the author after leaving the officer role." },
+  });
+  assert.equal(
+    (await expectJson(authorEdit, 200, "author edit")).post.body,
+    "Edited by the author after leaving the officer role."
+  );
+
+  const unrelatedRemove = await api(`/v2/posts/${authoredPost.id}/status`, {
+    method: "PATCH",
+    token: yuki,
+    body: { status: "removed" },
+  });
+  assert.equal(unrelatedRemove.status, 403);
+
+  const authorHide = await api(`/v2/posts/${authoredPost.id}/status`, {
+    method: "PATCH",
+    token: sofia,
+    body: { status: "hidden" },
+  });
+  assert.equal(authorHide.status, 403);
+
+  const authorRemoved = await api(`/v2/posts/${authoredPost.id}/status`, {
+    method: "PATCH",
+    token: sofia,
+    body: { status: "removed" },
+  });
+  assert.equal((await expectJson(authorRemoved, 200, "author removal")).post.status, "removed");
+  assert.equal((await api(`/v2/posts/${authoredPost.id}`)).status, 404);
 });
