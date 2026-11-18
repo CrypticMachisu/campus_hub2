@@ -97,6 +97,11 @@ export default function Navbar() {
               Commitments
             </NavLink>
           )}
+          {user && (
+            <NavLink to="/campus-access" className={linkClass}>
+              Campus access
+            </NavLink>
+          )}
           {dashboardClubId && (
             <NavLink to={`/dashboard/${dashboardClubId}`} className={linkClass}>
               The desk

@@ -56,6 +56,14 @@ authRouter.post("/register", async (req, res) => {
     VALUES (:id, :name, :email, :passwordHash, 'member', :campusId)`,
     { id, name, email, passwordHash, campusId: campus.id }
   );
+  // The home campus is an active affiliation from the first sign-in; the
+  // affiliation table only adds approved additional campuses.
+  await pool.query(
+    `INSERT INTO user_campus_affiliations
+       (user_id, campus_id, kind, status, requested_at, decided_at)
+     VALUES (:id, :campusId, 'home', 'active', NOW(), NOW())`,
+    { id, campusId: campus.id }
+  );
 
   const user = await findUserById(id);
   res.status(201).json({ token: signToken(user), user });

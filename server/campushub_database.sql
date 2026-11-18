@@ -84,6 +84,36 @@ CREATE TABLE users (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
+-- user_campus_affiliations
+-- One active home row per user, plus approved additional campuses. A request
+-- starts pending and is approved or denied by that campus's admin or tier 1.
+-- ----------------------------------------------------------------------------
+CREATE TABLE user_campus_affiliations (
+    affiliation_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id         VARCHAR(30) NOT NULL,
+    campus_id       VARCHAR(30) NOT NULL,
+    kind            ENUM('home', 'exchange', 'dual', 'staff', 'alumni', 'other')
+                    NOT NULL DEFAULT 'other',
+    status          ENUM('pending', 'active', 'denied', 'revoked')
+                    NOT NULL DEFAULT 'pending',
+    note            VARCHAR(500) NULL,
+    requested_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    decided_at      DATETIME NULL,
+    decided_by      VARCHAR(30) NULL,
+    CONSTRAINT fk_affiliation_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_affiliation_campus
+        FOREIGN KEY (campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_affiliation_decider
+        FOREIGN KEY (decided_by) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    UNIQUE KEY uq_user_campus_affiliation (user_id, campus_id),
+    INDEX idx_affiliation_campus_status (campus_id, status, requested_at)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
 -- clubs
 -- Backs the `clubs` array in mockData.js.
 -- ----------------------------------------------------------------------------
@@ -460,6 +490,12 @@ INSERT INTO users (user_id, name, email, role, campus_id) VALUES
     ('user-06', 'Jamal Green',    'jamal.green@campus.edu',    'member', 'campus-01'),
     ('user-07', 'Yuki Tanaka',    'yuki.tanaka@campus.edu',    'member', 'campus-01'),
     ('user-08', 'Nadia Haddad',   'nadia.haddad@campus.edu',   'member', 'campus-01');
+
+-- Every seeded account has an active home-campus affiliation.
+INSERT INTO user_campus_affiliations
+    (user_id, campus_id, kind, status, requested_at, decided_at)
+SELECT user_id, campus_id, 'home', 'active', created_at, created_at
+FROM users;
 
 -- Clubs (mockData.js `clubs`)
 INSERT INTO clubs (club_id, campus_id, name, category_id, description, logo_url, meeting_time, meeting_location) VALUES

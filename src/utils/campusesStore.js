@@ -2,6 +2,11 @@
 // this store is for the administration screen.
 import { apiFetch } from "./api";
 
+export async function getCampuses() {
+  const { campuses } = await apiFetch("/campuses", { auth: false });
+  return campuses;
+}
+
 export async function getCampusSettings() {
   const { campuses } = await apiFetch("/campuses/manage");
   return campuses;

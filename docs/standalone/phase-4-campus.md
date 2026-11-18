@@ -104,6 +104,18 @@ domains.
 - Creating a campus, changing its identity, and adding/removing a domain are
   written to `audit_log`.
 
+## Campus affiliations
+
+Signed-in members can request an additional campus at `/campus-access`. The
+request records a relationship kind and a short note, and stays pending until
+the campus admin for that campus or tier 1 approves or denies it. Members can
+cancel their own pending request. A campus admin cannot decide another
+campus's request or their own request.
+
+This is the first Phase 5 slice. It does **not** yet change discovery, content
+visibility or club membership; those remain part of the cross-university
+design in [`phase-5-cross-university.md`](./phase-5-cross-university.md).
+
 ## Deliberately deferred
 
 - A public or multi-campus switcher and cross-campus discovery.
@@ -126,6 +138,9 @@ domains.
 - `server/tests/campus-settings.test.mjs` proves the tier-1-only settings API,
   slug/domain validation, the last-domain guard, and access refusal for a
   member.
+- `server/tests/campus-affiliations.test.mjs` proves home backfill, member
+  request/cancel, denial and re-request, campus-admin scope, tier-1 visibility,
+  self-approval refusal, approval, and audit actions.
 - The Phase 2 and Phase 3 route suites still pass after the campus joins were
   added to their list queries.
 - `npm run lint` and `npm run build` pass.

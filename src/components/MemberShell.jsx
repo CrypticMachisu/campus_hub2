@@ -131,6 +131,9 @@ export default function MemberShell({ myClubs }) {
             <NavLink to="/my-events" className={utilityClass}>
               My commitments
             </NavLink>
+            <NavLink to="/campus-access" className={utilityClass}>
+              Campus access
+            </NavLink>
             {activeClub && canManageClub(user, activeClub.id) && (
               <NavLink to={`/dashboard/${activeClub.id}`} className={utilityClass}>
                 The desk

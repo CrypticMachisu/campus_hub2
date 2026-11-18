@@ -457,11 +457,13 @@ clubs, users or campus deletion.
 
 ## Phase 5 — cross-university design (18 November 2026)
 
-The cross-university phase is designed, not implemented. The recommended model
-is a **club family with one chapter per campus**, and a user with one home
-campus plus approved affiliations. Discovery defaults to local; a network scope
-appears only for affiliated campuses, and content must deliberately opt into a
-network audience.
+The cross-university phase is designed, with its affiliation foundation now
+implemented. The recommended model is a **club family with one chapter per
+campus**, and a user with one home campus plus approved affiliations. Members
+request additional campuses at `/campus-access`; the campus admin for that
+campus or tier 1 approves. Discovery defaults to local; a network scope appears
+only for affiliated campuses, and content must deliberately opt into a network
+audience.
 
 No global feed, public self-serve affiliation, or automatic merging of clubs by
 name is proposed. The full design, schema, API sketch, moderation rules,

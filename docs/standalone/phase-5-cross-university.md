@@ -1,6 +1,9 @@
 # Phase 5 — the cross-university network
 
-Design only. Nothing in this document is implemented yet.
+Design plus a first implemented slice. The campus affiliation foundation —
+home-campus backfill, member requests, cancellation, and campus-admin/tier-1
+approval — is live at `/campus-access`. Club families, network discovery and
+network audiences remain design only.
 
 Phase 4 gave every account and club one campus. Phase 5 lets a person belong
 to more than one campus and lets one club exist as a family of campus chapters.
@@ -60,12 +63,15 @@ Add `user_campus_affiliations` for additional campuses:
 
 ```text
 user_campus_affiliations
-  user_id        -> users.user_id
-  campus_id      -> campuses.campus_id
-  kind           home | exchange | dual | staff | alumni
-  status         active | pending | revoked
-  granted_by     -> users.user_id (nullable for backfill)
-  created_at
+  affiliation_id  INT AUTO_INCREMENT PRIMARY KEY
+  user_id         -> users.user_id
+  campus_id       -> campuses.campus_id
+  kind            home | exchange | dual | staff | alumni | other
+  status          pending | active | denied | revoked
+  note            VARCHAR(500) NULL
+  requested_at    DATETIME
+  decided_at      DATETIME NULL
+  decided_by      -> users.user_id NULL
   UNIQUE (user_id, campus_id)
 ```
 
@@ -85,6 +91,26 @@ Who can add an affiliation:
 
 This avoids a free-for-all where anyone can claim any university and read its
 network content.
+
+### Implemented foundation
+
+Migration `026_campus_affiliations.sql` adds the table and backfills every
+existing user's home row. New registrations insert their home affiliation at
+the same time as the account.
+
+The live screen is `/campus-access`:
+
+- Members see their home campus, active affiliations, pending requests and
+  denied/revoked requests, and can request another campus with a relationship
+  kind and a short note.
+- A pending request can be cancelled by its owner. A denied or revoked request
+  can be retried; the row is reused so the audit trail stays coherent.
+- Campus admins see pending requests for their campus only. Tier 1 sees every
+  campus. Neither can decide their own request.
+- Decisions are audited as `campus.affiliation.request`, `.cancel`, `.approve`
+  and `.deny`.
+- Affiliations do not yet change discovery or content access. That starts with
+  network discovery in the next slice.
 
 ## 3. Network and audience
 
@@ -141,7 +167,8 @@ existing signup table.
 
 ## 4. Schema
 
-Proposed migration `026_cross_university.sql`:
+Future federation migration `027_cross_university.sql` (the affiliation
+foundation is migration `026`):
 
 ```text
 club_families
@@ -215,7 +242,7 @@ Read:
 - `GET /api/v2/clubs?scope=local|network` — existing endpoint, one new scope.
 - `GET /api/v2/events?scope=local|network`
 - `GET /api/v2/commitments?scope=local|network`
-- `GET /api/v2/users/me/campuses` — home + active/pending affiliations.
+- `GET /api/v2/campus-affiliations/me` — home plus every own request.
 
 Admin:
 
@@ -223,11 +250,13 @@ Admin:
 - `PATCH /api/v2/club-families/:id` — family admin or tier 1.
 - `POST /api/v2/club-families/:id/chapters` `{ clubId }` — tier 1.
 - `DELETE /api/v2/club-families/:id/chapters/:clubId` — tier 1.
-- `POST /api/v2/users/me/campus-affiliations` `{ campusId, kind, proof }` —
-  creates a pending request.
-- `GET /api/v2/campus-affiliations?campusId=…` — campus admin or tier 1.
-- `POST /api/v2/campus-affiliations/:id/approve|deny` — that campus's admin or
+- `POST /api/v2/campus-affiliations/me` `{ campusId, kind, note }` — creates a
+  pending request.
+- `DELETE /api/v2/campus-affiliations/me/:id` — cancel an own pending request.
+- `GET /api/v2/campus-affiliations?status=pending&campusId=…` — campus admin or
   tier 1.
+- `POST /api/v2/campus-affiliations/:id/approve|deny` — that campus's admin or
+  tier 1. Self-approval is rejected.
 
 Writes:
 
@@ -309,8 +338,8 @@ Ship schema dark, then turn on read, then participation.
 2. **Read-only network** — family pages, chapter links, scope switch, network
    audiences. `CROSS_CAMPUS_ENABLED=false` keeps the UI hidden on a single
    campus. Test against a temporary second campus before enabling.
-3. **Affiliations** — campus-admin approval flow and profile display. Still no
-   cross-campus writes.
+3. **Affiliations** — **implemented:** campus-admin approval flow and the
+   `/campus-access` screen. Still no cross-campus writes or network discovery.
 4. **Participation** — network RSVP/join and network commitments. Start with
    one host chapter/one roster.
 5. **Public directory** — only after family verification and moderation are
