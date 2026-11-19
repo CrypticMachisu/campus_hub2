@@ -131,8 +131,9 @@ export default function FamilyProfile() {
       </section>
 
       <aside className={styles.boundaryNote}>
-        <strong>Each chapter is local.</strong> The family shares identity only; membership, posts,
-        events and reports stay with the chapter on its campus.
+        <strong>Each chapter is local.</strong> The family shares identity only. Campus-only
+        activity, membership, posts and reports stay with the chapter on its campus; events,
+        commitments and notices appear here only when the chapter publishes them to the network.
       </aside>
     </main>
   );

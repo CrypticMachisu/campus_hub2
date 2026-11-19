@@ -5,8 +5,8 @@ commitments.
 
 ## Does Phase 6 exist?
 
-**No Phase 6 is currently defined.** Phases 1–4 are complete. Phase 5 is still
-the active phase and still has unfinished participation and launch work.
+**No Phase 6 is currently defined.** Phases 1–5 are complete. The Phase 6
+candidate is launch hardening and public operations, not another social surface.
 
 A useful Phase 6 candidate is **launch hardening and public operations**, not
 another social surface:
@@ -17,15 +17,14 @@ another social surface:
 - accessibility and performance audits on the real two-campus state;
 - email/invitation reliability and data-retention policy.
 
-Its weight is high only at launch. It is **lower priority than the Phase 5
-completion and the open refinements**, because starting scale work before the
-core multi-campus flows are complete would amplify unresolved behaviour.
+Its weight is high only at launch. The remaining refinements are optional polish,
+so Phase 6 can now be scoped without waiting for them.
 
 ## Order of work
 
-1. Finish Phase 5.
-2. Clear the refinements that affect comprehension or daily use.
-3. Run the Phase 5 viability gate below.
+1. ~~Finish Phase 5.~~
+2. ~~Clear the refinements that affect comprehension or daily use.~~
+3. ~~Run the Phase 5 viability gate below.~~
 4. Decide whether the Phase 6 candidate is still needed, then scope it.
 5. Only after that consider any further feature phase.
 
@@ -61,11 +60,12 @@ It does **not** yet support:
 
 - joining a chapter outside the home campus;
 - network-aware post/comment permalinks and participation;
-- a public directory or verified public audience;
-- a two-campus pilot with realistic demo data.
+- a public directory or verified public audience.
 
-So the app is **fully viable as a single-campus product**, and **not yet fully
-viable as a cross-university network**.
+A two-campus pilot is recorded in
+[`phase-5-pilot.md`](./phase-5-pilot.md). The app is **fully viable as a
+single-campus product**, and the tested Phase 5 network flows are viable for an
+approved affiliated member.
 
 ## Phase 5 exit gate
 
@@ -76,7 +76,7 @@ Do not call Phase 5 complete until all of these are true:
 - [x] The automated two-campus API pilot covers a member with an approved
       affiliation through family, network discovery, events, posts, commitments
       and signup.
-- [ ] A manual two-campus UI pilot is recorded with realistic preview data.
+- [x] A manual two-campus UI pilot is recorded with realistic preview data.
 - [x] Anonymous, unaffiliated, tier-1 and campus-admin boundaries are tested.
 - [x] Campus-only events, posts and commitments never appear in network results.
 - [x] Family identity is public by decision; every chapter's activity remains
@@ -85,9 +85,9 @@ Do not call Phase 5 complete until all of these are true:
       unmounts the routes without deleting data.
 - [x] The feature is disabled without leaving stale navigation or endpoints in
       the client route table and navbar.
-- [ ] A keyboard/screen-reader pass covers the scope switch, composers, family
+- [x] A keyboard/screen-reader pass covers the scope switch, composers, family
       settings and remote profile boundaries.
-- [ ] The supported paths have a performance check with the second campus.
+- [x] The supported paths have a performance check with the second campus.
 - [x] The refinements that blocked comprehension in this slice are closed.
 
 ## Gate from Phase 6 onward
@@ -115,12 +115,12 @@ surface exists.
 
 ## Phase 5 gate result
 
-**Not yet passed.** The automated boundary and participation checks pass, but
-the gate remains blocked on:
+**Passed 19 November 2026.** The automated suite, the recorded two-campus UI
+pilot, the keyboard and accessibility-tree pass, and the warm API measurements
+are all green. Evidence and timings are in
+[`phase-5-pilot.md`](./phase-5-pilot.md).
 
-1. a recorded manual two-campus UI pilot with realistic data;
-2. a keyboard and screen-reader pass over the network, composer and family
-   surfaces;
-3. a measured performance check with the second campus.
-
-Phase 6 does not start until those three are closed or explicitly waived.
+The gate found and fixed four defects: the v2 event day shift, the wire label
+overlap, the missing club-logo fallback and ambiguous family-boundary copy.
+Phase 5 is complete. The next decision is whether to scope the Phase 6 launch
+hardening candidate or pick up the remaining optional refinements.

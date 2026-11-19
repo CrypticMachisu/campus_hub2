@@ -361,6 +361,12 @@
   z-index: 1;
 }
 
+.wireViewport {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .wireTrack {
   display: flex;
   align-items: center;
@@ -896,6 +902,10 @@
     grid-template-columns: 1fr;
   }
 
+  .wireViewport {
+    width: 100%;
+  }
+
   .wireTrack {
     white-space: normal;
     flex-wrap: wrap;
@@ -929,6 +939,10 @@
     animation: none;
     white-space: normal;
     flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .wireViewport {
     width: 100%;
   }
 

@@ -529,6 +529,16 @@ test(
     );
     eventIds.push(networkEvent.event.id);
     assert.equal(networkEvent.event.audience, "network");
+    assert.equal(networkEvent.event.date, "2030-09-12");
+    const networkEventV2 = await expectJson(
+      await api("/v2/events?scope=network", { token: member.token }),
+      200,
+      "network events v2"
+    );
+    assert.equal(
+      networkEventV2.events.find((event) => event.id === networkEvent.event.id)?.startTime,
+      "2030-09-12T10:00:00+03:00"
+    );
 
     const campusEvent = await expectJson(
       await api("/events", {

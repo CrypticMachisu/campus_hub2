@@ -127,7 +127,17 @@ export default function ClubProfile() {
       {/* Structural Profile Banner Header */}
       <header className={styles.clubHeader}>
         <div className={styles.headerMain}>
-          <img src={profileClub.logoUrl} alt={`${profileClub.name} logo`} className={styles.logo} />
+          {profileClub.logoUrl ? (
+            <img
+              src={profileClub.logoUrl}
+              alt={`${profileClub.name} logo`}
+              className={styles.logo}
+            />
+          ) : (
+            <span className={styles.logoFallback} aria-hidden="true">
+              {profileClub.name.slice(0, 2).toUpperCase()}
+            </span>
+          )}
           <div>
             <span className={styles.categoryBadge}>{profileClub.category}</span>
             <h1>{profileClub.name}</h1>

@@ -21,15 +21,14 @@ part of the current phase. We will pick these up after the phase work.
 
 ## Closed
 
-| ID    | Area            | Resolution                                                                                                      |
-| ----- | --------------- | --------------------------------------------------------------------------------------------------------------- |
-| R-001 | Discovery / UI  | The wire is a three-column grid; the label has a reserved column and can no longer sit over the moving text.    |
-| R-002 | Club profile    | Chapter profiles show “Part of [family]” and link to the family page.                                           |
-| R-004 | Network scope   | The network header carries a persistent “Viewing My network” badge and lists the included campuses.             |
-| R-011 | Wire ticker     | Reduced motion stops the crawl, renders one static wrapped list and hides the pause control.                    |
-| R-012 | Network page    | Pending affiliations are shown in the header with a direct campus-access link, even when active campuses exist. |
-| R-015 | Event composer  | The officer event list and event detail show a Network badge for network-published events.                      |
-| R-017 | Audience writes | Commitments use the same campus/network audience rule, with one host roster and campus-scoped discussion.       |
+| ID | Area | Resolution |
+| ----- | --------------- | --------------------------------------------------------------------------------------------------------------- || R-001 | Discovery / UI | The wire is a three-column grid and the animated track is clipped inside its own viewport, so it cannot cover the label. |
+| R-002 | Club profile | Chapter profiles show “Part of [family]” and link to the family page. |
+| R-004 | Network scope | The network header carries a persistent “Viewing My network” badge and lists the included campuses. |
+| R-011 | Wire ticker | Reduced motion stops the crawl, renders one static wrapped list and hides the pause control. |
+| R-012 | Network page | Pending affiliations are shown in the header with a direct campus-access link, even when active campuses exist. |
+| R-015 | Event composer | The officer event list and event detail show a Network badge for network-published events. |
+| R-017 | Audience writes | Commitments use the same campus/network audience rule, with one host roster and campus-scoped discussion. |
 
 ## Rules
 

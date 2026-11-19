@@ -78,9 +78,12 @@ export function rowToEvent(row) {
     title: row.title,
     description: row.description,
     category: row.category_name,
+    // MySQL DATE is a wall-clock calendar date. Building it through
+    // toISOString() shifts it back a day in any timezone east of UTC, which
+    // then makes v2's startTime disagree with the stored date.
     date:
       row.event_date instanceof Date
-        ? row.event_date.toISOString().split("T")[0]
+        ? localDateOnly(row.event_date)
         : String(row.event_date).split("T")[0],
     time: formatTime(row.event_time),
     location: row.location,
@@ -93,6 +96,11 @@ export function rowToEvent(row) {
     signupCount: row.signup_count == null ? 0 : Number(row.signup_count),
     isSeed: !row.event_id.startsWith("custom-"),
   };
+}
+
+function localDateOnly(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 /** MySQL TIME columns come back as "HH:MM:SS" strings — trim to "HH:MM". */

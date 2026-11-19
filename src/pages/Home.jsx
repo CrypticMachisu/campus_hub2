@@ -398,19 +398,21 @@ export default function Home() {
       {wireItems.length > 0 && (
         <div className={`${styles.wire} ${wirePaused ? styles.wirePaused : ""}`}>
           <span className={styles.wireLabel}>Wire</span>
-          <div className={styles.wireTrack}>
-            {wireItems.map((event) => (
-              <span key={event.id} className={styles.wireItem}>
-                {shortDate(event.date)} · {event.time} — {event.title}
-                <span className={styles.wireWhere}> · {clubName(event.clubId)}</span>
-              </span>
-            ))}
-            {wireItems.map((event) => (
-              <span key={`dup-${event.id}`} className={styles.wireItem} aria-hidden="true">
-                {shortDate(event.date)} · {event.time} — {event.title}
-                <span className={styles.wireWhere}> · {clubName(event.clubId)}</span>
-              </span>
-            ))}
+          <div className={styles.wireViewport}>
+            <div className={styles.wireTrack}>
+              {wireItems.map((event) => (
+                <span key={event.id} className={styles.wireItem}>
+                  {shortDate(event.date)} · {event.time} — {event.title}
+                  <span className={styles.wireWhere}> · {clubName(event.clubId)}</span>
+                </span>
+              ))}
+              {wireItems.map((event) => (
+                <span key={`dup-${event.id}`} className={styles.wireItem} aria-hidden="true">
+                  {shortDate(event.date)} · {event.time} — {event.title}
+                  <span className={styles.wireWhere}> · {clubName(event.clubId)}</span>
+                </span>
+              ))}
+            </div>
           </div>
           <button
             type="button"
