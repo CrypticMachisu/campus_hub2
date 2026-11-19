@@ -1,6 +1,7 @@
 # Phase gates and the Phase 6 decision
 
-Decision recorded 19 November 2026, after Phase 5 network events and posts.
+Decision recorded 19 November 2026, after Phase 5 network events, posts and
+commitments.
 
 ## Does Phase 6 exist?
 
@@ -52,11 +53,11 @@ With the flag on, the network layer currently supports:
 - approved affiliations and the My network directory;
 - family identity, marks, delegated editors and chapter moves;
 - network-published events and posts, read-only;
+- network commitments with a single host roster and eligible-member signup;
 - remote club identity pages.
 
 It does **not** yet support:
 
-- network commitments or cross-campus RSVP;
 - joining a chapter outside the home campus;
 - a resolved family-page visibility rule (the public family page still shows
   every chapter, while the acceptance criteria imagine a network reader not
@@ -72,8 +73,8 @@ viable as a cross-university network**.
 
 Do not call Phase 5 complete until all of these are true:
 
-- [ ] Network commitments have a documented participation model, even if the
-      decision is to defer them explicitly.
+- [x] Network commitments have a documented participation model: one host
+      roster, eligible member signup, host-campus discussion.
 - [ ] A two-campus pilot works end to end with a member who has an approved
       affiliation.
 - [ ] Anonymous, unaffiliated, tier-1 and campus-admin boundaries are tested.

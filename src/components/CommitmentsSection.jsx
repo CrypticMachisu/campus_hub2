@@ -34,6 +34,7 @@ const EMPTY_FORM = {
   county: "",
   capacity: "",
   hostName: "",
+  audience: "campus",
 };
 
 /**
@@ -42,7 +43,11 @@ const EMPTY_FORM = {
  * past the cap the button becomes "Join the waitlist". Managers can publish
  * and remove activities without leaving the page.
  */
-export default function CommitmentsSection({ clubId, heading = "Commitments" }) {
+export default function CommitmentsSection({
+  clubId,
+  heading = "Commitments",
+  canPublishToNetwork = false,
+}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const managesClub = canManageClub(user, clubId);
@@ -307,6 +312,19 @@ export default function CommitmentsSection({ clubId, heading = "Commitments" }) 
             />
           </label>
 
+          {canPublishToNetwork && (
+            <label className={styles.field}>
+              <span>Audience</span>
+              <select
+                value={form.audience}
+                onChange={(e) => setForm({ ...form, audience: e.target.value })}
+              >
+                <option value="campus">This campus only</option>
+                <option value="network">My club network</option>
+              </select>
+            </label>
+          )}
+
           {formError && <p className={styles.error}>{formError}</p>}
           <button type="submit" className={styles.primaryButton} disabled={formStatus === "saving"}>
             {formStatus === "saving" ? "Publishing…" : "Publish commitment"}
@@ -355,6 +373,7 @@ export default function CommitmentsSection({ clubId, heading = "Commitments" }) 
                 <div className={styles.body}>
                   <p className={styles.kicker}>
                     {kindLabel(row.kind)}
+                    {row.audience === "network" ? " · Network" : ""}
                     {row.county ? ` · ${row.county}` : ""}
                   </p>
                   <h3 className={styles.rowTitle}>

@@ -524,7 +524,7 @@ export default function Dashboard() {
         {/* 4. Commitments -------------------------------------------------- */}
         <section className={`${styles.section} ${styles.commitmentsSection}`}>
           <h2>Commitments</h2>
-          <CommitmentsDesk clubId={club.id} />
+          <CommitmentsDesk clubId={club.id} canPublishToNetwork={Boolean(club.familyId)} />
         </section>
 
         {/* 5. Announcements ----------------------------------------------- */}
@@ -635,13 +635,14 @@ const EMPTY_EDITOR = {
   county: "",
   capacity: "",
   hostName: "",
+  audience: "campus",
 };
 
 function sortCommitments(list) {
   return [...list].sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
 }
 
-function CommitmentsDesk({ clubId }) {
+function CommitmentsDesk({ clubId, canPublishToNetwork = false }) {
   const [rows, setRows] = useState(null); // null = loading
   const [failed, setFailed] = useState("");
   const [notice, setNotice] = useState("");
@@ -813,6 +814,7 @@ function CommitmentsDesk({ clubId }) {
       county: row.county || "",
       capacity: row.capacity == null ? "" : String(row.capacity),
       hostName: row.hostName || "",
+      audience: row.audience || "campus",
     });
     setEditorError("");
     setNotice("");
@@ -849,6 +851,7 @@ function CommitmentsDesk({ clubId }) {
       county: editor.county.trim(),
       hostName: editor.hostName.trim(),
       capacity,
+      audience: editor.audience || "campus",
     };
 
     setEditorSaving(true);
@@ -1055,6 +1058,19 @@ function CommitmentsDesk({ clubId }) {
             />
           </label>
 
+          {canPublishToNetwork && (
+            <label>
+              Audience
+              <select
+                value={editor.audience || "campus"}
+                onChange={(e) => updateEditorField("audience", e.target.value)}
+              >
+                <option value="campus">This campus only</option>
+                <option value="network">My club network</option>
+              </select>
+            </label>
+          )}
+
           {editorError && (
             <p className={styles.error} role="alert">
               {editorError}
@@ -1117,7 +1133,8 @@ function CommitmentsDesk({ clubId }) {
                       <strong>{row.title}</strong>
                       <br />
                       <span className={styles.cellNote}>
-                        {row.kindLabel} · {row.location}
+                        {row.kindLabel}
+                        {row.audience === "network" ? " · Network" : ""} · {row.location}
                       </span>
                     </td>
                     <td>

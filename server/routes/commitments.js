@@ -12,11 +12,12 @@
 // owning club.
 import { pool } from "../db.js";
 import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
-import { readCampusScope } from "../campus.js";
+import { readCampusScope, campusInUserNetwork } from "../campus.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 import { recordAudit } from "../audit.js";
 import { parseStartTime } from "./events.js";
 import { notifyUsers } from "../notify.js";
+import { crossUniversityEnabled } from "../features.js";
 
 export const commitmentsRouter = createApiRouter();
 
@@ -45,13 +46,35 @@ export function kindLabel(kind) {
   );
 }
 
+const COMMITMENT_AUDIENCES = new Set(["campus", "network", "public"]);
+
+/** Audience is conservative: campus default, network needs the flag and a family. */
+function validateCommitmentAudience(value, club) {
+  const audience = value === undefined ? "campus" : String(value).trim().toLowerCase();
+  if (!COMMITMENT_AUDIENCES.has(audience)) return { error: "Unknown commitment audience." };
+  if (audience === "public") {
+    return { error: "Public commitments are not available yet." };
+  }
+  if (audience === "network") {
+    if (!crossUniversityEnabled()) {
+      return { error: "Network commitments are not enabled." };
+    }
+    if (!club?.family_id) {
+      return { error: "Only a club in a family can publish to the network." };
+    }
+  }
+  return { audience };
+}
+
 const COMMITMENT_QUERY = `
-  SELECT c.*, cl.campus_id AS club_campus_id,
+  SELECT c.*, cl.campus_id AS club_campus_id, cl.name AS club_name,
+         cl.family_id, cp.name AS campus_name,
          DATE_FORMAT(c.starts_at, '%Y-%m-%dT%H:%i') AS starts_local,
          (SELECT COUNT(*) FROM commitment_signups s
            WHERE s.commitment_id = c.commitment_id) AS signup_count
   FROM commitments c
   JOIN clubs cl ON cl.club_id = c.club_id
+  JOIN campuses cp ON cp.campus_id = cl.campus_id
 `;
 
 /** Commitment row -> API shape. `startsAt` follows the v2 events convention. */
@@ -59,6 +82,9 @@ function rowToCommitment(row, joinedIds = new Set()) {
   return {
     id: row.commitment_id,
     clubId: row.club_id,
+    clubName: row.club_name || "",
+    campusName: row.campus_name || "",
+    audience: row.audience || "campus",
     kind: row.kind,
     kindLabel: kindLabel(row.kind),
     title: row.title,
@@ -174,8 +200,18 @@ commitmentsRouter.get("/", optionalAuth, async (req, res) => {
 
   const where = [];
   const params = {};
-  if (scope.campusId) {
+  if (scope.campusIds) {
+    const keys = scope.campusIds.map((campusId, index) => {
+      const key = `campusId${index}`;
+      params[key] = campusId;
+      return `:${key}`;
+    });
+    where.push(`cl.campus_id IN (${keys.join(", ")})`);
+    where.push("c.audience = 'network'");
+    where.push("cl.family_id IS NOT NULL");
+  } else if (scope.campusId) {
     where.push("cl.campus_id = :campusId");
+    where.push("c.audience IN ('campus', 'network')");
     params.campusId = scope.campusId;
   }
   if (clubId) {
@@ -203,7 +239,17 @@ commitmentsRouter.get("/:id", optionalAuth, async (req, res) => {
   const [rows] = await pool.query(`${COMMITMENT_QUERY} WHERE c.commitment_id = :id`, {
     id: req.params.id,
   });
-  if (!rows[0] || (scope.campusId && rows[0].club_campus_id !== scope.campusId)) {
+  const row = rows[0];
+  const networkRead =
+    scope.campusIds &&
+    row?.audience === "network" &&
+    row?.family_id &&
+    scope.campusIds.includes(row.club_campus_id);
+  if (
+    !row ||
+    (scope.campusIds && !networkRead) ||
+    (scope.campusId && row.club_campus_id !== scope.campusId)
+  ) {
     return res.status(404).json({ error: "Commitment not found." });
   }
 
@@ -239,13 +285,18 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
   const clubId = typeof body.clubId === "string" ? body.clubId.trim() : "";
   if (!clubId) return res.status(400).json({ error: "clubId is required." });
 
-  const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
-    clubId,
-  });
+  const [clubRows] = await pool.query(
+    "SELECT club_id, family_id FROM clubs WHERE club_id = :clubId",
+    { clubId }
+  );
   if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
   if (!canManageClub(req.user, clubId)) {
     return res.status(403).json({ error: "You don't have admin access to that club." });
   }
+
+  const audienceResult = validateCommitmentAudience(body.audience, clubRows[0]);
+  if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+  const { audience } = audienceResult;
 
   const kind = typeof body.kind === "string" ? body.kind.trim() : "activity";
   if (!KINDS.includes(kind)) {
@@ -278,10 +329,10 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
   await pool.query(
     `INSERT INTO commitments
        (commitment_id, club_id, kind, title, description, location, county,
-        starts_at, capacity, host_name, source, created_by)
+        starts_at, capacity, host_name, source, created_by, audience)
      VALUES
        (:id, :clubId, :kind, :title, :description, :location, :county,
-        :startsAt, :capacity, :hostName, 'admin', :createdBy)`,
+        :startsAt, :capacity, :hostName, 'admin', :createdBy, :audience)`,
     {
       id,
       clubId,
@@ -294,6 +345,7 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
       capacity,
       hostName: typeof body.hostName === "string" ? body.hostName.trim().slice(0, 120) : "",
       createdBy: req.user.id,
+      audience,
     }
   );
 
@@ -302,7 +354,7 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
     action: "commitment.create",
     targetType: "commitment",
     targetId: id,
-    detail: { clubId, kind, title, startsAt: `${start.date} ${start.time}`, capacity },
+    detail: { clubId, kind, title, startsAt: `${start.date} ${start.time}`, capacity, audience },
   });
   res.status(201).json({ commitment: rowToCommitment(rows[0]) });
 });
@@ -315,9 +367,11 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
  */
 commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT commitment_id, club_id, title, capacity, starts_at,
-            DATE_FORMAT(starts_at, '%Y-%m-%dT%H:%i') AS starts_local
-     FROM commitments WHERE commitment_id = :id`,
+    `SELECT c.commitment_id, c.club_id, c.title, c.capacity, c.starts_at, c.audience,
+            cl.family_id, DATE_FORMAT(c.starts_at, '%Y-%m-%dT%H:%i') AS starts_local
+     FROM commitments c
+     JOIN clubs cl ON cl.club_id = c.club_id
+     WHERE c.commitment_id = :id`,
     { id: req.params.id }
   );
   const commitment = rows[0];
@@ -387,6 +441,12 @@ commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
       "hostName",
       typeof body.hostName === "string" ? body.hostName.trim().slice(0, 120) : ""
     );
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "audience")) {
+    const audienceResult = validateCommitmentAudience(body.audience, commitment);
+    if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+    set("audience", "audience", audienceResult.audience);
   }
 
   if (body.startsAt !== undefined || body.date !== undefined || body.time !== undefined) {
@@ -534,7 +594,7 @@ commitmentsRouter.delete("/:id", requireAuth, async (req, res) => {
  */
 commitmentsRouter.post("/:id/signup", requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT c.commitment_id, c.capacity, cl.campus_id
+    `SELECT c.commitment_id, c.capacity, c.audience, cl.campus_id, cl.family_id
      FROM commitments c
      JOIN clubs cl ON cl.club_id = c.club_id
      WHERE c.commitment_id = :id`,
@@ -543,7 +603,14 @@ commitmentsRouter.post("/:id/signup", requireAuth, async (req, res) => {
   const commitment = rows[0];
   if (!commitment) return res.status(404).json({ error: "Commitment not found." });
   if (req.user.role !== "tier1" && commitment.campus_id !== req.user.campusId) {
-    return res.status(403).json({ error: "That commitment belongs to another campus." });
+    const networkAllowed =
+      commitment.audience === "network" &&
+      commitment.family_id &&
+      crossUniversityEnabled() &&
+      (await campusInUserNetwork(req.user.id, req.user.campusId, commitment.campus_id));
+    if (!networkAllowed) {
+      return res.status(403).json({ error: "That commitment belongs to another campus." });
+    }
   }
 
   const [existing] = await pool.query(

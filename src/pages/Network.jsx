@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { getMyCampusAffiliations } from "../utils/campusAffiliationsStore";
 import { CATEGORIES, getAllClubs } from "../utils/clubsStore";
 import { getAllEvents } from "../utils/eventsStore";
+import { getNetworkCommitments } from "../utils/commitmentsStore";
 import { getNetworkPosts } from "../utils/postsStore";
 import { formatEventDate } from "../utils/dateTime";
 import ClubCard from "../components/ClubCard";
@@ -25,6 +26,7 @@ export default function Network() {
   const [affiliations, setAffiliations] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [events, setEvents] = useState([]);
+  const [commitments, setCommitments] = useState([]);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,16 +45,19 @@ export default function Network() {
       if (additional.length === 0) {
         setClubs([]);
         setEvents([]);
+        setCommitments([]);
         setPosts([]);
         return;
       }
-      const [clubRows, eventRows, postResult] = await Promise.all([
+      const [clubRows, eventRows, commitmentRows, postResult] = await Promise.all([
         getAllClubs({ scope: "network" }),
         getAllEvents({ scope: "network" }),
+        getNetworkCommitments(),
         getNetworkPosts(),
       ]);
       setClubs(clubRows);
       setEvents(eventRows);
+      setCommitments(commitmentRows);
       setPosts(postResult.posts || []);
     } catch (err) {
       setError(err.message);
@@ -170,9 +175,9 @@ export default function Network() {
         <p className={styles.eyebrow}>My network</p>
         <h1>Clubs across your campuses.</h1>
         <p className={styles.lede}>
-          This directory follows your approved affiliations. It shares club identity and events
-          explicitly published to the network; posts, commitments and membership stay with each
-          campus chapter.
+          This directory follows your approved affiliations. It shares club identity, events,
+          commitments and notices explicitly published to the network. Membership and discussion
+          stay with each campus chapter.
         </p>
       </header>
 
@@ -243,6 +248,52 @@ export default function Network() {
                     </li>
                   );
                 })}
+              </ul>
+            </section>
+          )}
+
+          {commitments.length > 0 && (
+            <section
+              className={styles.commitmentsSection}
+              aria-labelledby="network-commitments-heading"
+            >
+              <div className={styles.sectionHead}>
+                <div>
+                  <p className={styles.sectionKicker}>Opted into the network</p>
+                  <h2 id="network-commitments-heading">Network commitments</h2>
+                </div>
+                <span>{commitments.length} upcoming</span>
+              </div>
+              <ul className={styles.eventList}>
+                {commitments.map((commitment) => (
+                  <li key={commitment.id} className={styles.eventCard}>
+                    <div className={styles.eventWhen}>
+                      <span>{formatEventDate(commitment.date)}</span>
+                      <b>{commitment.time}</b>
+                    </div>
+                    <div className={styles.eventBody}>
+                      <p className={styles.eventClub}>
+                        {commitment.clubName || "Club"}
+                        {commitment.campusName ? ` · ${commitment.campusName}` : ""}
+                      </p>
+                      <h3>
+                        <Link to={`/commitments/${commitment.id}?scope=network`}>
+                          {commitment.title}
+                        </Link>
+                      </h3>
+                      <p className={styles.eventMeta}>
+                        {commitment.kindLabel} · {commitment.location}
+                        {commitment.hostName ? ` · Host: ${commitment.hostName}` : ""}
+                      </p>
+                      <p className={styles.eventNote}>
+                        {commitment.capacity == null
+                          ? `${commitment.signupCount} committed`
+                          : `${Math.min(commitment.signupCount, commitment.capacity)} of ${commitment.capacity} places`}
+                        {" · Read the notice to join; the roster stays with the host campus."}
+                      </p>
+                    </div>
+                  </li>
+                ))}
               </ul>
             </section>
           )}

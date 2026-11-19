@@ -28,13 +28,19 @@ export function toUiCommitment(commitment) {
 }
 
 /** Upcoming commitments, optionally for one club. Publicly readable. */
-export async function getCommitments({ clubId, includePast = false } = {}) {
+export async function getCommitments({ clubId, includePast = false, scope = "local" } = {}) {
   const params = new URLSearchParams();
   if (clubId) params.set("clubId", clubId);
   if (includePast) params.set("upcoming", "0");
+  if (scope === "network") params.set("scope", "network");
   const query = params.toString();
   const data = await apiFetch(`/commitments${query ? `?${query}` : ""}`);
   return (data.commitments || []).map(toUiCommitment);
+}
+
+/** Network-published commitments across the reader's approved campuses. */
+export async function getNetworkCommitments() {
+  return getCommitments({ scope: "network" });
 }
 
 /** The signed-in member's commitments, each with its own waitlist position. */
@@ -44,8 +50,9 @@ export async function getMyCommitments() {
 }
 
 /** One commitment plus the reader's signup, if any. */
-export async function getCommitment(commitmentId) {
-  const data = await apiFetch(`/commitments/${encodeURIComponent(commitmentId)}`);
+export async function getCommitment(commitmentId, { scope = "local" } = {}) {
+  const query = scope === "network" ? "?scope=network" : "";
+  const data = await apiFetch(`/commitments/${encodeURIComponent(commitmentId)}${query}`);
   return {
     commitment: toUiCommitment(data.commitment),
     signup: data.signup,

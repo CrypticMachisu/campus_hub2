@@ -64,6 +64,7 @@
 }
 
 .postsSection,
+.commitmentsSection,
 .eventsSection {
   margin-top: var(--space-8);
 }

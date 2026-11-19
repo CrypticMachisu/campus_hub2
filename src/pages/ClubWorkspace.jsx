@@ -366,7 +366,11 @@ export default function ClubWorkspace() {
               <ClubFocusPanel playbook={playbook} clubName={club.name} />
 
               {/* Dated work a member can commit to, for every club. */}
-              <CommitmentsSection clubId={club.id} heading="Upcoming commitments" />
+              <CommitmentsSection
+                clubId={club.id}
+                heading="Upcoming commitments"
+                canPublishToNetwork={Boolean(club.familyId)}
+              />
 
               <ClubAgenda
                 events={clubEvents}

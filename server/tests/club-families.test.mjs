@@ -73,6 +73,7 @@ test(
     const familyIds = [];
     const eventIds = [];
     const postIds = [];
+    const commitmentIds = [];
 
     t.after(async () => {
       try {
@@ -93,6 +94,10 @@ test(
         if (postIds.length) {
           await pool.query("DELETE FROM audit_log WHERE target_id IN (?)", [postIds]);
           await pool.query("DELETE FROM posts WHERE post_id IN (?)", [postIds]);
+        }
+        if (commitmentIds.length) {
+          await pool.query("DELETE FROM audit_log WHERE target_id IN (?)", [commitmentIds]);
+          await pool.query("DELETE FROM commitments WHERE commitment_id IN (?)", [commitmentIds]);
         }
         await pool.query("DELETE FROM clubs WHERE club_id IN (?, ?, ?)", [clubA1, clubA2, clubB1]);
         await pool.query("DELETE FROM user_campus_affiliations WHERE campus_id IN (?, ?)", [
@@ -656,6 +661,150 @@ test(
           method: "POST",
           token: tier1.token,
           body: { clubId: "club-01", text: "No family network", audience: "network" },
+        })
+      ).status,
+      400
+    );
+
+    assert.equal(
+      (
+        await api("/v2/commitments", {
+          method: "POST",
+          token: tier1.token,
+          body: {
+            clubId: "club-01",
+            title: "Non-family network commitment",
+            date: "2030-09-15",
+            time: "12:00",
+            location: "Hall",
+            audience: "network",
+          },
+        })
+      ).status,
+      400
+    );
+
+    const networkCommitment = await expectJson(
+      await api("/v2/commitments", {
+        method: "POST",
+        token: tier1.token,
+        body: {
+          clubId: clubB1,
+          title: `Network commitment ${stamp}`,
+          date: "2030-09-15",
+          time: "12:00",
+          location: "Network hall",
+          capacity: 10,
+          audience: "network",
+        },
+      }),
+      201,
+      "create network commitment"
+    );
+    commitmentIds.push(networkCommitment.commitment.id);
+    assert.equal(networkCommitment.commitment.audience, "network");
+
+    const campusCommitment = await expectJson(
+      await api("/v2/commitments", {
+        method: "POST",
+        token: tier1.token,
+        body: {
+          clubId: clubB1,
+          title: `Campus commitment ${stamp}`,
+          date: "2030-09-16",
+          time: "12:00",
+          location: "Campus hall",
+          audience: "campus",
+        },
+      }),
+      201,
+      "create campus commitment"
+    );
+    commitmentIds.push(campusCommitment.commitment.id);
+
+    const networkCommitments = await expectJson(
+      await api("/v2/commitments?scope=network", { token: member.token }),
+      200,
+      "network commitments"
+    );
+    const networkCommitmentIds = networkCommitments.commitments.map((row) => row.id);
+    assert.ok(networkCommitmentIds.includes(networkCommitment.commitment.id));
+    assert.ok(!networkCommitmentIds.includes(campusCommitment.commitment.id));
+    assert.equal(
+      (
+        await api(`/v2/commitments/${networkCommitment.commitment.id}?scope=network`, {
+          token: member.token,
+        })
+      ).status,
+      200
+    );
+    assert.equal(
+      (
+        await api(`/v2/commitments/${campusCommitment.commitment.id}?scope=network`, {
+          token: member.token,
+        })
+      ).status,
+      404
+    );
+
+    const networkSignup = await expectJson(
+      await api(`/v2/commitments/${networkCommitment.commitment.id}/signup`, {
+        method: "POST",
+        token: member.token,
+      }),
+      201,
+      "join network commitment"
+    );
+    assert.equal(networkSignup.signup.position, 1);
+    assert.equal(
+      (
+        await api(`/v2/commitments/${campusCommitment.commitment.id}/signup`, {
+          method: "POST",
+          token: member.token,
+        })
+      ).status,
+      403
+    );
+    const roster = await expectJson(
+      await api(`/v2/commitments/${networkCommitment.commitment.id}/roster`, {
+        token: tier1.token,
+      }),
+      200,
+      "network commitment roster"
+    );
+    assert.equal(roster.roster.length, 1);
+    assert.equal(roster.roster[0].userId, member.user.id);
+
+    assert.equal(
+      (
+        await api("/v2/commitments", {
+          method: "POST",
+          token: tier1.token,
+          body: {
+            clubId: clubB1,
+            title: "Public commitment",
+            date: "2030-09-15",
+            time: "12:00",
+            location: "Hall",
+            audience: "public",
+          },
+        })
+      ).status,
+      400
+    );
+    assert.equal(
+      (
+        await api("/v2/commitments", {
+          method: "POST",
+          token: tier1.token,
+          body: {
+            clubId: "club-01",
+            title: "No family network commitment",
+            date: "2030-09-15",
+            time: "12:00",
+            location: "Hall",
+            audience: "network",
+          },
         })
       ).status,
       400

@@ -203,7 +203,12 @@ export default function ClubProfile() {
       </section>
 
       {/* Every club's dated activities — the Agri-only panel is gone. */}
-      {!isRemote && <CommitmentsSection clubId={profileClub.id} />}
+      {!isRemote && (
+        <CommitmentsSection
+          clubId={profileClub.id}
+          canPublishToNetwork={Boolean(profileClub.familyId)}
+        />
+      )}
 
       {/* The club's own dispatches, with comments at each permalink. */}
       {!isRemote && (

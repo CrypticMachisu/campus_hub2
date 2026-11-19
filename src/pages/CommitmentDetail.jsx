@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { useClubs } from "../context/ClubsContext";
@@ -71,6 +71,8 @@ function downloadCommitmentIcs(commitment, clubName) {
  */
 export default function CommitmentDetail() {
   const { commitmentId } = useParams();
+  const [searchParams] = useSearchParams();
+  const scope = searchParams.get("scope") === "network" ? "network" : "local";
   const { user } = useAuth();
   const { clubs } = useClubs();
   const navigate = useNavigate();
@@ -87,7 +89,7 @@ export default function CommitmentDetail() {
     setStatus("loading");
     setError("");
 
-    getCommitment(commitmentId)
+    getCommitment(commitmentId, { scope })
       .then((result) => {
         if (cancelled) return;
         setData(result);
@@ -106,7 +108,7 @@ export default function CommitmentDetail() {
     return () => {
       cancelled = true;
     };
-  }, [commitmentId, reloadKey]);
+  }, [commitmentId, reloadKey, scope]);
 
   async function handleJoin() {
     if (!user) {
@@ -202,7 +204,11 @@ export default function CommitmentDetail() {
       <nav className={styles.breadcrumb} aria-label="Breadcrumb">
         <Link to="/discover">This week</Link>
         <span aria-hidden="true"> / </span>
-        {club ? <Link to={`/clubs/${club.id}`}>{club.name}</Link> : <span>Club</span>}
+        {club ? (
+          <Link to={`/clubs/${club.id}`}>{club.name}</Link>
+        ) : (
+          <span>{commitment.clubName || "Club"}</span>
+        )}
         <span aria-hidden="true"> / </span>
         <span aria-current="page">Commitment</span>
       </nav>
@@ -211,8 +217,10 @@ export default function CommitmentDetail() {
         <header className={styles.header}>
           <p className={styles.eyebrow}>
             {kindLabel(commitment.kind)}
-            {club ? ` · ${club.name}` : ""}
+            {club ? ` · ${club.name}` : commitment.clubName ? ` · ${commitment.clubName}` : ""}
+            {commitment.campusName ? ` · ${commitment.campusName}` : ""}
             {commitment.county ? ` · ${commitment.county}` : ""}
+            {commitment.audience === "network" ? " · Network" : ""}
           </p>
           <h1 className={styles.title}>{commitment.title}</h1>
           <p className={styles.byline}>
@@ -345,7 +353,14 @@ export default function CommitmentDetail() {
       </article>
 
       <section className={styles.discussion} aria-label="Commitment discussion">
-        <CommentSection targetType="commitment" targetId={commitment.id} />
+        {commitment.audience === "network" ? (
+          <p className={styles.prose}>
+            This commitment is open across the club network. Its roster and discussion stay with
+            {commitment.campusName ? ` ${commitment.campusName}` : " the host campus"}.
+          </p>
+        ) : (
+          <CommentSection targetType="commitment" targetId={commitment.id} />
+        )}
       </section>
     </div>
   );

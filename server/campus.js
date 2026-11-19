@@ -97,6 +97,19 @@ export async function defaultCampusId() {
   return rows[0]?.campus_id ?? null;
 }
 
+/** True when the campus is the member's home or an approved affiliation. */
+export async function campusInUserNetwork(userId, homeCampusId, campusId) {
+  if (!userId || !campusId) return false;
+  if (campusId === homeCampusId) return true;
+  const [rows] = await pool.query(
+    `SELECT 1 FROM user_campus_affiliations
+     WHERE user_id = :userId AND campus_id = :campusId AND status = 'active'
+     LIMIT 1`,
+    { userId, campusId }
+  );
+  return Boolean(rows[0]);
+}
+
 export async function campusExists(campusId) {
   if (!campusId) return false;
   const [rows] = await pool.query("SELECT campus_id FROM campuses WHERE campus_id = :campusId", {
