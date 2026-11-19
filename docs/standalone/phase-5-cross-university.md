@@ -154,6 +154,13 @@ Family settings own a name, slug, description and optional square mark URL. The
 public family page shows the mark with a two-letter monogram fallback. Chapter
 cards use the chapter's own description and meeting details.
 
+**Visibility decision:** family and chapter identity is public. A family page may
+name a chapter on any campus; it must not expose that chapter's activity. The
+chapter page states that officers, events, posts and moderation are managed on
+that campus, and the club route still requires that campus's scope. The family
+test covers both halves: anonymous identity is visible, anonymous activity is
+not.
+
 Tier 1 can appoint a **lead** or **editor** by account email. An editor sees only
 their own families in family settings, can update identity fields, and receives
 403 for chapter link, move, detach and other tier-1 operations. Tier 1 always

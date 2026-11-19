@@ -54,14 +54,12 @@ With the flag on, the network layer currently supports:
 - family identity, marks, delegated editors and chapter moves;
 - network-published events and posts, read-only;
 - network commitments with a single host roster and eligible-member signup;
-- remote club identity pages.
+- remote club identity pages;
+- public family identity while campus activity stays gated.
 
 It does **not** yet support:
 
 - joining a chapter outside the home campus;
-- a resolved family-page visibility rule (the public family page still shows
-  every chapter, while the acceptance criteria imagine a network reader not
-  seeing campus C);
 - network-aware post/comment permalinks and participation;
 - a public directory or verified public audience;
 - a two-campus pilot with realistic demo data.
@@ -75,17 +73,22 @@ Do not call Phase 5 complete until all of these are true:
 
 - [x] Network commitments have a documented participation model: one host
       roster, eligible member signup, host-campus discussion.
-- [ ] A two-campus pilot works end to end with a member who has an approved
-      affiliation.
-- [ ] Anonymous, unaffiliated, tier-1 and campus-admin boundaries are tested.
-- [ ] Campus-only events, posts and commitments never appear in network results.
-- [ ] The family-page chapter visibility rule is decided and tested.
-- [ ] Family and network operations have audit entries and a rollback path.
-- [ ] The feature can be disabled without leaving stale navigation or endpoints.
+- [x] The automated two-campus API pilot covers a member with an approved
+      affiliation through family, network discovery, events, posts, commitments
+      and signup.
+- [ ] A manual two-campus UI pilot is recorded with realistic preview data.
+- [x] Anonymous, unaffiliated, tier-1 and campus-admin boundaries are tested.
+- [x] Campus-only events, posts and commitments never appear in network results.
+- [x] Family identity is public by decision; every chapter's activity remains
+      campus-gated, and the policy is tested.
+- [x] Family and network operations write audit entries; disabling the flag
+      unmounts the routes without deleting data.
+- [x] The feature is disabled without leaving stale navigation or endpoints in
+      the client route table and navbar.
 - [ ] A keyboard/screen-reader pass covers the scope switch, composers, family
       settings and remote profile boundaries.
 - [ ] The supported paths have a performance check with the second campus.
-- [ ] The refinements that block comprehension are closed or explicitly waived.
+- [x] The refinements that blocked comprehension in this slice are closed.
 
 ## Gate from Phase 6 onward
 
@@ -109,3 +112,15 @@ Every later phase ends with the same short viability review, not a feature demo:
 A phase can ship features and still fail this gate. The gate is about whether the
 product still fulfils its original intent at that point, not whether the new
 surface exists.
+
+## Phase 5 gate result
+
+**Not yet passed.** The automated boundary and participation checks pass, but
+the gate remains blocked on:
+
+1. a recorded manual two-campus UI pilot with realistic data;
+2. a keyboard and screen-reader pass over the network, composer and family
+   surfaces;
+3. a measured performance check with the second campus.
+
+Phase 6 does not start until those three are closed or explicitly waived.

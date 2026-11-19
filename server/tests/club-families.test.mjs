@@ -499,6 +499,16 @@ test(
       201,
       "relink network event chapter"
     );
+
+    // Family identity is public: an anonymous reader can see that the chapter
+    // exists, but its campus activity still requires that campus's scope.
+    const publicSecond = await expectJson(
+      await api(`/v2/club-families/${second.family.id}`),
+      200,
+      "public family identity"
+    );
+    assert.ok(publicSecond.family.chapters.some((chapter) => chapter.id === clubB1));
+    assert.equal((await api(`/clubs/${clubB1}`)).status, 404);
     const networkEvent = await expectJson(
       await api("/events", {
         method: "POST",
