@@ -82,6 +82,27 @@ clubFamiliesRouter.get("/manage", requireAuth, requireTier1, async (req, res) =>
   res.json({ families });
 });
 
+/** GET /club-families — public read-only list of active families. */
+clubFamiliesRouter.get("/", async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT family_id FROM club_families WHERE status = 'active' ORDER BY name, family_id"
+  );
+  const families = [];
+  for (const row of rows) {
+    families.push(await loadFamily(row.family_id));
+  }
+  res.json({ families });
+});
+
+/** GET /club-families/:id — public read-only family page with chapters. */
+clubFamiliesRouter.get("/:id", async (req, res) => {
+  const family = await loadFamily(req.params.id);
+  if (!family || family.status !== "active") {
+    return res.status(404).json({ error: "Club family not found." });
+  }
+  res.json({ family });
+});
+
 /** POST /club-families — tier 1: create the shared identity. */
 clubFamiliesRouter.post("/", requireAuth, requireTier1, async (req, res) => {
   const body = req.body || {};
@@ -247,11 +268,96 @@ clubFamiliesRouter.post("/:id/chapters", requireAuth, requireTier1, async (req, 
   res.status(201).json({ family: await loadFamily(family.id) });
 });
 
+/**
+ * POST /club-families/:id/chapters/:clubId/move — tier 1: move a chapter
+ * from the family named in `fromFamilyId` to this family. Requiring the source
+ * makes a stale screen fail instead of moving a club unexpectedly.
+ */
+clubFamiliesRouter.post(
+  "/:id/chapters/:clubId/move",
+  requireAuth,
+  requireTier1,
+  async (req, res) => {
+    const target = await loadFamily(req.params.id);
+    if (!target) return res.status(404).json({ error: "Club family not found." });
+
+    const fromFamilyId = String(req.body?.fromFamilyId || "").trim();
+    if (!fromFamilyId) {
+      return res.status(400).json({ error: "The source family is required." });
+    }
+    if (fromFamilyId === target.id) {
+      return res.status(400).json({ error: "Choose a different target family." });
+    }
+
+    const source = await loadFamily(fromFamilyId);
+    if (!source) return res.status(404).json({ error: "Source family not found." });
+
+    const [clubRows] = await pool.query(
+      "SELECT club_id, name, campus_id, family_id FROM clubs WHERE club_id = :clubId",
+      { clubId: req.params.clubId }
+    );
+    const club = clubRows[0];
+    if (!club) return res.status(404).json({ error: "Club not found." });
+    if (!club.family_id) {
+      return res.status(409).json({ error: "That club is not currently in a family." });
+    }
+    if (club.family_id !== source.id) {
+      return res
+        .status(409)
+        .json({ error: "That chapter is no longer in the expected source family." });
+    }
+
+    const [campusChapterRows] = await pool.query(
+      `SELECT club_id FROM clubs
+       WHERE family_id = :targetId AND campus_id = :campusId AND club_id <> :clubId`,
+      { targetId: target.id, campusId: club.campus_id, clubId: club.club_id }
+    );
+    if (campusChapterRows[0]) {
+      return res
+        .status(409)
+        .json({ error: "The target family already has a chapter on that campus." });
+    }
+
+    try {
+      const [result] = await pool.query(
+        `UPDATE clubs SET family_id = :targetId
+         WHERE club_id = :clubId AND family_id = :sourceId`,
+        { targetId: target.id, clubId: club.club_id, sourceId: source.id }
+      );
+      if (result.affectedRows === 0) {
+        return res.status(409).json({ error: "That chapter moved before this request completed." });
+      }
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res
+          .status(409)
+          .json({ error: "The target family already has a chapter on that campus." });
+      }
+      throw err;
+    }
+
+    await recordAudit(req, {
+      action: "club_family.chapter.move",
+      targetType: "club_family",
+      targetId: target.id,
+      detail: {
+        clubId: club.club_id,
+        clubName: club.name,
+        campusId: club.campus_id,
+        fromFamilyId: source.id,
+        fromFamilyName: source.name,
+        toFamilyId: target.id,
+        toFamilyName: target.name,
+      },
+    });
+    res.json({ family: await loadFamily(target.id) });
+  }
+);
+
 /** DELETE /club-families/:id/chapters/:clubId — tier 1: detach a chapter. */
 clubFamiliesRouter.delete("/:id/chapters/:clubId", requireAuth, requireTier1, async (req, res) => {
   const family = await loadFamily(req.params.id);
   if (!family) return res.status(404).json({ error: "Club family not found." });
-
   const [result] = await pool.query(
     `UPDATE clubs SET family_id = NULL
        WHERE club_id = :clubId AND family_id = :familyId`,

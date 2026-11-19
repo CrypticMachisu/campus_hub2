@@ -283,6 +283,104 @@ test(
       409
     );
 
+    // Moving requires the expected source family, so a stale screen cannot
+    // silently steal a chapter. The target must have a free campus slot.
+    {
+      const moved = await expectJson(
+        await api(`/v2/club-families/${second.family.id}/chapters/${clubB1}/move`, {
+          method: "POST",
+          token: tier1.token,
+          body: { fromFamilyId: familyId },
+        }),
+        200,
+        "move chapter to second family"
+      );
+      assert.ok(moved.family.chapters.some((chapter) => chapter.id === clubB1));
+      assert.ok(moved.family.chapters.some((chapter) => chapter.id === clubA2));
+
+      const afterMove = await expectJson(
+        await api("/v2/club-families/manage", { token: tier1.token }),
+        200,
+        "families after move"
+      );
+      const source = afterMove.families.find((family) => family.id === familyId);
+      assert.deepEqual(
+        source.chapters.map((chapter) => chapter.id),
+        [clubA1]
+      );
+
+      assert.equal(
+        (
+          await api(`/v2/club-families/${second.family.id}/chapters/${clubB1}/move`, {
+            method: "POST",
+            token: member.token,
+            body: { fromFamilyId: familyId },
+          })
+        ).status,
+        403
+      );
+      assert.equal(
+        (
+          await api(`/v2/club-families/${second.family.id}/chapters/${clubB1}/move`, {
+            method: "POST",
+            token: tier1.token,
+            body: {},
+          })
+        ).status,
+        400
+      );
+      assert.equal(
+        (
+          await api(`/v2/club-families/${second.family.id}/chapters/${clubB1}/move`, {
+            method: "POST",
+            token: tier1.token,
+            body: { fromFamilyId: familyId },
+          })
+        ).status,
+        409
+      );
+
+      // Family two already has clubA2 on campus A.
+      assert.equal(
+        (
+          await api(`/v2/club-families/${second.family.id}/chapters/${clubA1}/move`, {
+            method: "POST",
+            token: tier1.token,
+            body: { fromFamilyId: familyId },
+          })
+        ).status,
+        409
+      );
+
+      const movedBack = await expectJson(
+        await api(`/v2/club-families/${familyId}/chapters/${clubB1}/move`, {
+          method: "POST",
+          token: tier1.token,
+          body: { fromFamilyId: second.family.id },
+        }),
+        200,
+        "move chapter back"
+      );
+      assert.ok(movedBack.family.chapters.some((chapter) => chapter.id === clubB1));
+
+      const [moveAudit] = await pool.query(
+        `SELECT target_id, detail FROM audit_log
+         WHERE action = 'club_family.chapter.move' AND target_id IN (?)
+         ORDER BY audit_id`,
+        [familyIds]
+      );
+      assert.equal(moveAudit.length, 2);
+      const detail =
+        typeof moveAudit[0].detail === "string"
+          ? JSON.parse(moveAudit[0].detail)
+          : moveAudit[0].detail;
+      assert.equal(detail.clubId, clubB1);
+      assert.equal(detail.fromFamilyId, familyId);
+      assert.equal(detail.toFamilyId, second.family.id);
+      assert.ok(detail.fromFamilyName);
+      assert.ok(detail.toFamilyName);
+    }
+
     const unlinked = await expectJson(
       await api(`/v2/club-families/${familyId}/chapters/${clubB1}`, {
         method: "DELETE",
@@ -312,6 +410,22 @@ test(
     );
     assert.ok(managed.families.some((family) => family.id === familyId));
     assert.ok(managed.families.some((family) => family.id === second.family.id));
+
+    const publicList = await expectJson(await api("/v2/club-families"), 200, "public family list");
+    assert.ok(publicList.families.some((family) => family.id === familyId));
+    assert.ok(publicList.families.some((family) => family.id === second.family.id));
+
+    const publicFamily = await expectJson(
+      await api(`/v2/club-families/${familyId}`),
+      200,
+      "public family page"
+    );
+    assert.equal(publicFamily.family.name, `Family One Renamed ${stamp}`);
+    assert.deepEqual(
+      publicFamily.family.chapters.map((chapter) => chapter.id),
+      [clubA1]
+    );
+    assert.equal((await api("/v2/club-families/does-not-exist")).status, 404);
 
     const audit = await pool.query(
       "SELECT action FROM audit_log WHERE target_id IN (?) ORDER BY action",

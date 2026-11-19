@@ -292,6 +292,31 @@
   border-top: 1px solid var(--rule-soft);
 }
 
+.moveBlock {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--rule-soft);
+}
+
+.moveBlock summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+}
+
+.moveBlock summary:focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 3px;
+}
+
+.moveBlock .form {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+}
+
 .empty {
   padding: var(--space-8);
   border: 1px dashed var(--rule);

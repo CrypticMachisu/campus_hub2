@@ -93,6 +93,11 @@ export default function Navbar() {
           <NavLink to="/" end className={linkClass}>
             This week
           </NavLink>
+          {CROSS_UNIVERSITY_ENABLED && (
+            <NavLink to="/families" className={linkClass}>
+              Families
+            </NavLink>
+          )}
           {user && (
             <NavLink to="/my-events" className={linkClass}>
               Commitments
@@ -118,7 +123,7 @@ export default function Navbar() {
           )}
           {CROSS_UNIVERSITY_ENABLED && user?.role === "tier1" && (
             <NavLink to="/settings/families" className={linkClass}>
-              Families
+              Family settings
             </NavLink>
           )}
         </nav>

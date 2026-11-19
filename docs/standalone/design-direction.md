@@ -463,10 +463,12 @@ tier-1 family management installed behind a disabled feature flag. Migration
 affiliations. With `CROSS_UNIVERSITY_ENABLED=false`, the affiliation and family
 APIs plus `/campus-access` and `/settings/families` are absent. When enabled,
 members request additional campuses and the campus admin or tier 1 approves,
-while tier 1 creates families and links existing clubs as chapters. Tier 1 can
-switch the edition between one campus and all campuses; members' discovery still
-defaults to local, and a network scope appears only for affiliated campuses.
-Content must deliberately opt into a network audience.
+while tier 1 creates families, links existing clubs as chapters, and moves a
+chapter between families with an audit event. Public read-only family pages and
+chapter cross-links exist, but a chapter's full club page opens only on its
+campus. Tier 1 can switch the edition between one campus and all campuses;
+members' discovery still defaults to local, and a network scope appears only for
+affiliated campuses. Content must deliberately opt into a network audience.
 
 No global feed, public self-serve affiliation, or automatic merging of clubs by
 name is proposed. The full design, schema, API sketch, moderation rules,

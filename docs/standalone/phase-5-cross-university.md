@@ -7,11 +7,12 @@ requests, cancellation and campus-admin/tier-1 approval — is implemented, but
 both its API and the `/campus-access` entry point are behind
 `CROSS_UNIVERSITY_ENABLED=false` / `VITE_CROSS_UNIVERSITY_ENABLED=false`.
 
-Tier 1 family management is implemented behind the flag: create/edit a family
-and attach or detach existing clubs as chapters at `/settings/families`. There
-is no member-facing family page, network discovery or audience yet. Tier 1's
-discovery-only campus switcher is a Phase 4 control and is not gated by this
-flag.
+Tier 1 family management is implemented behind the flag: create/edit a family,
+attach or detach existing clubs, and move a chapter between families at
+`/settings/families`. Public read-only family pages live at `/families` and
+`/families/:familyId`, with a chapter view for each cross-link. There is no
+network discovery or audience yet. Tier 1's discovery-only campus switcher is a
+Phase 4 control and is not gated by this flag.
 
 Phase 4 gave every account and club one campus. Phase 5 lets a person belong
 to more than one campus and lets one club exist as a family of campus chapters.
@@ -117,9 +118,11 @@ the Campus access and Families links/routes.
 Family management enforces:
 
 - unique family slugs and one chapter per campus per family,
-- a club can belong to only one family (unlink before moving it),
-- linking a chapter never creates, deletes or edits the club itself,
-- `club_family.create`, `.update`, `.chapter.add` and `.chapter.remove` audits.
+- a club can belong to only one family; a move requires the expected source
+  family and a target campus with no chapter,
+- linking or moving a chapter never creates, deletes or edits the club itself,
+- `club_family.create`, `.update`, `.chapter.add`, `.chapter.remove` and
+  `.chapter.move` audits; a move records both family names and the campus.
 
 When enabled, the affiliation screen is `/campus-access`:
 
@@ -286,6 +289,10 @@ Admin:
 - `POST /api/v2/club-families/:id/chapters` and
   `DELETE /api/v2/club-families/:id/chapters/:clubId` — tier 1: attach or detach
   an existing club.
+- `POST /api/v2/club-families/:id/chapters/:clubId/move` — tier 1: move a
+  chapter from the required `fromFamilyId` into this family.
+- `GET /api/v2/club-families` and `GET /api/v2/club-families/:id` — public,
+  read-only active families and their chapter identity.
 
 Writes:
 
@@ -312,10 +319,14 @@ Writes:
 
 ### Club family page
 
-- Family mark, name and description.
-- Chapter strip: campus name, local officers, next event, "Visit chapter".
-- Network-visible upcoming commitments and posts, with the host chapter named.
-- A clear statement that each chapter has its own officers and moderation.
+**Implemented identity slice:** family name, description, home campus and a
+chapter strip with campus names. Each chapter cross-links to a read-only chapter
+view at `/families/:familyId/chapters/:clubId`; that view can open the local
+club page only for a reader on that campus or tier 1. This avoids turning a
+family page into a cross-campus content leak before network audiences exist.
+
+Still to come: family mark, local officers, next event, network-visible
+commitments/posts, and a clear per-chapter moderation statement.
 
 ### Chapter page
 
@@ -364,9 +375,9 @@ Ship schema dark, then turn on read, then participation.
 1. **Schema** — **done for families and affiliations:** migrations `026`/`027`
    backfill home affiliations and leave every club `family_id = NULL`. Audience
    columns remain future work. No visible change while the flag is off.
-2. **Read-only network** — family pages, chapter links, scope switch, network
-   audiences. `CROSS_CAMPUS_ENABLED=false` keeps the UI hidden on a single
-   campus. Test against a temporary second campus before enabling.
+2. **Read-only network** — **family identity pages and chapter links are
+   done behind the flag.** Scope switch and network audiences remain. Test
+   against a temporary second campus before enabling.
 3. **Affiliations** — **implemented behind the flag:** campus-admin approval
    flow and the `/campus-access` screen. Still no cross-campus writes or network
    discovery.

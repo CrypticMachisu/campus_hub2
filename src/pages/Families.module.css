@@ -1,0 +1,278 @@
+.page {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 3vw, 2.75rem) var(--space-lg) 5rem;
+}
+
+.header {
+  padding-bottom: var(--space-6);
+  border-bottom: 2px solid var(--ink);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+}
+
+.header h1 {
+  max-width: 22ch;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  max-width: 68ch;
+  margin: var(--space-4) 0 0;
+  color: var(--ink-2);
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: var(--space-5);
+  color: var(--signal-deep);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.grid,
+.chapterGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card,
+.chapterCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--rule);
+  background: var(--card);
+}
+
+.card h2,
+.chapterCard h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.card h2 a,
+.chapterCard h3 a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.card h2 a:hover,
+.chapterCard h3 a:hover {
+  color: var(--signal-deep);
+  text-decoration: underline;
+}
+
+.cardKicker {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+}
+
+.description {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.94rem;
+}
+
+.chapterCount {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.campusChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.campusChips li {
+  padding: 0.18rem 0.45rem;
+  border: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+.cardLink {
+  margin-top: auto;
+  color: var(--signal-deep);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.cardLink:hover {
+  text-decoration: underline;
+}
+
+.section {
+  margin-top: var(--space-8);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--rule);
+}
+
+.sectionHead h2,
+.chapterPanel h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+}
+
+.sectionHead span {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.chapterPanel {
+  margin-top: var(--space-8);
+  padding: var(--space-6);
+  border: 1px solid var(--rule);
+  background: var(--card);
+}
+
+.chapterPanel h2 {
+  margin-bottom: var(--space-4);
+}
+
+.linkRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.primaryLink,
+.secondaryLink {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.primaryLink {
+  border-color: var(--signal-deep);
+  background: var(--signal);
+  color: #fff;
+}
+
+.primaryLink:hover {
+  background: var(--signal-deep);
+}
+
+.secondaryLink {
+  color: var(--ink);
+}
+
+.secondaryLink:hover {
+  background: var(--paper-2);
+}
+
+.boundaryNote {
+  max-width: 72ch;
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4);
+  border-left: 4px solid var(--signal);
+  background: var(--tint);
+  color: var(--ink-2);
+}
+
+.chapterPanel .boundaryNote {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.9rem;
+}
+
+.empty {
+  padding: var(--space-8);
+  border: 1px dashed var(--rule);
+  text-align: center;
+  color: var(--muted);
+}
+
+.notFound {
+  padding: var(--space-8) 0;
+}
+
+.notFound h1 {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 400;
+}
+
+.notFound p {
+  color: var(--ink-2);
+}
+
+.skeletonHero,
+.skeletonCard {
+  background: var(--paper-2);
+  border-radius: 2px;
+}
+
+.skeletonHero {
+  height: 220px;
+  margin-bottom: var(--space-4);
+}
+
+.skeletonCard {
+  height: 180px;
+}
+
+@media (max-width: 680px) {
+  .grid,
+  .chapterGrid {
+    grid-template-columns: 1fr;
+  }
+}

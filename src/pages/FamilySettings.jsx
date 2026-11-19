@@ -7,6 +7,7 @@ import {
   createFamily,
   getFamilySettings,
   linkFamilyChapter,
+  moveFamilyChapter,
   unlinkFamilyChapter,
   updateFamily,
 } from "../utils/clubFamiliesStore";
@@ -239,6 +240,7 @@ export default function FamilySettings() {
               <FamilyCard
                 key={family.id}
                 family={family}
+                families={families}
                 clubs={clubs}
                 onChanged={handleFamilySaved}
               />
@@ -250,12 +252,14 @@ export default function FamilySettings() {
   );
 }
 
-function FamilyCard({ family, clubs, onChanged }) {
+function FamilyCard({ family, families, clubs, onChanged }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(family.name);
   const [slug, setSlug] = useState(family.slug);
   const [description, setDescription] = useState(family.description || "");
   const [clubId, setClubId] = useState("");
+  const [moveClubId, setMoveClubId] = useState("");
+  const [moveTargetId, setMoveTargetId] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
 
@@ -303,6 +307,36 @@ function FamilyCard({ family, clubs, onChanged }) {
     }
   }
 
+  const moveChapter = family.chapters.find((chapter) => chapter.id === moveClubId);
+  const moveTargets = families.filter(
+    (candidate) =>
+      candidate.id !== family.id &&
+      (!moveChapter ||
+        !candidate.chapters.some((chapter) => chapter.campusId === moveChapter.campusId))
+  );
+
+  async function handleMoveChapter(e) {
+    e.preventDefault();
+    if (!moveClubId || !moveTargetId) return;
+    const target = families.find((candidate) => candidate.id === moveTargetId);
+    const chapter = family.chapters.find((entry) => entry.id === moveClubId);
+    setError("");
+    setBusy("move");
+    try {
+      const updated = await moveFamilyChapter(moveTargetId, moveClubId, family.id);
+      setMoveClubId("");
+      setMoveTargetId("");
+      await onChanged(
+        updated,
+        `${chapter?.name || "The chapter"} moved to ${target?.name || "the target family"}.`
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function handleRemoveChapter(chapter) {
     if (!window.confirm(`Detach ${chapter.name} from ${family.name}? The club itself stays.`)) {
       return;
@@ -341,9 +375,7 @@ function FamilyCard({ family, clubs, onChanged }) {
           )}
         </div>
       </div>
-
       {family.description && <p className={styles.description}>{family.description}</p>}
-
       <div className={styles.chapterBlock}>
         <h4>Chapters</h4>
         {family.chapters.length === 0 ? (
@@ -369,13 +401,11 @@ function FamilyCard({ family, clubs, onChanged }) {
           </ul>
         )}
       </div>
-
       {error && (
         <p className={styles.error} role="alert">
           {error}
         </p>
       )}
-
       {editing && (
         <form className={`${styles.form} ${styles.cardForm}`} onSubmit={handleSave}>
           <div className={styles.formRow}>
@@ -428,8 +458,64 @@ function FamilyCard({ family, clubs, onChanged }) {
             </button>
           </div>
         </form>
+      )}{" "}
+      {families.length > 1 && family.chapters.length > 0 && (
+        <details className={styles.moveBlock}>
+          <summary>Move a chapter to another family</summary>
+          <form className={styles.form} onSubmit={handleMoveChapter}>
+            <div className={styles.formRow}>
+              <label className={styles.field}>
+                Chapter
+                <select
+                  value={moveClubId}
+                  onChange={(e) => {
+                    setMoveClubId(e.target.value);
+                    setMoveTargetId("");
+                  }}
+                >
+                  <option value="">Choose a chapter</option>
+                  {family.chapters.map((chapter) => (
+                    <option key={chapter.id} value={chapter.id}>
+                      {chapter.name} — {chapter.campusName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                Move to
+                <select
+                  value={moveTargetId}
+                  onChange={(e) => setMoveTargetId(e.target.value)}
+                  disabled={!moveClubId}
+                >
+                  <option value="">Choose a family</option>
+                  {moveTargets.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className={styles.hint}>
+              The target family must not already have a chapter on that campus. The move is audited
+              with both family names.
+            </p>
+            {moveClubId && moveTargets.length === 0 && (
+              <p className={styles.hint}>No other family has a free chapter slot on that campus.</p>
+            )}
+            <div className={styles.actions}>
+              <button
+                type="submit"
+                className={`${styles.button} ${styles.primary}`}
+                disabled={!moveClubId || !moveTargetId || busy === "move"}
+              >
+                {busy === "move" ? "Moving…" : "Move chapter"}
+              </button>
+            </div>
+          </form>
+        </details>
       )}
-
       <form
         className={styles.form}
         onSubmit={handleAddChapter}

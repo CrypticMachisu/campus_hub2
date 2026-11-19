@@ -19,6 +19,8 @@ import Dashboard from "./pages/Dashboard";
 import CampusSettings from "./pages/CampusSettings";
 import FamilySettings from "./pages/FamilySettings";
 import CampusAccess from "./pages/CampusAccess";
+import Families from "./pages/Families";
+import FamilyProfile from "./pages/FamilyProfile";
 import { CROSS_UNIVERSITY_ENABLED } from "./utils/features";
 import ClubWorkspace from "./pages/ClubWorkspace";
 import NotFound from "./pages/NotFound";
@@ -76,6 +78,13 @@ function AppRoutes() {
           <Route path="/posts/:postId" element={<PostDetail />} />
           <Route path="/my-events" element={<MyEvents />} />
           {CROSS_UNIVERSITY_ENABLED && <Route path="/campus-access" element={<CampusAccess />} />}
+          {CROSS_UNIVERSITY_ENABLED && (
+            <>
+              <Route path="/families" element={<Families />} />
+              <Route path="/families/:familyId" element={<FamilyProfile />} />
+              <Route path="/families/:familyId/chapters/:clubId" element={<FamilyProfile />} />
+            </>
+          )}
           <Route path="/dashboard/:clubId" element={<Dashboard />} />
           <Route
             path="/dashboard"
@@ -123,6 +132,13 @@ function AppRoutes() {
           />
           <Route path="/my-events" element={<MyEvents />} />
           {CROSS_UNIVERSITY_ENABLED && <Route path="/campus-access" element={<CampusAccess />} />}
+          {CROSS_UNIVERSITY_ENABLED && (
+            <>
+              <Route path="/families" element={<Families />} />
+              <Route path="/families/:familyId" element={<FamilyProfile />} />
+              <Route path="/families/:familyId/chapters/:clubId" element={<FamilyProfile />} />
+            </>
+          )}
           <Route path="/settings/campuses" element={<CampusSettings />} />
           {CROSS_UNIVERSITY_ENABLED && (
             <Route path="/settings/families" element={<FamilySettings />} />

@@ -137,6 +137,11 @@ export default function MemberShell({ myClubs }) {
                 Campus access
               </NavLink>
             )}
+            {CROSS_UNIVERSITY_ENABLED && (
+              <NavLink to="/families" className={utilityClass}>
+                Club families
+              </NavLink>
+            )}
             {activeClub && canManageClub(user, activeClub.id) && (
               <NavLink to={`/dashboard/${activeClub.id}`} className={utilityClass}>
                 The desk
