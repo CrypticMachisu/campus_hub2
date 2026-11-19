@@ -206,7 +206,9 @@ export default function ClubProfile() {
       {!isRemote && <CommitmentsSection clubId={profileClub.id} />}
 
       {/* The club's own dispatches, with comments at each permalink. */}
-      {!isRemote && <ClubFeed clubId={profileClub.id} />}
+      {!isRemote && (
+        <ClubFeed clubId={profileClub.id} canPublishToNetwork={Boolean(profileClub.familyId)} />
+      )}
 
       {!isRemote && (
         <>

@@ -467,8 +467,10 @@ while tier 1 creates families, links existing clubs as chapters, moves a chapter
 between families with an audit event, and appoints delegated identity editors.
 Public read-only family pages and chapter cross-links exist, with a family mark
 and monogram fallback, but a chapter's full club page opens only on its campus.
-Approved affiliations unlock a read-only My network club directory and events
-explicitly marked for the network; other activity stays campus-local. Tier 1 can switch the edition between one campus and all campuses;
+Approved affiliations unlock a read-only My network club directory plus events
+and posts explicitly marked for the network; other activity stays campus-local.
+Phase 6 is not defined yet; launch hardening is weighed against the refinements
+in `docs/standalone/phase-gates.md`. Tier 1 can switch the edition between one campus and all campuses;
 members' discovery still defaults to local, and a network scope appears only for
 affiliated campuses. Content must deliberately opt into a network audience.
 

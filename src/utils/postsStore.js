@@ -56,8 +56,18 @@ export async function discardPendingPhoto(mediaId) {
   await apiFetch(`/posts/media/${encodeURIComponent(mediaId)}`, { method: "DELETE" });
 }
 
-export async function createPost(clubId, text, mediaIds = []) {
-  return (await apiFetch("/posts", { method: "POST", body: { clubId, text, mediaIds } })).post;
+export async function createPost(clubId, text, mediaIds = [], { audience = "campus" } = {}) {
+  return (
+    await apiFetch("/posts", {
+      method: "POST",
+      body: { clubId, text, mediaIds, audience },
+    })
+  ).post;
+}
+
+/** Network-published posts across the reader's approved campuses. */
+export async function getNetworkPosts() {
+  return apiFetch("/posts/network?scope=network");
 }
 
 export async function updatePost(postId, text) {

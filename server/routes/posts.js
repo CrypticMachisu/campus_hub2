@@ -10,6 +10,7 @@ import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js"
 import { readCampusScope } from "../campus.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 import { recordAudit } from "../audit.js";
+import { crossUniversityEnabled } from "../features.js";
 import {
   mediaStorage,
   allowedMediaMime,
@@ -57,6 +58,7 @@ function rowToPost(row) {
     authorName: row.author_name_snapshot,
     body: row.body,
     status: row.status,
+    audience: row.audience || "campus",
     pinned: Boolean(row.pinned_at),
     pinnedAt: row.pinned_at,
     commentCount: Number(row.comment_count || 0),
@@ -123,6 +125,25 @@ async function attachMedia(posts) {
   }
   for (const post of posts) post.media = media.get(post.id) || [];
   return posts;
+}
+
+const POST_AUDIENCES = new Set(["campus", "network", "public"]);
+
+function validatePostAudience(value, club) {
+  const audience = value === undefined ? "campus" : String(value).trim().toLowerCase();
+  if (!POST_AUDIENCES.has(audience)) return { error: "Unknown post audience." };
+  if (audience === "public") {
+    return { error: "Public posts are not available yet." };
+  }
+  if (audience === "network") {
+    if (!crossUniversityEnabled()) {
+      return { error: "Network posts are not enabled." };
+    }
+    if (!club?.family_id) {
+      return { error: "Only a club in a family can publish to the network." };
+    }
+  }
+  return { audience };
 }
 
 function cleanBody(value) {
@@ -283,13 +304,17 @@ postsRouter.post("/", requireAuth, async (req, res) => {
   const body = req.body || {};
   const clubId = typeof body.clubId === "string" ? body.clubId.trim() : "";
   if (!clubId) return res.status(400).json({ error: "clubId is required." });
-  if (!(await clubExists(clubId))) return res.status(404).json({ error: "Club not found." });
+  const club = await findClub(clubId);
+  if (!club) return res.status(404).json({ error: "Club not found." });
   if (!canManageClub(req.user, clubId)) {
     return res.status(403).json({ error: "You don't have admin access to that club." });
   }
 
   const cleaned = cleanBody(body.text);
   if (cleaned.error) return res.status(400).json({ error: cleaned.error });
+  const audienceResult = validatePostAudience(body.audience, club);
+  if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+  const { audience } = audienceResult;
 
   const mediaIds = Array.isArray(body.mediaIds)
     ? [
@@ -365,9 +390,16 @@ postsRouter.post("/", requireAuth, async (req, res) => {
     await connection.beginTransaction();
     await connection.query(
       `INSERT INTO posts
-         (post_id, club_id, author_id, author_name_snapshot, body)
-       VALUES (:id, :clubId, :authorId, :authorName, :body)`,
-      { id, clubId, authorId: req.user.id, authorName: req.user.name, body: cleaned.body }
+         (post_id, club_id, author_id, author_name_snapshot, body, audience)
+       VALUES (:id, :clubId, :authorId, :authorName, :body, :audience)`,
+      {
+        id,
+        clubId,
+        authorId: req.user.id,
+        authorName: req.user.name,
+        body: cleaned.body,
+        audience,
+      }
     );
     for (const [index, media] of pending.entries()) {
       const [attached] = await connection.query(
@@ -400,7 +432,7 @@ postsRouter.post("/", requireAuth, async (req, res) => {
     action: "post.create",
     targetType: "post",
     targetId: id,
-    detail: { clubId, length: cleaned.body.length, photos: pending.length },
+    detail: { clubId, length: cleaned.body.length, photos: pending.length, audience },
   });
   const [created] = await attachMedia([rowToPost(rows[0])]);
   res.status(201).json({ post: created, mediaEnabled: mediaStorage.enabled });
@@ -516,6 +548,13 @@ async function clubExists(clubId) {
   return Boolean(rows[0]);
 }
 
+async function findClub(clubId) {
+  const [rows] = await pool.query("SELECT club_id, family_id FROM clubs WHERE club_id = :clubId", {
+    clubId,
+  });
+  return rows[0] || null;
+}
+
 /**
  * GET /posts?clubId=…&before=…&limit=10
  * Public, published posts only, newest first. `before` is the last post id the
@@ -612,6 +651,32 @@ postsRouter.get("/manage", requireAuth, async (req, res) => {
   res.json({ posts: shaped, mediaEnabled: mediaStorage.enabled });
 });
 
+/** GET /posts/network — network-published posts on the reader's campuses. */
+postsRouter.get("/network", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+  if (!scope.campusIds) {
+    return res.status(403).json({ error: "Network scope is required." });
+  }
+
+  const keys = scope.campusIds.map((campusId, index) => {
+    const key = `campusId${index}`;
+    return { key, campusId };
+  });
+  const params = Object.fromEntries(keys.map(({ key, campusId }) => [key, campusId]));
+  const [rows] = await pool.query(
+    `${POST_QUERY}
+     WHERE p.status = 'published' AND p.audience = 'network'
+       AND cl.campus_id IN (${keys.map(({ key }) => `:${key}`).join(", ")})
+     ORDER BY p.created_at DESC, p.post_id DESC
+     LIMIT 30`,
+    params
+  );
+  const shaped = rows.map(rowToPost);
+  await attachMedia(shaped);
+  res.json({ posts: shaped, mediaEnabled: mediaStorage.enabled });
+});
+
 /** GET /posts/:id — public while published; managers can read hidden rows. */
 postsRouter.get("/:id", optionalAuth, async (req, res) => {
   const scope = await readCampusScope(req);
@@ -619,7 +684,10 @@ postsRouter.get("/:id", optionalAuth, async (req, res) => {
 
   const [rows] = await pool.query(`${POST_QUERY} WHERE p.post_id = :id`, { id: req.params.id });
   const row = rows[0];
-  if (!row || (scope.campusId && row.club_campus_id !== scope.campusId)) {
+  const outsideScope = scope.campusIds
+    ? !scope.campusIds.includes(row?.club_campus_id) || row?.audience !== "network"
+    : scope.campusId && row?.club_campus_id !== scope.campusId;
+  if (!row || outsideScope) {
     return res.status(404).json({ error: "Post not found." });
   }
 
@@ -652,8 +720,20 @@ postsRouter.patch("/:id", requireAuth, async (req, res) => {
   const cleaned = cleanBody(req.body?.text);
   if (cleaned.error) return res.status(400).json({ error: cleaned.error });
 
-  await pool.query("UPDATE posts SET body = :body WHERE post_id = :id", {
+  let audience = post.audience || "campus";
+  if (req.body?.audience !== undefined) {
+    if (!canManage) {
+      return res.status(403).json({ error: "Only a club manager can change a post audience." });
+    }
+    const club = await findClub(post.club_id);
+    const audienceResult = validatePostAudience(req.body.audience, club);
+    if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+    audience = audienceResult.audience;
+  }
+
+  await pool.query("UPDATE posts SET body = :body, audience = :audience WHERE post_id = :id", {
     body: cleaned.body,
+    audience,
     id: req.params.id,
   });
   const [updated] = await pool.query(`${POST_QUERY} WHERE p.post_id = :id`, {
@@ -663,7 +743,7 @@ postsRouter.patch("/:id", requireAuth, async (req, res) => {
     action: "post.update",
     targetType: "post",
     targetId: req.params.id,
-    detail: { clubId: post.club_id, length: cleaned.body.length },
+    detail: { clubId: post.club_id, length: cleaned.body.length, audience },
   });
   const [shaped] = await attachMedia([rowToPost(updated[0])]);
   res.json({ post: shaped, mediaEnabled: mediaStorage.enabled });

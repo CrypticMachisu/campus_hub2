@@ -176,6 +176,17 @@
   color: var(--muted);
 }
 
+.composerLabel select {
+  min-height: 40px;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  text-transform: none;
+}
+
 .composerLabel textarea,
 .editBox textarea {
   width: 100%;

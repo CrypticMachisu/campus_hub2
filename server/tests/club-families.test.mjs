@@ -72,6 +72,7 @@ test(
     const clubB1 = `club-fam-b1-${stamp}`;
     const familyIds = [];
     const eventIds = [];
+    const postIds = [];
 
     t.after(async () => {
       try {
@@ -88,6 +89,10 @@ test(
         if (eventIds.length) {
           await pool.query("DELETE FROM audit_log WHERE target_id IN (?)", [eventIds]);
           await pool.query("DELETE FROM events WHERE event_id IN (?)", [eventIds]);
+        }
+        if (postIds.length) {
+          await pool.query("DELETE FROM audit_log WHERE target_id IN (?)", [postIds]);
+          await pool.query("DELETE FROM posts WHERE post_id IN (?)", [postIds]);
         }
         await pool.query("DELETE FROM clubs WHERE club_id IN (?, ?, ?)", [clubA1, clubA2, clubB1]);
         await pool.query("DELETE FROM user_campus_affiliations WHERE campus_id IN (?, ?)", [
@@ -579,6 +584,78 @@ test(
             time: "12:00",
             audience: "network",
           },
+        })
+      ).status,
+      400
+    );
+
+    assert.equal((await api("/v2/posts/network?scope=network")).status, 401);
+    assert.equal((await api("/v2/posts/network", { token: member.token })).status, 403);
+    const networkPost = await expectJson(
+      await api("/v2/posts", {
+        method: "POST",
+        token: tier1.token,
+        body: {
+          clubId: clubB1,
+          text: `Network notice ${stamp}`,
+          audience: "network",
+        },
+      }),
+      201,
+      "create network post"
+    );
+    postIds.push(networkPost.post.id);
+    assert.equal(networkPost.post.audience, "network");
+
+    const campusPost = await expectJson(
+      await api("/v2/posts", {
+        method: "POST",
+        token: tier1.token,
+        body: {
+          clubId: clubB1,
+          text: `Campus notice ${stamp}`,
+          audience: "campus",
+        },
+      }),
+      201,
+      "create campus post"
+    );
+    postIds.push(campusPost.post.id);
+    assert.equal(campusPost.post.audience, "campus");
+
+    const networkPosts = await expectJson(
+      await api("/v2/posts/network?scope=network", { token: member.token }),
+      200,
+      "network posts"
+    );
+    const networkPostIds = networkPosts.posts.map((post) => post.id);
+    assert.ok(networkPostIds.includes(networkPost.post.id));
+    assert.ok(!networkPostIds.includes(campusPost.post.id));
+    assert.equal(
+      (await api(`/v2/posts/${networkPost.post.id}?scope=network`, { token: member.token })).status,
+      200
+    );
+    assert.equal(
+      (await api(`/v2/posts/${campusPost.post.id}?scope=network`, { token: member.token })).status,
+      404
+    );
+
+    assert.equal(
+      (
+        await api("/v2/posts", {
+          method: "POST",
+          token: tier1.token,
+          body: { clubId: clubB1, text: "Public should be rejected", audience: "public" },
+        })
+      ).status,
+      400
+    );
+    assert.equal(
+      (
+        await api("/v2/posts", {
+          method: "POST",
+          token: tier1.token,
+          body: { clubId: "club-01", text: "No family network", audience: "network" },
         })
       ).status,
       400

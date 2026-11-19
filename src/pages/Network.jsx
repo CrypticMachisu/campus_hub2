@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { getMyCampusAffiliations } from "../utils/campusAffiliationsStore";
 import { CATEGORIES, getAllClubs } from "../utils/clubsStore";
 import { getAllEvents } from "../utils/eventsStore";
+import { getNetworkPosts } from "../utils/postsStore";
 import { formatEventDate } from "../utils/dateTime";
 import ClubCard from "../components/ClubCard";
 import { SkeletonGroup } from "../components/Skeleton";
@@ -24,6 +25,7 @@ export default function Network() {
   const [affiliations, setAffiliations] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [events, setEvents] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -41,14 +43,17 @@ export default function Network() {
       if (additional.length === 0) {
         setClubs([]);
         setEvents([]);
+        setPosts([]);
         return;
       }
-      const [clubRows, eventRows] = await Promise.all([
+      const [clubRows, eventRows, postResult] = await Promise.all([
         getAllClubs({ scope: "network" }),
         getAllEvents({ scope: "network" }),
+        getNetworkPosts(),
       ]);
       setClubs(clubRows);
       setEvents(eventRows);
+      setPosts(postResult.posts || []);
     } catch (err) {
       setError(err.message);
     }
@@ -211,6 +216,36 @@ export default function Network() {
               }
             )}
           </section>
+
+          {posts.length > 0 && (
+            <section className={styles.postsSection} aria-labelledby="network-posts-heading">
+              <div className={styles.sectionHead}>
+                <div>
+                  <p className={styles.sectionKicker}>Opted into the network</p>
+                  <h2 id="network-posts-heading">Network notices</h2>
+                </div>
+                <span>{posts.length} published</span>
+              </div>
+              <ul className={styles.postList}>
+                {posts.map((post) => {
+                  const host = clubs.find((club) => club.id === post.clubId);
+                  return (
+                    <li key={post.id} className={styles.postCard}>
+                      <p className={styles.postMeta}>
+                        {host?.name || post.clubName}
+                        {host?.campusName ? ` · ${host.campusName}` : ""}
+                        {post.authorName ? ` · ${post.authorName}` : ""}
+                      </p>
+                      <p className={styles.postBody}>{post.body}</p>
+                      <p className={styles.eventNote}>
+                        Network-visible. Comments stay on the host campus.
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
 
           {networkEvents.length > 0 && (
             <section className={styles.eventsSection} aria-labelledby="network-events-heading">

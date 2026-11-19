@@ -43,7 +43,7 @@ function formatPostTime(value) {
  * Managers publish and edit inline; members read and can comment at the
  * permalink. No infinite scroll — one deliberate "Earlier updates" click.
  */
-export default function ClubFeed({ clubId }) {
+export default function ClubFeed({ clubId, canPublishToNetwork = false }) {
   const { user } = useAuth();
   const managesClub = canManageClub(user, clubId);
 
@@ -56,6 +56,7 @@ export default function ClubFeed({ clubId }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const [audience, setAudience] = useState("campus");
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState("");
@@ -202,9 +203,10 @@ export default function ClubFeed({ clubId }) {
       }
 
       setSavingLabel("Publishing…");
-      const created = await createPost(clubId, draft, mediaIds);
+      const created = await createPost(clubId, draft, mediaIds, { audience });
       setPosts((current) => [created, ...current]);
       setDraft("");
+      setAudience("campus");
       setComposerOpen(false);
       resetPhotos();
       setNotice(
@@ -404,6 +406,15 @@ export default function ClubFeed({ clubId }) {
               disabled={saving}
               error={photoError}
             />
+          )}
+          {canPublishToNetwork && (
+            <label className={styles.composerLabel}>
+              <span>Audience</span>
+              <select value={audience} onChange={(e) => setAudience(e.target.value)}>
+                <option value="campus">This campus only</option>
+                <option value="network">My club network</option>
+              </select>
+            </label>
           )}
           <div className={styles.composerFoot}>
             <span className={styles.count}>

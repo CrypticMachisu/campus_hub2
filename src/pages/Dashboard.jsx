@@ -560,7 +560,7 @@ export default function Dashboard() {
         {/* 6. Posts — the club page's dispatches and report queue ------------ */}
         <section className={`${styles.section} ${styles.postsSection}`}>
           <h2>Posts</h2>
-          <ClubPostsDesk clubId={club.id} />
+          <ClubPostsDesk clubId={club.id} canPublishToNetwork={Boolean(club.familyId)} />
         </section>
 
         {/* 7. Playbook — the club-specific bits members see ------------------- */}

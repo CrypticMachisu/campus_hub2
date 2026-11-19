@@ -63,8 +63,41 @@
   color: var(--muted);
 }
 
+.postsSection,
 .eventsSection {
   margin-top: var(--space-8);
+}
+
+.postList {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.postCard {
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--ink);
+  background: var(--card);
+}
+
+.postMeta {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.postBody {
+  margin: 0;
+  max-width: 90ch;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .eventList {

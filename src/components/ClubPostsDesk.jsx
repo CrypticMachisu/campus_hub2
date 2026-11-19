@@ -43,13 +43,14 @@ function statusLabel(status) {
  * Publishing and editing stay inline; hiding is reversible, removing is not
  * (the row and its thread stay for the record, but the public page closes).
  */
-export default function ClubPostsDesk({ clubId }) {
+export default function ClubPostsDesk({ clubId, canPublishToNetwork = false }) {
   const [posts, setPosts] = useState([]);
   const [reports, setReports] = useState([]);
   const [status, setStatus] = useState("loading"); // loading | ok | error
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [draft, setDraft] = useState("");
+  const [audience, setAudience] = useState("campus");
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState("");
@@ -182,9 +183,10 @@ export default function ClubPostsDesk({ clubId }) {
       }
 
       setSavingLabel("Publishing…");
-      const created = await createPost(clubId, draft, mediaIds);
+      const created = await createPost(clubId, draft, mediaIds, { audience });
       setPosts((current) => [created, ...current]);
       setDraft("");
+      setAudience("campus");
       resetPhotos();
       setNotice(
         mediaIds.length
@@ -438,6 +440,15 @@ export default function ClubPostsDesk({ clubId }) {
             disabled={saving}
             error={photoError}
           />
+        )}
+        {canPublishToNetwork && (
+          <label className={styles.composerLabel}>
+            <span>Audience</span>
+            <select value={audience} onChange={(e) => setAudience(e.target.value)}>
+              <option value="campus">This campus only</option>
+              <option value="network">My club network</option>
+            </select>
+          </label>
         )}
         <div className={styles.composerFoot}>
           <span className={styles.count}>
