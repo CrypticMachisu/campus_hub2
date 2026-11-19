@@ -7,9 +7,11 @@ requests, cancellation and campus-admin/tier-1 approval — is implemented, but
 both its API and the `/campus-access` entry point are behind
 `CROSS_UNIVERSITY_ENABLED=false` / `VITE_CROSS_UNIVERSITY_ENABLED=false`.
 
-No family API or UI is mounted yet. Club families, member network discovery and
-network audiences remain design only. Tier 1's discovery-only campus switcher
-is a Phase 4 control and is not gated by this flag.
+Tier 1 family management is implemented behind the flag: create/edit a family
+and attach or detach existing clubs as chapters at `/settings/families`. There
+is no member-facing family page, network discovery or audience yet. Tier 1's
+discovery-only campus switcher is a Phase 4 control and is not gated by this
+flag.
 
 Phase 4 gave every account and club one campus. Phase 5 lets a person belong
 to more than one campus and lets one club exist as a family of campus chapters.
@@ -106,13 +108,20 @@ at the same time as the account. Migration `027_club_families.sql` adds
 `club_families`, nullable `clubs.family_id`, the unique chapter-per-campus link
 and `club_family_admins`; it seeds no family and attaches no existing club.
 
-The affiliation screen and API are implemented but disabled by default. Set
-`CROSS_UNIVERSITY_ENABLED=true` in `server/.env` and
-`VITE_CROSS_UNIVERSITY_ENABLED=true` in the client, then rebuild/restart. The
-route is unmounted while the server flag is off; the client flag hides the
-Campus access link and route.
+The affiliation screen and API, plus tier-1 family management, are implemented
+but disabled by default. Set `CROSS_UNIVERSITY_ENABLED=true` in `server/.env`
+and `VITE_CROSS_UNIVERSITY_ENABLED=true` in the client, then rebuild/restart.
+Both routes are unmounted while the server flag is off; the client flag hides
+the Campus access and Families links/routes.
 
-When enabled, the screen is `/campus-access`:
+Family management enforces:
+
+- unique family slugs and one chapter per campus per family,
+- a club can belong to only one family (unlink before moving it),
+- linking a chapter never creates, deletes or edits the club itself,
+- `club_family.create`, `.update`, `.chapter.add` and `.chapter.remove` audits.
+
+When enabled, the affiliation screen is `/campus-access`:
 
 - Members see their home campus, active affiliations, pending requests and
   denied/revoked requests, and can request another campus with a relationship
@@ -271,6 +280,12 @@ Admin:
   tier 1.
 - `POST /api/v2/campus-affiliations/:id/approve|deny` — that campus's admin or
   tier 1. Self-approval is rejected.
+- `GET /api/v2/club-families/manage` — tier 1: every family and its chapters.
+- `POST /api/v2/club-families` and `PATCH /api/v2/club-families/:id` — tier 1:
+  create or edit shared identity.
+- `POST /api/v2/club-families/:id/chapters` and
+  `DELETE /api/v2/club-families/:id/chapters/:clubId` — tier 1: attach or detach
+  an existing club.
 
 Writes:
 
@@ -346,9 +361,9 @@ Writes:
 
 Ship schema dark, then turn on read, then participation.
 
-1. **Schema** — create families, affiliations and `audience` columns; backfill
-   home affiliations; leave every club `family_id = NULL`; default audience
-   `campus`. No visible change.
+1. **Schema** — **done for families and affiliations:** migrations `026`/`027`
+   backfill home affiliations and leave every club `family_id = NULL`. Audience
+   columns remain future work. No visible change while the flag is off.
 2. **Read-only network** — family pages, chapter links, scope switch, network
    audiences. `CROSS_CAMPUS_ENABLED=false` keeps the UI hidden on a single
    campus. Test against a temporary second campus before enabling.

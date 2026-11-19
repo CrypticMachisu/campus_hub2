@@ -14,6 +14,7 @@ import { adminRequestsRouter } from "./routes/adminRequests.js";
 import { clubsRouter } from "./routes/clubs.js";
 import { campusesRouter } from "./routes/campuses.js";
 import { campusAffiliationsRouter } from "./routes/campusAffiliations.js";
+import { clubFamiliesRouter } from "./routes/clubFamilies.js";
 import { eventsV2Router } from "./routes/eventsV2.js";
 import { signupsRouter } from "./routes/signups.js";
 import { commentsRouter } from "./routes/comments.js";
@@ -38,6 +39,7 @@ v2Router.use("/campuses", campusesRouter);
 // surface stays unmounted until the operator enables the flag and restarts.
 if (crossUniversityEnabled()) {
   v2Router.use("/campus-affiliations", campusAffiliationsRouter);
+  v2Router.use("/club-families", clubFamiliesRouter);
 }
 v2Router.use("/clubs", clubsRouter);
 v2Router.use("/signups", signupsRouter);

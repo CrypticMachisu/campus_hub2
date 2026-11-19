@@ -35,6 +35,7 @@ export function rowToClub(row) {
     id: row.club_id,
     campusId: row.campus_id,
     campusName: row.campus_name || "",
+    familyId: row.family_id || null,
     name: row.name,
     category: row.category_name,
     description: row.description,

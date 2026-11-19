@@ -116,6 +116,11 @@ export default function Navbar() {
               Campuses
             </NavLink>
           )}
+          {CROSS_UNIVERSITY_ENABLED && user?.role === "tier1" && (
+            <NavLink to="/settings/families" className={linkClass}>
+              Families
+            </NavLink>
+          )}
         </nav>
 
         <div className={styles.tools}>
