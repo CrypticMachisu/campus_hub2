@@ -103,6 +103,11 @@ export default function Navbar() {
               Commitments
             </NavLink>
           )}
+          {CROSS_UNIVERSITY_ENABLED && user && user.role !== "tier1" && (
+            <NavLink to="/network" className={linkClass}>
+              My network
+            </NavLink>
+          )}
           {CROSS_UNIVERSITY_ENABLED && user && (
             <NavLink to="/campus-access" className={linkClass}>
               Campus access

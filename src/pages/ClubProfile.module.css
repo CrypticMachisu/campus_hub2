@@ -48,6 +48,37 @@
   margin: 0;
 }
 
+.backToNetwork {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: var(--signal-deep);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-decoration: none;
+}
+
+.backToNetwork:hover {
+  text-decoration: underline;
+}
+
+.remoteCampus {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.remoteNote {
+  margin: 0 0 1.5rem;
+  padding: 0.9rem 1rem;
+  border-left: 4px solid var(--signal);
+  background: var(--tint);
+  color: var(--ink-2);
+  font-size: 0.92rem;
+}
+
 .description {
   max-width: 66ch;
   font-size: 1rem;

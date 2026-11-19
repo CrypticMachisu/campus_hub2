@@ -13,6 +13,27 @@ import { createApiRouter } from "../middleware/apiGuards.js";
 
 export const clubsRouter = createApiRouter();
 
+const CLUB_SELECT = `SELECT c.*, camp.name AS campus_name, cat.name AS category_name,
+       GROUP_CONCAT(DISTINCT ct.tag) AS tags
+  FROM clubs c
+  JOIN campuses camp ON camp.campus_id = c.campus_id
+  JOIN categories cat ON cat.category_id = c.category_id
+  LEFT JOIN club_tags ct ON ct.club_id = c.club_id`;
+
+function addCampusScope(where, params, scope) {
+  if (scope.campusIds) {
+    const keys = scope.campusIds.map((campusId, index) => {
+      const key = `campusId${index}`;
+      params[key] = campusId;
+      return `:${key}`;
+    });
+    where.push(`c.campus_id IN (${keys.join(", ")})`);
+  } else if (scope.campusId) {
+    where.push("c.campus_id = :campusId");
+    params.campusId = scope.campusId;
+  }
+}
+
 /** GET /api/clubs — clubs the reader is allowed to discover, grouped by campus. */
 clubsRouter.get("/", optionalAuth, async (req, res) => {
   const scope = await readCampusScope(req);
@@ -20,24 +41,35 @@ clubsRouter.get("/", optionalAuth, async (req, res) => {
 
   const where = [];
   const params = {};
-  if (scope.campusId) {
-    where.push("c.campus_id = :campusId");
-    params.campusId = scope.campusId;
-  }
+  addCampusScope(where, params, scope);
 
   const [rows] = await pool.query(
-    `SELECT c.*, camp.name AS campus_name, cat.name AS category_name,
-            GROUP_CONCAT(DISTINCT ct.tag) AS tags
-    FROM clubs c
-    JOIN campuses camp ON camp.campus_id = c.campus_id
-    JOIN categories cat ON cat.category_id = c.category_id
-    LEFT JOIN club_tags ct ON ct.club_id = c.club_id
+    `${CLUB_SELECT}
     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     GROUP BY c.club_id, camp.name
     ORDER BY c.name`,
     params
   );
   res.json({ clubs: rows.map(rowToClub) });
+});
+
+/** GET /api/clubs/:clubId — one club identity, within the reader's scope. */
+clubsRouter.get("/:clubId", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+
+  const where = ["c.club_id = :clubId"];
+  const params = { clubId: req.params.clubId };
+  addCampusScope(where, params, scope);
+
+  const [rows] = await pool.query(
+    `${CLUB_SELECT}
+     WHERE ${where.join(" AND ")}
+     GROUP BY c.club_id, camp.name`,
+    params
+  );
+  if (!rows[0]) return res.status(404).json({ error: "Club not found." });
+  res.json({ club: rowToClub(rows[0]) });
 });
 
 /**

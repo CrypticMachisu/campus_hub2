@@ -1,4 +1,5 @@
 import { pool } from "./db.js";
+import { crossUniversityEnabled } from "./features.js";
 
 /** The only campus on a fresh Phase 4 install. */
 export const DEFAULT_CAMPUS_ID = "campus-01";
@@ -115,6 +116,43 @@ export async function campusExists(campusId) {
  */
 export async function readCampusScope(req) {
   const requested = typeof req.query.campusId === "string" ? req.query.campusId.trim() : "";
+  const requestedScope =
+    typeof req.query.scope === "string" ? req.query.scope.trim().toLowerCase() : "";
+
+  if (requestedScope && !["local", "network"].includes(requestedScope)) {
+    return { error: "Unknown discovery scope.", status: 400 };
+  }
+  if (requestedScope === "network") {
+    if (requested) {
+      return { error: "Choose a campus or the network scope, not both.", status: 400 };
+    }
+    if (!crossUniversityEnabled()) {
+      return { error: "Network discovery is not enabled.", status: 404 };
+    }
+    if (!req.user) {
+      return { error: "Sign in to browse your network.", status: 401 };
+    }
+    if (req.user.role === "tier1") {
+      return { error: "Use the campus edition to browse every campus.", status: 403 };
+    }
+
+    const [rows] = await pool.query(
+      `SELECT a.campus_id, c.name
+       FROM user_campus_affiliations a
+       JOIN campuses c ON c.campus_id = a.campus_id
+       WHERE a.user_id = :userId AND a.status = 'active'
+       ORDER BY c.name`,
+      { userId: req.user.id }
+    );
+    const additional = rows.filter((row) => row.campus_id !== req.user.campusId);
+    if (additional.length === 0) {
+      return { error: "No approved campus affiliations yet.", status: 403 };
+    }
+    return {
+      scope: "network",
+      campusIds: [req.user.campusId, ...additional.map((row) => row.campus_id)],
+    };
+  }
 
   if (req.user?.role === "tier1") {
     if (!requested) return { campusId: null };

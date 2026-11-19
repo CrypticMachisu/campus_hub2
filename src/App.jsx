@@ -21,6 +21,7 @@ import FamilySettings from "./pages/FamilySettings";
 import CampusAccess from "./pages/CampusAccess";
 import Families from "./pages/Families";
 import FamilyProfile from "./pages/FamilyProfile";
+import Network from "./pages/Network";
 import { CROSS_UNIVERSITY_ENABLED } from "./utils/features";
 import ClubWorkspace from "./pages/ClubWorkspace";
 import NotFound from "./pages/NotFound";
@@ -82,6 +83,7 @@ function AppRoutes() {
             <>
               <Route path="/families" element={<Families />} />
               <Route path="/families/:familyId" element={<FamilyProfile />} />
+              <Route path="/network" element={<Network />} />
               <Route path="/families/:familyId/chapters/:clubId" element={<FamilyProfile />} />
             </>
           )}
@@ -136,6 +138,7 @@ function AppRoutes() {
             <>
               <Route path="/families" element={<Families />} />
               <Route path="/families/:familyId" element={<FamilyProfile />} />
+              <Route path="/network" element={<Network />} />
               <Route path="/families/:familyId/chapters/:clubId" element={<FamilyProfile />} />
             </>
           )}

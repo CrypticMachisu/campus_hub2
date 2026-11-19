@@ -2,8 +2,8 @@
 //
 // A member's users.campus_id remains their home campus. This resource holds
 // additional campuses: a request is pending until that campus's admin (or
-// tier 1) approves or denies it. Network discovery is a later phase; an active
-// affiliation only changes eligibility, not what Phase 4 discovery returns yet.
+// tier 1) approves or denies it. An active affiliation unlocks the read-only
+// My network club directory; events, posts and commitments remain campus-local.
 import { pool } from "../db.js";
 import { requireAuth, requireCampusAdmin } from "../middleware/auth.js";
 import { recordAudit } from "../audit.js";

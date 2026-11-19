@@ -11,10 +11,11 @@ Tier 1 family management is implemented behind the flag: create/edit a family
 and its mark, attach or detach existing clubs, move a chapter between families,
 and appoint delegated identity editors at `/settings/families`. Public
 read-only family pages live at `/families` and `/families/:familyId`, with a
-chapter view for each cross-link. There is no network discovery or audience
-yet. Tier 1's discovery-only campus switcher is a Phase 4 control and is not
-gated by this flag. Polish and defects are tracked separately in
-`docs/standalone/refinements.md`.
+chapter view for each cross-link. A read-only **My network** club directory now
+uses approved affiliations, but events, posts, commitments and membership stay
+campus-local until audience fields exist. Tier 1's discovery-only campus
+switcher is a Phase 4 control and is not gated by this flag. Polish and defects
+are tracked separately in `docs/standalone/refinements.md`.
 
 Phase 4 gave every account and club one campus. Phase 5 lets a person belong
 to more than one campus and lets one club exist as a family of campus chapters.
@@ -140,8 +141,9 @@ When enabled, the affiliation screen is `/campus-access`:
   campus. Neither can decide their own request.
 - Decisions are audited as `campus.affiliation.request`, `.cancel`, `.approve`
   and `.deny`.
-- Affiliations do not yet change discovery or content access. That starts with
-  network discovery in the next slice.
+- Affiliations now unlock the read-only **My network** club directory. They do
+  not yet change events, posts, commitments or membership access; those need
+  audience fields before they can travel safely.
 
 ### Family identity and editors
 
@@ -281,9 +283,12 @@ Read:
 - `GET /api/v2/club-families?scope=local|network`
 - `GET /api/v2/club-families/:id` — family, chapters, network-visible
   commitments/posts the reader may see.
-- `GET /api/v2/clubs?scope=local|network` — existing endpoint, one new scope.
-- `GET /api/v2/events?scope=local|network`
-- `GET /api/v2/commitments?scope=local|network`
+- `GET /api/v2/clubs?scope=local|network` — **implemented** for network club
+  identity; `GET /api/v2/clubs/:id?scope=network` returns the read-only profile.
+- `GET /api/v2/events?scope=local|network` — not yet; events stay local until
+  `audience` exists.
+- `GET /api/v2/commitments?scope=local|network` — not yet; commitments stay
+  local until `audience` exists.
 - `GET /api/v2/campus-affiliations/me` — home plus every own request.
 
 Admin:
@@ -336,6 +341,19 @@ Writes:
   - Other campuses the reader is affiliated with
   - "Request another campus" (if enabled)
 - Tier 1 gets **All campuses**; campus admins do not.
+
+### Network club directory
+
+Signed-in members with at least one approved additional campus get `/network`.
+It lists club identity for the home campus plus active affiliations, grouped by
+campus and filterable by category and search. Anonymous readers and members
+without an approved affiliation never receive network results; tier 1 is
+rejected and uses the campus edition instead.
+
+A club opened from this page fetches identity through `GET /clubs/:id?scope=network`
+and renders a read-only profile. Membership, events, posts, comments and
+commitments are omitted with a written boundary note. This is deliberate: club
+identity can travel, campus activity cannot until `audience` is implemented.
 
 ### Club family page
 
@@ -395,9 +413,10 @@ Ship schema dark, then turn on read, then participation.
 1. **Schema** — **done for families and affiliations:** migrations `026`/`027`
    backfill home affiliations and leave every club `family_id = NULL`. Audience
    columns remain future work. No visible change while the flag is off.
-2. **Read-only network** — **family identity pages and chapter links are
-   done behind the flag.** Scope switch and network audiences remain. Test
-   against a temporary second campus before enabling.
+2. **Read-only network** — **family identity pages, chapter links and the
+   read-only My network club directory are done behind the flag.** Network
+   events/posts/commitments and audiences remain. Test against a temporary
+   second campus before enabling.
 3. **Affiliations** — **implemented behind the flag:** campus-admin approval
    flow and the `/campus-access` screen. Still no cross-campus writes or network
    discovery.
@@ -417,9 +436,11 @@ Each step needs a rollback story:
 ## 10. Acceptance tests
 
 - A user with home campus A and active affiliation B sees B under **My
-  network**, but not campus C.
+  network**, but not campus C. **Implemented.**
 - A user with no affiliation sees only their home campus and is rejected when
-  requesting `scope=network`.
+  requesting `scope=network`. **Implemented.**
+- A network club profile exposes identity only; membership, events, posts and
+  comments are absent. **Implemented.**
 - A family with chapters on A and B shows both to a network reader; a chapter
   on C is absent.
 - A campus admin at A can manage A chapters but receives 403 for B chapters,

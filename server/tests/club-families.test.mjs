@@ -85,6 +85,10 @@ test(
           await pool.query("DELETE FROM club_families WHERE family_id IN (?)", [ids]);
         }
         await pool.query("DELETE FROM clubs WHERE club_id IN (?, ?, ?)", [clubA1, clubA2, clubB1]);
+        await pool.query("DELETE FROM user_campus_affiliations WHERE campus_id IN (?, ?)", [
+          campusA,
+          campusB,
+        ]);
         await pool.query("DELETE FROM campuses WHERE campus_id IN (?, ?)", [campusA, campusB]);
       } finally {
         await pool.end();
@@ -430,6 +434,44 @@ test(
       [clubA1]
     );
     assert.equal((await api("/v2/club-families/does-not-exist")).status, 404);
+
+    // Network discovery is affiliated-only and must never include campus A.
+    assert.equal((await api("/clubs?scope=network")).status, 401);
+    assert.equal((await api("/clubs?scope=network", { token: tier1.token })).status, 403);
+    assert.equal((await api("/clubs?scope=network", { token: member.token })).status, 403);
+    await pool.query(
+      `INSERT INTO user_campus_affiliations
+         (user_id, campus_id, kind, status, requested_at, decided_at)
+       VALUES (?, ?, 'exchange', 'active', NOW(), NOW())`,
+      [member.user.id, campusB]
+    );
+
+    const network = await expectJson(
+      await api("/clubs?scope=network", { token: member.token }),
+      200,
+      "network club directory"
+    );
+    const networkIds = network.clubs.map((club) => club.id);
+    assert.ok(networkIds.includes(clubB1), "affiliated campus B club is visible");
+    assert.ok(!networkIds.includes(clubA1), "unaffiliated campus A club is hidden");
+    assert.ok(!networkIds.includes(clubA2), "unaffiliated campus A club is hidden");
+
+    assert.equal(
+      (await api(`/clubs/${clubB1}?scope=network`, { token: member.token })).status,
+      200
+    );
+    assert.equal(
+      (await api(`/clubs/${clubA1}?scope=network`, { token: member.token })).status,
+      404
+    );
+    assert.equal(
+      (await api(`/clubs?scope=network&campusId=${campusB}`, { token: member.token })).status,
+      400
+    );
+    const localIds = (
+      await expectJson(await api("/clubs", { token: member.token }), 200)
+    ).clubs.map((club) => club.id);
+    assert.ok(!localIds.includes(clubB1), "local discovery stays on the home campus");
 
     // Delegated identity editors can edit the family but never its chapters.
     const withAdmin = await expectJson(

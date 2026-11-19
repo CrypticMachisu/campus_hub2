@@ -466,7 +466,9 @@ members request additional campuses and the campus admin or tier 1 approves,
 while tier 1 creates families, links existing clubs as chapters, moves a chapter
 between families with an audit event, and appoints delegated identity editors.
 Public read-only family pages and chapter cross-links exist, with a family mark
-and monogram fallback, but a chapter's full club page opens only on its campus. Tier 1 can switch the edition between one campus and all campuses;
+and monogram fallback, but a chapter's full club page opens only on its campus.
+Approved affiliations unlock a read-only My network club directory; activity
+stays campus-local until audience fields make it portable. Tier 1 can switch the edition between one campus and all campuses;
 members' discovery still defaults to local, and a network scope appears only for
 affiliated campuses. Content must deliberately opt into a network audience.
 

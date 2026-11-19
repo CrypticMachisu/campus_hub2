@@ -132,6 +132,11 @@ export default function MemberShell({ myClubs }) {
             <NavLink to="/my-events" className={utilityClass}>
               My commitments
             </NavLink>
+            {CROSS_UNIVERSITY_ENABLED && user?.role !== "tier1" && (
+              <NavLink to="/network" className={utilityClass}>
+                My network
+              </NavLink>
+            )}
             {CROSS_UNIVERSITY_ENABLED && (
               <NavLink to="/campus-access" className={utilityClass}>
                 Campus access
