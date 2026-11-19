@@ -44,4 +44,22 @@ test("cross-university schema: families, chapter links and family admins", async
     "SELECT COUNT(*) AS count FROM clubs WHERE family_id IS NOT NULL"
   );
   assert.equal(Number(linked.count), 0);
+
+  const [audienceRows] = await pool.query(
+    `SELECT table_name, column_default, is_nullable
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND column_name = 'audience'
+       AND table_name IN ('events', 'posts', 'commitments')`
+  );
+  assert.equal(audienceRows.length, 3, "all portable content tables need an audience column");
+  for (const row of audienceRows) {
+    const table = row.table_name || row.TABLE_NAME;
+    assert.equal(
+      String(row.column_default ?? row.COLUMN_DEFAULT).replace(/^'|'$/g, ""),
+      "campus",
+      `${table}.audience defaults to campus`
+    );
+    assert.equal(row.is_nullable ?? row.IS_NULLABLE, "NO", `${table}.audience is required`);
+  }
 });

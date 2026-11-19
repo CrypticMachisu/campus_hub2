@@ -63,6 +63,55 @@
   color: var(--muted);
 }
 
+.eventsSection {
+  margin-top: var(--space-8);
+}
+
+.eventList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.eventCard {
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--signal);
+  background: var(--card);
+}
+
+.eventDate {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+}
+
+.eventCard h3 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-heading);
+  font-size: 1.08rem;
+  line-height: 1.25;
+}
+
+.eventMeta {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+}
+
+.eventNote {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
 .filters {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
@@ -210,6 +259,12 @@
   border-left: 4px solid var(--signal);
   background: var(--tint);
   color: var(--ink-2);
+}
+
+@media (max-width: 760px) {
+  .eventList {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 900px) {

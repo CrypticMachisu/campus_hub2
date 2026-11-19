@@ -86,6 +86,7 @@ export function rowToEvent(row) {
     bringNote: row.bring_note || "",
     // NULL/absent capacity means "no limit" — keep the frontend check simple.
     capacity: row.capacity == null ? null : Number(row.capacity),
+    audience: row.audience || "campus",
     // Present whenever the query joins event_signups (all /api/events reads do).
     signupCount: row.signup_count == null ? 0 : Number(row.signup_count),
     isSeed: !row.event_id.startsWith("custom-"),

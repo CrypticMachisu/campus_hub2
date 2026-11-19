@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getMyCampusAffiliations } from "../utils/campusAffiliationsStore";
 import { CATEGORIES, getAllClubs } from "../utils/clubsStore";
+import { getAllEvents } from "../utils/eventsStore";
+import { formatEventDate } from "../utils/dateTime";
 import ClubCard from "../components/ClubCard";
 import { SkeletonGroup } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
@@ -21,6 +23,7 @@ export default function Network() {
   const { user, loading: authLoading } = useAuth();
   const [affiliations, setAffiliations] = useState([]);
   const [clubs, setClubs] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -37,9 +40,15 @@ export default function Network() {
       );
       if (additional.length === 0) {
         setClubs([]);
+        setEvents([]);
         return;
       }
-      setClubs(await getAllClubs({ scope: "network" }));
+      const [clubRows, eventRows] = await Promise.all([
+        getAllClubs({ scope: "network" }),
+        getAllEvents({ scope: "network" }),
+      ]);
+      setClubs(clubRows);
+      setEvents(eventRows);
     } catch (err) {
       setError(err.message);
     }
@@ -90,6 +99,16 @@ export default function Network() {
         .includes(needle);
     });
   }, [clubs, category, search]);
+
+  const networkEvents = useMemo(
+    () =>
+      [...events].sort(
+        (a, b) =>
+          Date.parse(`${a.date}T${a.time || "00:00"}`) -
+          Date.parse(`${b.date}T${b.time || "00:00"}`)
+      ),
+    [events]
+  );
 
   const grouped = useMemo(() => {
     const groups = new Map();
@@ -146,8 +165,9 @@ export default function Network() {
         <p className={styles.eyebrow}>My network</p>
         <h1>Clubs across your campuses.</h1>
         <p className={styles.lede}>
-          This directory follows your approved affiliations. It shares club identity only; events,
-          posts, commitments and membership stay with each campus chapter.
+          This directory follows your approved affiliations. It shares club identity and events
+          explicitly published to the network; posts, commitments and membership stay with each
+          campus chapter.
         </p>
       </header>
 
@@ -191,6 +211,39 @@ export default function Network() {
               }
             )}
           </section>
+
+          {networkEvents.length > 0 && (
+            <section className={styles.eventsSection} aria-labelledby="network-events-heading">
+              <div className={styles.sectionHead}>
+                <div>
+                  <p className={styles.sectionKicker}>Opted into the network</p>
+                  <h2 id="network-events-heading">Network events</h2>
+                </div>
+                <span>{networkEvents.length} upcoming</span>
+              </div>
+              <ul className={styles.eventList}>
+                {networkEvents.map((event) => {
+                  const host = clubs.find((club) => club.id === event.clubId);
+                  return (
+                    <li key={event.id} className={styles.eventCard}>
+                      <p className={styles.eventDate}>
+                        {formatEventDate(event.date)} · <span className="mono">{event.time}</span>
+                      </p>
+                      <h3>{event.title}</h3>
+                      <p className={styles.eventMeta}>
+                        {host?.name || "Club event"}
+                        {host?.campusName ? ` · ${host.campusName}` : ""}
+                        {event.location ? ` · ${event.location}` : ""}
+                      </p>
+                      <p className={styles.eventNote}>
+                        Network-visible. RSVP and discussion stay on the host campus.
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
 
           <section className={styles.filters} aria-label="Filter network clubs">
             <label className={styles.searchField}>
@@ -245,8 +298,8 @@ export default function Network() {
 
           <aside className={styles.boundaryNote}>
             <strong>Read-only network view.</strong> Opening a club shows its identity and campus.
-            Its events, posts, commitments and membership remain on that campus until network
-            audiences are enabled.
+            Only events deliberately marked “My club network” travel here; posts, commitments and
+            membership remain on the host campus.
           </aside>
         </>
       )}

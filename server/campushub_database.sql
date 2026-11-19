@@ -268,6 +268,7 @@ CREATE TABLE events (
     -- Added in migrations/006_event_capacity.sql for existing DBs.
     bring_note    VARCHAR(240),                   -- per-event "what to bring", overrides the club playbook
     capacity      INT,                            -- NULL = unlimited; RSVPs past it are waitlisted in order
+    audience      ENUM('campus', 'network', 'public') NOT NULL DEFAULT 'campus',
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_events_club
         FOREIGN KEY (club_id) REFERENCES clubs(club_id)
@@ -397,6 +398,7 @@ CREATE TABLE posts (
     author_name_snapshot VARCHAR(100) NOT NULL,
     body                 TEXT         NOT NULL,
     status               ENUM('published', 'hidden', 'removed') NOT NULL DEFAULT 'published',
+    audience             ENUM('campus', 'network', 'public') NOT NULL DEFAULT 'campus',
     pinned_at            DATETIME     NULL,             -- one standing notice per club
     created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -846,6 +848,7 @@ CREATE TABLE IF NOT EXISTS commitments (
     capacity      INT          NULL,
     host_name     VARCHAR(120) NULL,
     source        VARCHAR(12)  NOT NULL DEFAULT 'admin',
+    audience      ENUM('campus', 'network', 'public') NOT NULL DEFAULT 'campus',
     created_by    VARCHAR(30)  NULL,
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

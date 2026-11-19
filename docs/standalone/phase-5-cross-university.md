@@ -12,8 +12,9 @@ and its mark, attach or detach existing clubs, move a chapter between families,
 and appoint delegated identity editors at `/settings/families`. Public
 read-only family pages live at `/families` and `/families/:familyId`, with a
 chapter view for each cross-link. A read-only **My network** club directory now
-uses approved affiliations, but events, posts, commitments and membership stay
-campus-local until audience fields exist. Tier 1's discovery-only campus
+uses approved affiliations. Migration `028` adds audience columns with a
+`campus` default; events can explicitly publish to the network, while posts,
+commitments and membership stay campus-local. Tier 1's discovery-only campus
 switcher is a Phase 4 control and is not gated by this flag. Polish and defects
 are tracked separately in `docs/standalone/refinements.md`.
 
@@ -141,9 +142,9 @@ When enabled, the affiliation screen is `/campus-access`:
   campus. Neither can decide their own request.
 - Decisions are audited as `campus.affiliation.request`, `.cancel`, `.approve`
   and `.deny`.
-- Affiliations now unlock the read-only **My network** club directory. They do
-  not yet change events, posts, commitments or membership access; those need
-  audience fields before they can travel safely.
+- Affiliations unlock the read-only **My network** club directory and network-
+  published events. They do not yet change posts, commitments or membership
+  access; those audience columns default to campus and have no writer UI yet.
 
 ### Family identity and editors
 
@@ -209,10 +210,7 @@ harder cancellation/attendance story. If demand appears later, add
 `commitment_chapters` and per-chapter allocations rather than overloading the
 existing signup table.
 
-## 4. Schema
-
-Future federation migration `027_cross_university.sql` (the affiliation
-foundation is migration `026`):
+## 4. SchemaFederation migrations `026`–`028` (affiliations, families and audience):
 
 ```text
 club_families
@@ -285,8 +283,8 @@ Read:
   commitments/posts the reader may see.
 - `GET /api/v2/clubs?scope=local|network` — **implemented** for network club
   identity; `GET /api/v2/clubs/:id?scope=network` returns the read-only profile.
-- `GET /api/v2/events?scope=local|network` — not yet; events stay local until
-  `audience` exists.
+- `GET /api/v2/events?scope=local|network` — **implemented:** network scope
+  returns only `audience = network` events on the member's network.
 - `GET /api/v2/commitments?scope=local|network` — not yet; commitments stay
   local until `audience` exists.
 - `GET /api/v2/campus-affiliations/me` — home plus every own request.
@@ -351,9 +349,25 @@ without an approved affiliation never receive network results; tier 1 is
 rejected and uses the campus edition instead.
 
 A club opened from this page fetches identity through `GET /clubs/:id?scope=network`
-and renders a read-only profile. Membership, events, posts, comments and
-commitments are omitted with a written boundary note. This is deliberate: club
-identity can travel, campus activity cannot until `audience` is implemented.
+and renders a read-only profile. Membership, posts, comments and commitments are
+omitted with a written boundary note. Events appear only when deliberately
+published with `audience = network`; ordinary campus events stay local.
+
+### Event audience
+
+Migration `028_content_audience.sql` adds `audience ENUM('campus','network','public')`
+to `events`, `posts` and `commitments`, all defaulting to `campus`. Only events
+have a writer and reader path in this slice.
+
+- The dashboard event composer offers **This campus only** and **My club network**
+  for a club linked to a family. The default is campus.
+- `network` is rejected unless the server flag is on and the club has a family.
+- `public` is rejected until the public-directory policy exists.
+- Network reads return only `audience = network`; local reads return campus and
+  network events for that campus; tier 1 keeps the all-campus administrative
+  view.
+- Network events are listed on `/network` without an RSVP or comment link. The
+  RSVP roster and discussion remain on the host campus.
 
 ### Club family page
 
@@ -413,10 +427,10 @@ Ship schema dark, then turn on read, then participation.
 1. **Schema** — **done for families and affiliations:** migrations `026`/`027`
    backfill home affiliations and leave every club `family_id = NULL`. Audience
    columns remain future work. No visible change while the flag is off.
-2. **Read-only network** — **family identity pages, chapter links and the
-   read-only My network club directory are done behind the flag.** Network
-   events/posts/commitments and audiences remain. Test against a temporary
-   second campus before enabling.
+2. **Read-only network** — **family identity pages, chapter links, the read-only
+   My network club directory and network-visible events are done behind the
+   flag.** Network posts/commitments remain. Test against a temporary second
+   campus before enabling.
 3. **Affiliations** — **implemented behind the flag:** campus-admin approval
    flow and the `/campus-access` screen. Still no cross-campus writes or network
    discovery.
@@ -446,7 +460,8 @@ Each step needs a rollback story:
 - A campus admin at A can manage A chapters but receives 403 for B chapters,
   B reports and B affiliation requests.
 - A local post stays off the network scope; a network post appears for A and B
-  but not C; a public post appears in the public directory.
+  but not C; a public post appears in the public directory. **(Audience columns
+  exist; post/commitment writer and reader paths remain future work.)**
 - A network commitment is visible to A and B, accepts a B signup, and keeps one
   ordered roster; the host chapter can cancel and notify both campuses.
 - Unlinking a chapter removes it from discovery and the family page, keeps the

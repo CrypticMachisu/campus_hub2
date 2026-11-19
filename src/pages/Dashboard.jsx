@@ -5,6 +5,7 @@ import { CATEGORIES, createClub, updateClub } from "../utils/clubsStore";
 import { useClubs } from "../context/ClubsContext";
 import { useAuth } from "../context/AuthContext";
 import { getAllEvents, saveCustomEvent, deleteCustomEvent } from "../utils/eventsStore";
+import { CROSS_UNIVERSITY_ENABLED } from "../utils/features";
 import { getSignupsByEvent } from "../utils/storage";
 import { getAnnouncements, saveAnnouncement } from "../utils/dashboardStorage";
 import ClubPostsDesk from "../components/ClubPostsDesk";
@@ -70,6 +71,7 @@ const emptyForm = {
   imageUrl: "",
   bringNote: "",
   capacity: "",
+  audience: "campus",
 };
 
 export default function Dashboard() {
@@ -180,6 +182,7 @@ export default function Dashboard() {
       imageUrl: event.imageUrl || "",
       bringNote: event.bringNote || "",
       capacity: event.capacity ?? "",
+      audience: event.audience || "campus",
     });
     setSaveMessage("");
   }
@@ -234,6 +237,7 @@ export default function Dashboard() {
         imageUrl: imageUrl || FALLBACK_IMAGE,
         bringNote: form.bringNote.trim(),
         capacity,
+        audience: form.audience || "campus",
       });
 
       await refreshEvents();
@@ -461,6 +465,24 @@ export default function Dashboard() {
                 ))}
               </select>
             </label>
+
+            {CROSS_UNIVERSITY_ENABLED && club?.familyId ? (
+              <label>
+                Audience
+                <select
+                  value={form.audience}
+                  onChange={(e) => handleFormChange("audience", e.target.value)}
+                >
+                  <option value="campus">This campus only</option>
+                  <option value="network">My club network</option>
+                </select>
+                <span className={styles.optional}>
+                  Network events are visible to approved members across this family’s chapters.
+                </span>
+              </label>
+            ) : (
+              <p className={styles.optional}>This event will be visible on this campus only.</p>
+            )}
 
             <label>
               Image URL <span className={styles.optional}>(optional)</span>

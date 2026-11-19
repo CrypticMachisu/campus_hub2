@@ -156,8 +156,8 @@ export default function ClubProfile() {
 
       {isRemote && (
         <p className={styles.remoteNote}>
-          <strong>Read-only network view.</strong> Activity, posts, commitments and membership stay
-          on {profileClub.campusName}. Visit that campus to take part.
+          <strong>Read-only network view.</strong> Network-published events appear in My network.
+          Posts, commitments and membership stay on {profileClub.campusName}.
         </p>
       )}
 
@@ -179,8 +179,8 @@ export default function ClubProfile() {
         {isRemote ? (
           <div className={styles.emptyEventsBox}>
             <p>
-              Events, posts and commitments for this chapter are available on its campus. They are
-              not part of the network identity view yet.
+              Network-published events are listed in My network. Campus-only events, posts,
+              commitments and membership remain on {profileClub.campusName}.
             </p>
           </div>
         ) : eventsError ? (

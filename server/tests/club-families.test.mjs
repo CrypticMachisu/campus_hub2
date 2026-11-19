@@ -71,6 +71,7 @@ test(
     const clubA2 = `club-fam-a2-${stamp}`;
     const clubB1 = `club-fam-b1-${stamp}`;
     const familyIds = [];
+    const eventIds = [];
 
     t.after(async () => {
       try {
@@ -83,6 +84,10 @@ test(
         if (ids.length) {
           await pool.query("DELETE FROM audit_log WHERE target_id IN (?)", [ids]);
           await pool.query("DELETE FROM club_families WHERE family_id IN (?)", [ids]);
+        }
+        if (eventIds.length) {
+          await pool.query("DELETE FROM audit_log WHERE target_id IN (?)", [eventIds]);
+          await pool.query("DELETE FROM events WHERE event_id IN (?)", [eventIds]);
         }
         await pool.query("DELETE FROM clubs WHERE club_id IN (?, ?, ?)", [clubA1, clubA2, clubB1]);
         await pool.query("DELETE FROM user_campus_affiliations WHERE campus_id IN (?, ?)", [
@@ -472,6 +477,112 @@ test(
       await expectJson(await api("/clubs", { token: member.token }), 200)
     ).clubs.map((club) => club.id);
     assert.ok(!localIds.includes(clubB1), "local discovery stays on the home campus");
+
+    // Audience begins campus-only. Only an event deliberately published to the
+    // network crosses into a member's network feed.
+    await expectJson(
+      await api(`/v2/club-families/${second.family.id}/chapters`, {
+        method: "POST",
+        token: tier1.token,
+        body: { clubId: clubB1 },
+      }),
+      201,
+      "relink network event chapter"
+    );
+    const networkEvent = await expectJson(
+      await api("/events", {
+        method: "POST",
+        token: tier1.token,
+        body: {
+          clubId: clubB1,
+          title: `Network event ${stamp}`,
+          description: "Visible only to the club network.",
+          category: "Academic",
+          date: "2030-09-12",
+          time: "10:00",
+          location: "Campus B Hall",
+          audience: "network",
+        },
+      }),
+      201,
+      "create network event"
+    );
+    eventIds.push(networkEvent.event.id);
+    assert.equal(networkEvent.event.audience, "network");
+
+    const campusEvent = await expectJson(
+      await api("/events", {
+        method: "POST",
+        token: tier1.token,
+        body: {
+          clubId: clubB1,
+          title: `Campus event ${stamp}`,
+          description: "Stays on Campus B.",
+          category: "Academic",
+          date: "2030-09-13",
+          time: "11:00",
+          location: "Campus B Hall",
+          audience: "campus",
+        },
+      }),
+      201,
+      "create campus event"
+    );
+    eventIds.push(campusEvent.event.id);
+    assert.equal(campusEvent.event.audience, "campus");
+
+    const networkEvents = await expectJson(
+      await api("/events?scope=network", { token: member.token }),
+      200,
+      "network events"
+    );
+    const networkEventIds = networkEvents.events.map((event) => event.id);
+    assert.ok(networkEventIds.includes(networkEvent.event.id));
+    assert.ok(!networkEventIds.includes(campusEvent.event.id));
+
+    const campusBEvents = await expectJson(
+      await api(`/events?campusId=${campusB}`, { token: tier1.token }),
+      200,
+      "campus B events"
+    );
+    const campusBIds = campusBEvents.events.map((event) => event.id);
+    assert.ok(campusBIds.includes(networkEvent.event.id));
+    assert.ok(campusBIds.includes(campusEvent.event.id));
+
+    assert.equal(
+      (
+        await api("/events", {
+          method: "POST",
+          token: tier1.token,
+          body: {
+            clubId: clubB1,
+            title: "Public should be rejected",
+            category: "Academic",
+            date: "2030-09-14",
+            time: "12:00",
+            audience: "public",
+          },
+        })
+      ).status,
+      400
+    );
+    assert.equal(
+      (
+        await api("/events", {
+          method: "POST",
+          token: tier1.token,
+          body: {
+            clubId: "club-01",
+            title: "Non-family network event",
+            category: "Academic",
+            date: "2030-09-15",
+            time: "12:00",
+            audience: "network",
+          },
+        })
+      ).status,
+      400
+    );
 
     // Delegated identity editors can edit the family but never its chapters.
     const withAdmin = await expectJson(

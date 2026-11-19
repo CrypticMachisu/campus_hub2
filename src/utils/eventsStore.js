@@ -21,8 +21,11 @@ export function toUiEvent(event) {
  * Events on the signed-in reader's campus (or the default campus when signed
  * out). Tier 1 may pass a campusId; the server rejects it for other roles.
  */
-export async function getAllEvents({ campusId } = {}) {
-  const query = campusId ? `?campusId=${encodeURIComponent(campusId)}` : "";
+export async function getAllEvents({ campusId, scope } = {}) {
+  const params = new URLSearchParams();
+  if (campusId) params.set("campusId", campusId);
+  if (scope) params.set("scope", scope);
+  const query = params.toString() ? `?${params}` : "";
   const { events } = await apiFetch(`/events${query}`);
   return events.map(toUiEvent);
 }

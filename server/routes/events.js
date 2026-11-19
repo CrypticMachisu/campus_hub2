@@ -5,6 +5,7 @@ import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js"
 import { readCampusScope } from "../campus.js";
 import { recordAudit } from "../audit.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
+import { crossUniversityEnabled } from "../features.js";
 
 export const eventsRouter = createApiRouter();
 
@@ -65,6 +66,29 @@ export function parseStartTime(startTimeOrBody) {
 }
 
 /** Shared title/startTime/category/bringNote/capacity validation. Returns the first error string, or the cleaned fields. */
+const EVENT_AUDIENCES = new Set(["campus", "network", "public"]);
+
+/**
+ * Audience is deliberately conservative: campus is the default, network needs
+ * a family chapter and the cross-university flag, and public is not open yet.
+ */
+function validateEventAudience(value, club) {
+  const audience = value === undefined ? "campus" : String(value).trim().toLowerCase();
+  if (!EVENT_AUDIENCES.has(audience)) return { error: "Unknown event audience." };
+  if (audience === "public") {
+    return { error: "Public events are not available yet." };
+  }
+  if (audience === "network") {
+    if (!crossUniversityEnabled()) {
+      return { error: "Network events are not enabled." };
+    }
+    if (!club?.family_id) {
+      return { error: "Only a club in a family can publish to the network." };
+    }
+  }
+  return { audience };
+}
+
 function validateEventFields(body) {
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title) return { error: "Title is required." };
@@ -89,17 +113,27 @@ function validateEventFields(body) {
   return { title, start, bringNote, capacity };
 }
 
-/** GET /api/events — events on the reader's campus (tier 1 may see every campus). */
+/** GET /api/events — local or network-visible events within the reader's scope. */
 eventsRouter.get("/", optionalAuth, async (req, res) => {
   const scope = await readCampusScope(req);
   if (scope.error) return res.status(scope.status).json({ error: scope.error });
 
   const params = {};
-  let where = "";
-  if (scope.campusId) {
-    where = "WHERE cl.campus_id = :campusId";
+  const conditions = [];
+  if (scope.campusIds) {
+    const keys = scope.campusIds.map((campusId, index) => {
+      const key = `campusId${index}`;
+      params[key] = campusId;
+      return `:${key}`;
+    });
+    conditions.push(`cl.campus_id IN (${keys.join(", ")})`);
+    conditions.push("e.audience = 'network'");
+  } else if (scope.campusId) {
+    conditions.push("cl.campus_id = :campusId");
+    conditions.push("e.audience IN ('campus', 'network')");
     params.campusId = scope.campusId;
   }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const [rows] = await pool.query(
     `${EVENT_LIST_QUERY} ${where} GROUP BY e.event_id ORDER BY e.event_date, e.event_time`,
@@ -119,9 +153,10 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
   // Validate the club exists BEFORE the FK-constrained insert — tier1 can
   // "manage" any id, so a bad clubId used to explode at the DB level (and
   // crash the server back when async rejections were unhandled).
-  const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
-    clubId,
-  });
+  const [clubRows] = await pool.query(
+    "SELECT club_id, family_id FROM clubs WHERE club_id = :clubId",
+    { clubId }
+  );
   if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
 
   if (!canManageClub(req.user, clubId)) {
@@ -131,6 +166,9 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
   const validation = validateEventFields(req.body);
   if (validation.error) return res.status(400).json({ error: validation.error });
   const { title, start, bringNote, capacity } = validation;
+  const audienceResult = validateEventAudience(req.body.audience, clubRows[0]);
+  if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+  const { audience } = audienceResult;
 
   const categoryId = await findCategoryIdByName(category);
   if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
@@ -139,10 +177,10 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
   await pool.query(
     `INSERT INTO events
       (event_id, club_id, title, description, category_id,
-       event_date, event_time, location, image_url, bring_note, capacity)
+       event_date, event_time, location, image_url, bring_note, capacity, audience)
      VALUES
       (:id, :clubId, :title, :description, :categoryId,
-       :date, :time, :location, :imageUrl, :bringNote, :capacity)`,
+       :date, :time, :location, :imageUrl, :bringNote, :capacity, :audience)`,
     {
       id,
       clubId,
@@ -155,6 +193,7 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
       imageUrl: imageUrl || null,
       bringNote: bringNote || null,
       capacity,
+      audience,
     }
   );
 
@@ -166,7 +205,7 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
     action: "event.create",
     targetType: "event",
     targetId: id,
-    detail: { clubId, title, capacity },
+    detail: { clubId, title, capacity, audience },
   });
   res.status(201).json({ event: rowToEvent(rows[0]) });
 });
@@ -198,6 +237,17 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
   if (validation.error) return res.status(400).json({ error: validation.error });
   const { title, start, bringNote, capacity } = validation;
 
+  const [clubRows] = await pool.query(
+    "SELECT club_id, family_id FROM clubs WHERE club_id = :clubId",
+    { clubId: existing.club_id }
+  );
+  const audienceResult = validateEventAudience(
+    req.body.audience === undefined ? existing.audience : req.body.audience,
+    clubRows[0]
+  );
+  if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+  const { audience } = audienceResult;
+
   const categoryId = await findCategoryIdByName(category);
   if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
 
@@ -211,7 +261,8 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
          location = :location,
          image_url = :imageUrl,
          bring_note = :bringNote,
-         capacity = :capacity
+         capacity = :capacity,
+         audience = :audience
      WHERE event_id = :id`,
     {
       id: eventId,
@@ -224,6 +275,7 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
       imageUrl: imageUrl || null,
       bringNote: bringNote || null,
       capacity,
+      audience,
     }
   );
 
@@ -235,7 +287,7 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
     action: "event.update",
     targetType: "event",
     targetId: eventId,
-    detail: { clubId: existing.club_id, title, capacity },
+    detail: { clubId: existing.club_id, title, capacity, audience },
   });
   res.json({ event: rowToEvent(rows[0]) });
 });
