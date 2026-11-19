@@ -179,6 +179,25 @@ export default function Network() {
           commitments and notices explicitly published to the network. Membership and discussion
           stay with each campus chapter.
         </p>
+        {activeAffiliations.length > 0 && (
+          <div className={styles.scopeNotice} role="status">
+            <span className={styles.scopeBadge}>Viewing</span>
+            <strong>My network</strong>
+            <span className={styles.scopeList}>
+              {[
+                user?.campusName || "Home campus",
+                ...activeAffiliations.map((affiliation) => affiliation.campusName),
+              ].join(" · ")}
+            </span>
+          </div>
+        )}
+        {pendingAffiliations.length > 0 && (
+          <p className={styles.pending}>
+            {pendingAffiliations.length}{" "}
+            {pendingAffiliations.length === 1 ? "request is" : "requests are"} still waiting for
+            review. <Link to="/campus-access">Manage campus access</Link>
+          </p>
+        )}
       </header>
 
       {loading ? (
@@ -195,12 +214,6 @@ export default function Network() {
             You are currently scoped to {user?.campusName || "your home campus"}. Request another
             campus to see its clubs here.
           </p>
-          {pendingAffiliations.length > 0 && (
-            <p className={styles.pending}>
-              {pendingAffiliations.length}{" "}
-              {pendingAffiliations.length === 1 ? "request is" : "requests are"} waiting for review.
-            </p>
-          )}
           <Link to="/campus-access" className={styles.primaryLink}>
             Manage campus access
           </Link>

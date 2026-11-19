@@ -14,10 +14,12 @@ import { createApiRouter } from "../middleware/apiGuards.js";
 export const clubsRouter = createApiRouter();
 
 const CLUB_SELECT = `SELECT c.*, camp.name AS campus_name, cat.name AS category_name,
+       cf.name AS family_name, cf.slug AS family_slug,
        GROUP_CONCAT(DISTINCT ct.tag) AS tags
   FROM clubs c
   JOIN campuses camp ON camp.campus_id = c.campus_id
   JOIN categories cat ON cat.category_id = c.category_id
+  LEFT JOIN club_families cf ON cf.family_id = c.family_id
   LEFT JOIN club_tags ct ON ct.club_id = c.club_id`;
 
 function addCampusScope(where, params, scope) {
@@ -46,7 +48,7 @@ clubsRouter.get("/", optionalAuth, async (req, res) => {
   const [rows] = await pool.query(
     `${CLUB_SELECT}
     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-    GROUP BY c.club_id, camp.name
+    GROUP BY c.club_id, camp.name, cat.name, cf.name, cf.slug
     ORDER BY c.name`,
     params
   );
@@ -65,7 +67,7 @@ clubsRouter.get("/:clubId", optionalAuth, async (req, res) => {
   const [rows] = await pool.query(
     `${CLUB_SELECT}
      WHERE ${where.join(" AND ")}
-     GROUP BY c.club_id, camp.name`,
+     GROUP BY c.club_id, camp.name, cat.name, cf.name, cf.slug`,
     params
   );
   if (!rows[0]) return res.status(404).json({ error: "Club not found." });

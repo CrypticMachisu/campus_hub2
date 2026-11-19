@@ -246,6 +246,9 @@ export default function EventDetail() {
                     <span>{event.location}</span>
                   </>
                 )}
+                {event.audience === "network" && (
+                  <span className={styles.networkBadge}>Network</span>
+                )}
               </p>
 
               {event.bringNote && (

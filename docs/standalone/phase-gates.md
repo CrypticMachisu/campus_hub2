@@ -29,8 +29,8 @@ core multi-campus flows are complete would amplify unresolved behaviour.
 4. Decide whether the Phase 6 candidate is still needed, then scope it.
 5. Only after that consider any further feature phase.
 
-A P1 defect, privacy/security failure or data-loss risk jumps the queue. The
-wire-label overlap is P2: visible, but not a reason to delay a correctness fix.
+A P1 defect, privacy/security failure or data-loss risk jumps the queue. P2
+polish waits until the Phase 5 boundary work is tested.
 
 ## Viability now
 

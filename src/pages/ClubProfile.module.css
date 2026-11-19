@@ -61,6 +61,25 @@
   text-decoration: underline;
 }
 
+.familyLinkRow {
+  margin: 0.4rem 0 0;
+}
+
+.familyLink {
+  display: inline-block;
+  padding-bottom: 0.1rem;
+  border-bottom: 1px solid var(--signal);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.familyLink:hover {
+  color: var(--signal-deep);
+}
+
 .remoteCampus {
   margin: 0.35rem 0 0;
   font-family: var(--font-mono);

@@ -349,7 +349,12 @@ export default function Dashboard() {
                     className={styles.eventRowMain}
                     onClick={() => setSelectedEventId(event.id)}
                   >
-                    <span className={styles.eventTitle}>{event.title}</span>
+                    <span className={styles.eventTitle}>
+                      {event.title}
+                      {event.audience === "network" && (
+                        <span className={styles.networkBadge}>Network</span>
+                      )}
+                    </span>
                     <span className={styles.eventMeta}>
                       {event.date} · {event.time}
                     </span>

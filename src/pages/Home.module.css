@@ -336,7 +336,8 @@
 
 /* Wire */
 .wire {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: stretch;
   background: var(--ink);
   color: var(--paper);
@@ -354,7 +355,10 @@
   font-size: 0.58rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  flex: none;
+  min-width: 4.15rem;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
 }
 
 .wireTrack {
@@ -364,6 +368,7 @@
   padding: 0.55rem 1.1rem;
   white-space: nowrap;
   width: max-content;
+  min-width: 0;
   font-family: var(--font-mono);
   font-size: 0.62rem;
   letter-spacing: 0.04em;
@@ -888,7 +893,7 @@
   }
 
   .wire {
-    flex-wrap: wrap;
+    grid-template-columns: 1fr;
   }
 
   .wireTrack {
@@ -909,6 +914,8 @@
   }
 
   .wireLabel {
+    justify-content: flex-start;
+    min-width: 0;
     padding: 0.45rem 0.7rem;
   }
 
@@ -925,7 +932,15 @@
     width: 100%;
   }
 
+  .wireTrack {
+    gap: 0.45rem 1.2rem;
+  }
+
   .wireTrack [aria-hidden="true"] {
+    display: none;
+  }
+
+  .wireToggle {
     display: none;
   }
 

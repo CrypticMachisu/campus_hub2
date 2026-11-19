@@ -132,6 +132,13 @@ export default function ClubProfile() {
             <span className={styles.categoryBadge}>{profileClub.category}</span>
             <h1>{profileClub.name}</h1>
             {isRemote && <p className={styles.remoteCampus}>{profileClub.campusName}</p>}
+            {profileClub.familyId && (
+              <p className={styles.familyLinkRow}>
+                <Link to={`/families/${profileClub.familyId}`} className={styles.familyLink}>
+                  Part of {profileClub.familyName || "a club family"}
+                </Link>
+              </p>
+            )}
           </div>
         </div>
         <p className={styles.description}>{profileClub.description}</p>
@@ -156,8 +163,8 @@ export default function ClubProfile() {
 
       {isRemote && (
         <p className={styles.remoteNote}>
-          <strong>Read-only network view.</strong> Network-published events appear in My network.
-          Posts, commitments and membership stay on {profileClub.campusName}.
+          <strong>Read-only network view.</strong> Network-published events and commitments appear
+          in My network. Posts and membership stay on {profileClub.campusName}.
         </p>
       )}
 
@@ -179,8 +186,8 @@ export default function ClubProfile() {
         {isRemote ? (
           <div className={styles.emptyEventsBox}>
             <p>
-              Network-published events are listed in My network. Campus-only events, posts,
-              commitments and membership remain on {profileClub.campusName}.
+              Network-published events and commitments are listed in My network. Campus-only
+              activity, posts and membership remain on {profileClub.campusName}.
             </p>
           </div>
         ) : eventsError ? (

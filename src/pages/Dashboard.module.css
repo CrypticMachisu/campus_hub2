@@ -328,6 +328,20 @@
   line-height: 1.25;
 }
 
+.networkBadge {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.12rem 0.36rem;
+  background: var(--signal);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 .eventMeta {
   font-family: var(--font-mono);
   font-size: 0.66rem;

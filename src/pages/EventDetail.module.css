@@ -91,6 +91,14 @@
   color: var(--signal-deep);
 }
 
+.networkBadge {
+  padding: 0.18rem 0.4rem;
+  background: var(--signal);
+  color: #fff;
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+}
+
 .posterBody h1 {
   font-family: var(--font-display);
   font-weight: 400;
