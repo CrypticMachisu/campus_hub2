@@ -121,11 +121,12 @@ export default function Navbar() {
               Campuses
             </NavLink>
           )}
-          {CROSS_UNIVERSITY_ENABLED && user?.role === "tier1" && (
-            <NavLink to="/settings/families" className={linkClass}>
-              Family settings
-            </NavLink>
-          )}
+          {CROSS_UNIVERSITY_ENABLED &&
+            (user?.role === "tier1" || (user?.familyAdminOf || []).length > 0) && (
+              <NavLink to="/settings/families" className={linkClass}>
+                Family settings
+              </NavLink>
+            )}
         </nav>
 
         <div className={styles.tools}>

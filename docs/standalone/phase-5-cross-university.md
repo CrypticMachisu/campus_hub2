@@ -7,12 +7,14 @@ requests, cancellation and campus-admin/tier-1 approval — is implemented, but
 both its API and the `/campus-access` entry point are behind
 `CROSS_UNIVERSITY_ENABLED=false` / `VITE_CROSS_UNIVERSITY_ENABLED=false`.
 
-Tier 1 family management is implemented behind the flag: create/edit a family,
-attach or detach existing clubs, and move a chapter between families at
-`/settings/families`. Public read-only family pages live at `/families` and
-`/families/:familyId`, with a chapter view for each cross-link. There is no
-network discovery or audience yet. Tier 1's discovery-only campus switcher is a
-Phase 4 control and is not gated by this flag.
+Tier 1 family management is implemented behind the flag: create/edit a family
+and its mark, attach or detach existing clubs, move a chapter between families,
+and appoint delegated identity editors at `/settings/families`. Public
+read-only family pages live at `/families` and `/families/:familyId`, with a
+chapter view for each cross-link. There is no network discovery or audience
+yet. Tier 1's discovery-only campus switcher is a Phase 4 control and is not
+gated by this flag. Polish and defects are tracked separately in
+`docs/standalone/refinements.md`.
 
 Phase 4 gave every account and club one campus. Phase 5 lets a person belong
 to more than one campus and lets one club exist as a family of campus chapters.
@@ -121,8 +123,11 @@ Family management enforces:
 - a club can belong to only one family; a move requires the expected source
   family and a target campus with no chapter,
 - linking or moving a chapter never creates, deletes or edits the club itself,
-- `club_family.create`, `.update`, `.chapter.add`, `.chapter.remove` and
-  `.chapter.move` audits; a move records both family names and the campus.
+- tier 1 alone controls the chapter list and appoints family editors by email;
+  an editor can change shared identity but cannot add, move or detach chapters,
+- `club_family.create`, `.update`, `.chapter.add`, `.chapter.remove`,
+  `.chapter.move`, `.admin.add` and `.admin.remove` audits; a move records both
+  family names and the campus.
 
 When enabled, the affiliation screen is `/campus-access`:
 
@@ -137,6 +142,17 @@ When enabled, the affiliation screen is `/campus-access`:
   and `.deny`.
 - Affiliations do not yet change discovery or content access. That starts with
   network discovery in the next slice.
+
+### Family identity and editors
+
+Family settings own a name, slug, description and optional square mark URL. The
+public family page shows the mark with a two-letter monogram fallback. Chapter
+cards use the chapter's own description and meeting details.
+
+Tier 1 can appoint a **lead** or **editor** by account email. An editor sees only
+their own families in family settings, can update identity fields, and receives
+403 for chapter link, move, detach and other tier-1 operations. Tier 1 always
+manages every family and cannot be appointed as an editor.
 
 ## 3. Network and audience
 
@@ -241,13 +257,13 @@ approved relationship, not another email-domain guess.
 
 ## 5. Roles
 
-| Role           | Phase 5 addition                                                                                                                           |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `tier1`        | Creates families, links/unlinks chapters, appoints family admins, grants any affiliation, sees all campuses.                               |
-| `family_admin` | Edits family identity and family page. Does **not** inherit chapter content powers.                                                        |
-| `campus_admin` | Manages chapters on their campus, approves affiliations to their campus, sees that campus's reports. Cannot link chapters across campuses. |
-| `tier2`        | Manages one chapter's content, members and audience choices allowed by that chapter.                                                       |
-| `member`       | Joins eligible chapters, RSVPs to network content, requests affiliations.                                                                  |
+| Role           | Phase 5 addition                                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tier1`        | Creates families, links/unlinks chapters, appoints family admins, grants any affiliation, sees all campuses. **Implemented.**                |
+| `family_admin` | Edits family identity and family page. Does **not** inherit chapter content powers. **Implemented** as a link table, with lead/editor roles. |
+| `campus_admin` | Manages chapters on their campus, approves affiliations to their campus, sees that campus's reports. Cannot link chapters across campuses.   |
+| `tier2`        | Manages one chapter's content, members and audience choices allowed by that chapter.                                                         |
+| `member`       | Joins eligible chapters, RSVPs to network content, requests affiliations.                                                                    |
 
 A person can hold more than one role by having the relevant link: for example,
 a campus admin at Strathmore can also be a chapter admin for one club. Do not
@@ -286,6 +302,10 @@ Admin:
 - `GET /api/v2/club-families/manage` — tier 1: every family and its chapters.
 - `POST /api/v2/club-families` and `PATCH /api/v2/club-families/:id` — tier 1:
   create or edit shared identity.
+- `POST /api/v2/club-families/:id/admins` and
+  `DELETE /api/v2/club-families/:id/admins/:userId` — tier 1: delegate or remove
+  identity editing. `PATCH /api/v2/club-families/:id` accepts tier 1 or an
+  appointed editor.
 - `POST /api/v2/club-families/:id/chapters` and
   `DELETE /api/v2/club-families/:id/chapters/:clubId` — tier 1: attach or detach
   an existing club.
@@ -410,7 +430,10 @@ Each step needs a rollback story:
   ordered roster; the host chapter can cancel and notify both campuses.
 - Unlinking a chapter removes it from discovery and the family page, keeps the
   audit row, and does not delete the chapter's posts or events.
-- A family admin can edit the family identity but cannot edit a chapter post.
+- A family admin can edit the family identity but cannot add, move or detach a
+  chapter, or edit a chapter post.
+- A family admin's management list contains only their own families; removing
+  the link restores the 403 on the next request.
 - Anonymous readers still get the Phase 4 default campus and never receive
   network-only content.
 - All existing Phase 1–4 tests continue to pass with the flag off.

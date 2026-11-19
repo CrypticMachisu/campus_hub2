@@ -187,6 +187,39 @@
   gap: var(--space-4);
 }
 
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.familyMark,
+.familyMarkFallback {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border: 1px solid var(--rule);
+}
+
+.familyMark {
+  object-fit: cover;
+}
+
+.familyMarkFallback {
+  display: grid;
+  place-items: center;
+  background: var(--signal);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.optional {
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .cardHead h3 {
   margin: 0;
   font-family: var(--font-heading);
@@ -290,6 +323,55 @@
   margin-top: var(--space-5);
   padding-top: var(--space-5);
   border-top: 1px solid var(--rule-soft);
+}
+
+.adminBlock {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--rule-soft);
+}
+
+.adminBlock h4 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adminList {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adminRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--rule-soft);
+  background: var(--paper);
+}
+
+.adminRow span {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.adminRow small {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.adminBlock .form {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
 }
 
 .moveBlock {

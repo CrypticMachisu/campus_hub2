@@ -28,11 +28,24 @@ export async function findUserById(userId) {
  * A newly created club appears on the next request; no token rewrite needed.
  */
 export async function hydrateCampusAdmin(user) {
-  if (!user || user.role !== "campus_admin" || !user.campusId) return user;
-  const [rows] = await pool.query("SELECT club_id FROM clubs WHERE campus_id = :campusId", {
-    campusId: user.campusId,
-  });
-  return { ...user, adminForClubs: rows.map((row) => row.club_id) };
+  if (!user) return user;
+
+  let hydrated = user;
+  if (user.role === "campus_admin" && user.campusId) {
+    const [rows] = await pool.query("SELECT club_id FROM clubs WHERE campus_id = :campusId", {
+      campusId: user.campusId,
+    });
+    hydrated = { ...hydrated, adminForClubs: rows.map((row) => row.club_id) };
+  }
+
+  // Family admins are a separate link, not a role, so surface the families
+  // they may edit for navigation and client-side affordances. The route
+  // guards still query the link table on every write.
+  const [familyRows] = await pool.query(
+    "SELECT family_id FROM club_family_admins WHERE user_id = :userId",
+    { userId: user.id }
+  );
+  return { ...hydrated, familyAdminOf: familyRows.map((row) => row.family_id) };
 }
 
 /**

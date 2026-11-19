@@ -81,8 +81,13 @@ export default function FamilyProfile() {
         ← All club families
       </Link>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>Club family · home {family.homeCampusName}</p>
-        <h1>{family.name}</h1>
+        <div className={styles.familyHero}>
+          <FamilyMark family={family} />
+          <div>
+            <p className={styles.eyebrow}>Club family · home {family.homeCampusName}</p>
+            <h1>{family.name}</h1>
+          </div>
+        </div>
         {family.description && <p className={styles.lede}>{family.description}</p>}
       </header>
 
@@ -104,8 +109,14 @@ export default function FamilyProfile() {
                   <Link to={`/families/${family.id}/chapters/${chapter.id}`}>{chapter.name}</Link>
                 </h3>
                 <p className={styles.description}>
-                  A local chapter of {family.name}, with its own officers and campus activity.
+                  {chapter.description ||
+                    `A local chapter of ${family.name}, with its own officers and campus activity.`}
                 </p>
+                {(chapter.meetingTime || chapter.meetingLocation) && (
+                  <p className={styles.chapterMeta}>
+                    {[chapter.meetingTime, chapter.meetingLocation].filter(Boolean).join(" · ")}
+                  </p>
+                )}
                 <Link
                   to={`/families/${family.id}/chapters/${chapter.id}`}
                   className={styles.cardLink}
@@ -127,6 +138,17 @@ export default function FamilyProfile() {
   );
 }
 
+function FamilyMark({ family }) {
+  if (family.logoUrl) {
+    return <img className={styles.familyMark} src={family.logoUrl} alt="" />;
+  }
+  return (
+    <span className={styles.familyMarkFallback} aria-hidden="true">
+      {family.name.slice(0, 2).toUpperCase()}
+    </span>
+  );
+}
+
 function ChapterPage({ family, chapter, user }) {
   const canOpenClub =
     Boolean(user) && (user.role === "tier1" || user.campusId === chapter.campusId);
@@ -137,10 +159,15 @@ function ChapterPage({ family, chapter, user }) {
         ← {family.name}
       </Link>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>
-          {family.name} · {chapter.campusName}
-        </p>
-        <h1>{chapter.name}</h1>
+        <div className={styles.chapterIdentity}>
+          <FamilyMark family={family} />
+          <div>
+            <p className={styles.eyebrow}>
+              {family.name} · {chapter.campusName}
+            </p>
+            <h1>{chapter.name}</h1>
+          </div>
+        </div>
         <p className={styles.lede}>
           The {chapter.campusName} chapter of {family.name}. Its officers, members, events and
           moderation are managed on that campus.

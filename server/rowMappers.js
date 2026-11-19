@@ -21,6 +21,7 @@ export function rowToUser(row) {
     campusSlug: row.campus_slug || "",
     adminForClubs: splitIds(row.admin_club_ids),
     memberOfClubs: splitIds(row.member_club_ids),
+    familyAdminOf: [],
   };
 }
 

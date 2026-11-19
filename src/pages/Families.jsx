@@ -47,10 +47,15 @@ export default function Families() {
         <ul className={styles.grid}>
           {families.map((family) => (
             <li key={family.id} className={styles.card}>
-              <p className={styles.cardKicker}>{family.homeCampusName}</p>
-              <h2>
-                <Link to={`/families/${family.id}`}>{family.name}</Link>
-              </h2>
+              <div className={styles.cardIdentity}>
+                <FamilyMark family={family} />
+                <div>
+                  <p className={styles.cardKicker}>{family.homeCampusName}</p>
+                  <h2>
+                    <Link to={`/families/${family.id}`}>{family.name}</Link>
+                  </h2>
+                </div>
+              </div>
               {family.description && <p className={styles.description}>{family.description}</p>}
               <p className={styles.chapterCount}>
                 {family.chapters.length}{" "}
@@ -69,5 +74,16 @@ export default function Families() {
         </ul>
       )}
     </main>
+  );
+}
+
+function FamilyMark({ family }) {
+  if (family.logoUrl) {
+    return <img className={styles.familyMark} src={family.logoUrl} alt="" />;
+  }
+  return (
+    <span className={styles.familyMarkFallback} aria-hidden="true">
+      {family.name.slice(0, 2).toUpperCase()}
+    </span>
   );
 }

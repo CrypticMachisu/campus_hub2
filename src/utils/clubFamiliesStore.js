@@ -19,19 +19,35 @@ export async function getFamilySettings() {
   return families;
 }
 
-export async function createFamily({ name, slug, homeCampusId, description }) {
+export async function createFamily({ name, slug, homeCampusId, description, logoUrl }) {
   const { family } = await apiFetch("/club-families", {
     method: "POST",
-    body: { name, slug, homeCampusId, description },
+    body: { name, slug, homeCampusId, description, logoUrl },
   });
   return family;
 }
 
-export async function updateFamily(familyId, { name, slug, description }) {
+export async function updateFamily(familyId, { name, slug, description, logoUrl }) {
   const { family } = await apiFetch(`/club-families/${encodeURIComponent(familyId)}`, {
     method: "PATCH",
-    body: { name, slug, description },
+    body: { name, slug, description, logoUrl },
   });
+  return family;
+}
+
+export async function addFamilyAdmin(familyId, { email, role }) {
+  const { family } = await apiFetch(`/club-families/${encodeURIComponent(familyId)}/admins`, {
+    method: "POST",
+    body: { email, role },
+  });
+  return family;
+}
+
+export async function removeFamilyAdmin(familyId, userId) {
+  const { family } = await apiFetch(
+    `/club-families/${encodeURIComponent(familyId)}/admins/${encodeURIComponent(userId)}`,
+    { method: "DELETE" }
+  );
   return family;
 }
 

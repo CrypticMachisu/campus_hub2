@@ -163,6 +163,7 @@ test(
           slug: `family-one-${stamp}`,
           homeCampusId: campusA,
           description: "Shared family identity.",
+          logoUrl: "https://example.com/family-mark.png",
         },
       }),
       201,
@@ -172,6 +173,7 @@ test(
     familyIds.push(familyId);
     assert.equal(created.family.name, `Family One ${stamp}`);
     assert.equal(created.family.homeCampusId, campusA);
+    assert.equal(created.family.logoUrl, "https://example.com/family-mark.png");
     assert.deepEqual(created.family.chapters, []);
 
     assert.equal(
@@ -264,6 +266,7 @@ test(
           name: `Family One Renamed ${stamp}`,
           slug: `family-one-renamed-${stamp}`,
           description: "Updated shared identity.",
+          logoUrl: "https://example.com/family-mark-v2.png",
         },
       }),
       200,
@@ -271,6 +274,7 @@ test(
     );
     assert.equal(renamed.family.name, `Family One Renamed ${stamp}`);
     assert.equal(renamed.family.description, "Updated shared identity.");
+    assert.equal(renamed.family.logoUrl, "https://example.com/family-mark-v2.png");
 
     assert.equal(
       (
@@ -427,6 +431,76 @@ test(
     );
     assert.equal((await api("/v2/club-families/does-not-exist")).status, 404);
 
+    // Delegated identity editors can edit the family but never its chapters.
+    const withAdmin = await expectJson(
+      await api(`/v2/club-families/${familyId}/admins`, {
+        method: "POST",
+        token: tier1.token,
+        body: { email: member.user.email, role: "editor" },
+      }),
+      201,
+      "appoint family editor"
+    );
+    assert.ok(withAdmin.family.admins.some((admin) => admin.email === member.user.email));
+
+    const adminManage = await expectJson(
+      await api("/v2/club-families/manage", { token: member.token }),
+      200,
+      "family editor management list"
+    );
+    assert.deepEqual(
+      adminManage.families.map((family) => family.id),
+      [familyId]
+    );
+
+    const adminEdit = await expectJson(
+      await api(`/v2/club-families/${familyId}`, {
+        method: "PATCH",
+        token: member.token,
+        body: { description: "Edited by a delegated family editor." },
+      }),
+      200,
+      "family editor updates identity"
+    );
+    assert.equal(adminEdit.family.description, "Edited by a delegated family editor.");
+    assert.equal(
+      (
+        await api(`/v2/club-families/${familyId}/chapters`, {
+          method: "POST",
+          token: member.token,
+          body: { clubId: clubB1 },
+        })
+      ).status,
+      403
+    );
+
+    const memberMe = await expectJson(
+      await api("/auth/me", { token: member.token }),
+      200,
+      "family editor session"
+    );
+    assert.ok(memberMe.user.familyAdminOf.includes(familyId));
+
+    const withoutAdmin = await expectJson(
+      await api(`/v2/club-families/${familyId}/admins/${member.user.id}`, {
+        method: "DELETE",
+        token: tier1.token,
+      }),
+      200,
+      "remove family editor"
+    );
+    assert.ok(!withoutAdmin.family.admins.some((admin) => admin.id === member.user.id));
+    assert.equal(
+      (
+        await api(`/v2/club-families/${familyId}`, {
+          method: "PATCH",
+          token: member.token,
+          body: { description: "Should be rejected." },
+        })
+      ).status,
+      403
+    );
+
     const audit = await pool.query(
       "SELECT action FROM audit_log WHERE target_id IN (?) ORDER BY action",
       [familyIds]
@@ -437,6 +511,8 @@ test(
       "club_family.update",
       "club_family.chapter.add",
       "club_family.chapter.remove",
+      "club_family.admin.add",
+      "club_family.admin.remove",
     ]) {
       assert.ok(actions.includes(action), `missing audit action ${action}`);
     }

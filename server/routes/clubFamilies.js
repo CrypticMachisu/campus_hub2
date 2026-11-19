@@ -1,9 +1,9 @@
 // Club family management. These routes are mounted only when
-// CROSS_UNIVERSITY_ENABLED is on, and only tier 1 can change a family.
+// CROSS_UNIVERSITY_ENABLED is on. Tier 1 owns the chapter list; delegated
+// family admins may edit shared identity but never chapter content.
 //
-// A family is shared identity; a chapter is still a normal clubs row. This
-// slice deliberately stops at linking existing clubs. It does not expose
-// family pages, network audiences or cross-campus content.
+// A family is shared identity; a chapter is still a normal clubs row. Network
+// audiences and cross-campus participation remain later slices.
 import { pool } from "../db.js";
 import { requireAuth, requireTier1 } from "../middleware/auth.js";
 import { recordAudit } from "../audit.js";
@@ -32,7 +32,21 @@ function cleanDescription(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-async function loadFamily(familyId) {
+function hasInvalidLogoUrl(value) {
+  return Boolean(value) && (value.length > 500 || !/^https?:\/\//i.test(value));
+}
+
+async function canEditFamily(user, familyId) {
+  if (!user) return false;
+  if (user.role === "tier1") return true;
+  const [rows] = await pool.query(
+    "SELECT 1 FROM club_family_admins WHERE family_id = :familyId AND user_id = :userId",
+    { familyId, userId: user.id }
+  );
+  return Boolean(rows[0]);
+}
+
+async function loadFamily(familyId, { withAdmins = false } = {}) {
   const [familyRows] = await pool.query(
     `SELECT f.*, home.name AS home_campus_name
      FROM club_families f
@@ -43,7 +57,8 @@ async function loadFamily(familyId) {
   if (!familyRows[0]) return null;
 
   const [chapterRows] = await pool.query(
-    `SELECT c.club_id, c.name, c.campus_id, camp.name AS campus_name
+    `SELECT c.club_id, c.name, c.description, c.meeting_time, c.meeting_location,
+            c.campus_id, camp.name AS campus_name
      FROM clubs c
      JOIN campuses camp ON camp.campus_id = c.campus_id
      WHERE c.family_id = :familyId
@@ -52,11 +67,12 @@ async function loadFamily(familyId) {
   );
 
   const family = familyRows[0];
-  return {
+  const result = {
     id: family.family_id,
     name: family.name,
     slug: family.slug,
     description: family.description || "",
+    logoUrl: family.logo_url || "",
     homeCampusId: family.home_campus_id,
     homeCampusName: family.home_campus_name,
     status: family.status,
@@ -64,20 +80,60 @@ async function loadFamily(familyId) {
     chapters: chapterRows.map((chapter) => ({
       id: chapter.club_id,
       name: chapter.name,
+      description: chapter.description || "",
+      meetingTime: chapter.meeting_time || "",
+      meetingLocation: chapter.meeting_location || "",
       campusId: chapter.campus_id,
       campusName: chapter.campus_name,
     })),
   };
+
+  if (withAdmins) {
+    const [adminRows] = await pool.query(
+      `SELECT a.user_id, a.role, u.name, u.email
+       FROM club_family_admins a
+       JOIN users u ON u.user_id = a.user_id
+       WHERE a.family_id = :familyId
+       ORDER BY u.name, u.user_id`,
+      { familyId }
+    );
+    result.admins = adminRows.map((admin) => ({
+      id: admin.user_id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,
+    }));
+  }
+
+  return result;
 }
 
-/** GET /club-families/manage — tier 1: every family and its chapters. */
-clubFamiliesRouter.get("/manage", requireAuth, requireTier1, async (req, res) => {
-  const [rows] = await pool.query(
-    `SELECT family_id FROM club_families ORDER BY status, name, family_id`
-  );
+/** GET /club-families/manage — tier 1: every family; family editors: their own. */
+clubFamiliesRouter.get("/manage", requireAuth, async (req, res) => {
+  let familyIds;
+  if (req.user.role === "tier1") {
+    const [rows] = await pool.query(
+      `SELECT family_id FROM club_families ORDER BY status, name, family_id`
+    );
+    familyIds = rows.map((row) => row.family_id);
+  } else {
+    const [rows] = await pool.query(
+      `SELECT a.family_id
+       FROM club_family_admins a
+       JOIN club_families f ON f.family_id = a.family_id
+       WHERE a.user_id = :userId
+       ORDER BY f.status, f.name, f.family_id`,
+      { userId: req.user.id }
+    );
+    if (rows.length === 0) {
+      return res.status(403).json({ error: "Family admin access required." });
+    }
+    familyIds = rows.map((row) => row.family_id);
+  }
+
   const families = [];
-  for (const row of rows) {
-    families.push(await loadFamily(row.family_id));
+  for (const familyId of familyIds) {
+    families.push(await loadFamily(familyId, { withAdmins: true }));
   }
   res.json({ families });
 });
@@ -109,6 +165,7 @@ clubFamiliesRouter.post("/", requireAuth, requireTier1, async (req, res) => {
   const name = cleanName(body.name);
   const slug = slugify(body.slug || body.name);
   const description = cleanDescription(body.description);
+  const logoUrl = typeof body.logoUrl === "string" ? body.logoUrl.trim() : "";
   const homeCampusId = String(body.homeCampusId || "").trim();
 
   if (!name) return res.status(400).json({ error: "Family name is required." });
@@ -120,6 +177,11 @@ clubFamiliesRouter.post("/", requireAuth, requireTier1, async (req, res) => {
   }
   if (description.length > 2000) {
     return res.status(400).json({ error: "Description must be 2,000 characters or fewer." });
+  }
+  if (hasInvalidLogoUrl(logoUrl)) {
+    return res
+      .status(400)
+      .json({ error: "Family mark must be an http(s) URL under 500 characters." });
   }
   if (!homeCampusId) return res.status(400).json({ error: "Home campus is required." });
   if (!(await campusExists(homeCampusId))) {
@@ -135,13 +197,14 @@ clubFamiliesRouter.post("/", requireAuth, requireTier1, async (req, res) => {
   try {
     await pool.query(
       `INSERT INTO club_families
-         (family_id, name, slug, description, home_campus_id, created_by)
-       VALUES (:id, :name, :slug, :description, :homeCampusId, :createdBy)`,
+         (family_id, name, slug, description, logo_url, home_campus_id, created_by)
+       VALUES (:id, :name, :slug, :description, :logoUrl, :homeCampusId, :createdBy)`,
       {
         id,
         name,
         slug,
         description: description || null,
+        logoUrl: logoUrl || null,
         homeCampusId,
         createdBy: req.user.id,
       }
@@ -157,21 +220,30 @@ clubFamiliesRouter.post("/", requireAuth, requireTier1, async (req, res) => {
     action: "club_family.create",
     targetType: "club_family",
     targetId: id,
-    detail: { name, slug, homeCampusId },
+    detail: { name, slug, logoUrl, homeCampusId },
   });
   res.status(201).json({ family: await loadFamily(id) });
 });
 
-/** PATCH /club-families/:id — tier 1: rename or change the shared URL. */
-clubFamiliesRouter.patch("/:id", requireAuth, requireTier1, async (req, res) => {
+/** PATCH /club-families/:id — tier 1 or a delegated editor: shared identity. */
+clubFamiliesRouter.patch("/:id", requireAuth, async (req, res) => {
   const family = await loadFamily(req.params.id);
   if (!family) return res.status(404).json({ error: "Club family not found." });
+  if (!(await canEditFamily(req.user, family.id))) {
+    return res.status(403).json({ error: "Family editor access required." });
+  }
 
   const body = req.body || {};
   const name = body.name === undefined ? family.name : cleanName(body.name);
   const slug = body.slug === undefined ? family.slug : slugify(body.slug);
   const description =
     body.description === undefined ? family.description : cleanDescription(body.description);
+  const logoUrl =
+    body.logoUrl === undefined
+      ? family.logoUrl
+      : typeof body.logoUrl === "string"
+        ? body.logoUrl.trim()
+        : "";
 
   if (!name) return res.status(400).json({ error: "Family name is required." });
   if (name.length > 150) return res.status(400).json({ error: "Family name is too long." });
@@ -183,6 +255,11 @@ clubFamiliesRouter.patch("/:id", requireAuth, requireTier1, async (req, res) => 
   if (description.length > 2000) {
     return res.status(400).json({ error: "Description must be 2,000 characters or fewer." });
   }
+  if (hasInvalidLogoUrl(logoUrl)) {
+    return res
+      .status(400)
+      .json({ error: "Family mark must be an http(s) URL under 500 characters." });
+  }
 
   const [slugRows] = await pool.query(
     "SELECT family_id FROM club_families WHERE slug = :slug AND family_id <> :id",
@@ -193,9 +270,9 @@ clubFamiliesRouter.patch("/:id", requireAuth, requireTier1, async (req, res) => 
   try {
     await pool.query(
       `UPDATE club_families
-       SET name = :name, slug = :slug, description = :description
+       SET name = :name, slug = :slug, description = :description, logo_url = :logoUrl
        WHERE family_id = :id`,
-      { name, slug, description: description || null, id: family.id }
+      { name, slug, description: description || null, logoUrl: logoUrl || null, id: family.id }
     );
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
@@ -208,9 +285,69 @@ clubFamiliesRouter.patch("/:id", requireAuth, requireTier1, async (req, res) => 
     action: "club_family.update",
     targetType: "club_family",
     targetId: family.id,
-    detail: { from: { name: family.name, slug: family.slug }, to: { name, slug } },
+    detail: {
+      from: { name: family.name, slug: family.slug, logoUrl: family.logoUrl },
+      to: { name, slug, logoUrl },
+    },
   });
-  res.json({ family: await loadFamily(family.id) });
+  res.json({ family: await loadFamily(family.id, { withAdmins: true }) });
+});
+
+/** POST /club-families/:id/admins — tier 1: delegate identity editing. */
+clubFamiliesRouter.post("/:id/admins", requireAuth, requireTier1, async (req, res) => {
+  const family = await loadFamily(req.params.id);
+  if (!family) return res.status(404).json({ error: "Club family not found." });
+
+  const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+  const role = req.body?.role === "editor" ? "editor" : "lead";
+  if (!email) return res.status(400).json({ error: "A user email is required." });
+
+  const [userRows] = await pool.query(
+    `SELECT user_id, name, email, role FROM users WHERE LOWER(email) = LOWER(:email)`,
+    { email }
+  );
+  const target = userRows[0];
+  if (!target) return res.status(404).json({ error: "No account uses that email." });
+  if (target.role === "tier1") {
+    return res.status(400).json({ error: "Tier 1 already manages every family." });
+  }
+
+  await pool.query(
+    `INSERT INTO club_family_admins (family_id, user_id, role)
+     VALUES (:familyId, :userId, :role)
+     ON DUPLICATE KEY UPDATE role = VALUES(role)`,
+    { familyId: family.id, userId: target.user_id, role }
+  );
+  await recordAudit(req, {
+    action: "club_family.admin.add",
+    targetType: "club_family",
+    targetId: family.id,
+    detail: { family: family.name, userId: target.user_id, email: target.email, role },
+  });
+  res.status(201).json({ family: await loadFamily(family.id, { withAdmins: true }) });
+});
+
+/** DELETE /club-families/:id/admins/:userId — tier 1: remove delegated access. */
+clubFamiliesRouter.delete("/:id/admins/:userId", requireAuth, requireTier1, async (req, res) => {
+  const family = await loadFamily(req.params.id);
+  if (!family) return res.status(404).json({ error: "Club family not found." });
+
+  const [result] = await pool.query(
+    `DELETE FROM club_family_admins
+       WHERE family_id = :familyId AND user_id = :userId`,
+    { familyId: family.id, userId: req.params.userId }
+  );
+  if (result.affectedRows === 0) {
+    return res.status(404).json({ error: "That family admin was not found." });
+  }
+
+  await recordAudit(req, {
+    action: "club_family.admin.remove",
+    targetType: "club_family",
+    targetId: family.id,
+    detail: { family: family.name, userId: req.params.userId },
+  });
+  res.json({ family: await loadFamily(family.id, { withAdmins: true }) });
 });
 
 /** POST /club-families/:id/chapters — tier 1: attach an existing club. */

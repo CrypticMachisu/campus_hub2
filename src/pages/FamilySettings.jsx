@@ -4,10 +4,12 @@ import { useAuth } from "../context/AuthContext";
 import { useClubs } from "../context/ClubsContext";
 import { getCampuses } from "../utils/campusesStore";
 import {
+  addFamilyAdmin,
   createFamily,
   getFamilySettings,
   linkFamilyChapter,
   moveFamilyChapter,
+  removeFamilyAdmin,
   unlinkFamilyChapter,
   updateFamily,
 } from "../utils/clubFamiliesStore";
@@ -35,6 +37,7 @@ export default function FamilySettings() {
     slug: "",
     homeCampusId: "",
     description: "",
+    logoUrl: "",
   });
   const [slugTouched, setSlugTouched] = useState(false);
 
@@ -49,15 +52,19 @@ export default function FamilySettings() {
     }
   }, []);
 
+  const canManageFamilies =
+    Boolean(user) && (user.role === "tier1" || (user.familyAdminOf || []).length > 0);
+  const isTier1 = user?.role === "tier1";
+
   useEffect(() => {
     if (authLoading) return;
-    if (!user || user.role !== "tier1") {
+    if (!canManageFamilies) {
       setLoading(false);
       return;
     }
     setLoading(true);
     reload().finally(() => setLoading(false));
-  }, [authLoading, reload, user]);
+  }, [authLoading, canManageFamilies, reload]);
 
   function handleName(value) {
     setForm((current) => ({
@@ -78,7 +85,7 @@ export default function FamilySettings() {
     setCreating(true);
     try {
       const family = await createFamily({ ...form, name, slug });
-      setForm({ name: "", slug: "", homeCampusId: "", description: "" });
+      setForm({ name: "", slug: "", homeCampusId: "", description: "", logoUrl: "" });
       setSlugTouched(false);
       setNotice(`${family.name} was created. Add its chapters next.`);
       await reload();
@@ -103,7 +110,7 @@ export default function FamilySettings() {
     );
   }
 
-  if (!user || user.role !== "tier1") {
+  if (!canManageFamilies) {
     return (
       <main className={styles.page}>
         <header className={styles.header}>
@@ -111,7 +118,7 @@ export default function FamilySettings() {
           <h1>Club families</h1>
         </header>
         <p className={styles.notice}>
-          Tier 1 admin access is required. <Link to="/">Return to the edition</Link>.
+          Tier 1 or family editor access is required. <Link to="/">Return to the edition</Link>.
         </p>
       </main>
     );
@@ -124,8 +131,10 @@ export default function FamilySettings() {
         <h1>Club families</h1>
         <p className={styles.lede}>
           A family is the shared identity for a club with chapters on more than one campus. It owns
-          the name and URL; each chapter keeps its own officers, members and activity. Linking a
-          club here does not change what members see yet.
+          the name, mark and URL; each chapter keeps its own officers, members and activity.
+          {isTier1
+            ? " Tier 1 controls the chapter list and can delegate identity editing below."
+            : " You can edit the shared identity, but the chapter list stays with tier 1."}
         </p>
       </header>
 
@@ -143,84 +152,99 @@ export default function FamilySettings() {
         </p>
       )}
 
-      <section className={styles.section} aria-labelledby="create-family-heading">
-        <h2 id="create-family-heading">Create a family</h2>
-        <p className={styles.sectionLede}>
-          Start with the shared name, a unique lowercase slug, and the campus that owns the
-          identity. Existing clubs can be attached afterwards.
-        </p>
-        <form className={styles.form} onSubmit={handleCreate}>
-          <div className={styles.formRow}>
+      {isTier1 && (
+        <section className={styles.section} aria-labelledby="create-family-heading">
+          <h2 id="create-family-heading">Create a family</h2>
+          <p className={styles.sectionLede}>
+            Start with the shared name, a unique lowercase slug, and the campus that owns the
+            identity. Existing clubs can be attached afterwards.
+          </p>
+          <form className={styles.form} onSubmit={handleCreate}>
+            <div className={styles.formRow}>
+              <label className={styles.field}>
+                Family name
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => handleName(e.target.value)}
+                  placeholder="Kesho Debate Union"
+                  maxLength={150}
+                  required
+                />
+              </label>
+              <label className={styles.field}>
+                Slug
+                <input
+                  type="text"
+                  value={form.slug}
+                  onChange={(e) => {
+                    setSlugTouched(true);
+                    setForm((current) => ({ ...current, slug: e.target.value }));
+                  }}
+                  placeholder="kesho-debate-union"
+                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                  maxLength={80}
+                  required
+                />
+                <span className={styles.hint}>Lowercase letters, numbers and single hyphens.</span>
+              </label>
+            </div>
+            <div className={styles.formRow}>
+              <label className={styles.field}>
+                Home campus
+                <select
+                  value={form.homeCampusId}
+                  onChange={(e) =>
+                    setForm((current) => ({ ...current, homeCampusId: e.target.value }))
+                  }
+                  required
+                >
+                  <option value="">Choose a campus</option>
+                  {campuses.map((campus) => (
+                    <option key={campus.id} value={campus.id}>
+                      {campus.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                Description
+                <input
+                  type="text"
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm((current) => ({ ...current, description: e.target.value }))
+                  }
+                  placeholder="Optional shared description"
+                  maxLength={2000}
+                />
+              </label>
+            </div>
             <label className={styles.field}>
-              Family name
+              Family mark URL <span className={styles.optional}>(optional)</span>
               <input
-                type="text"
-                value={form.name}
-                onChange={(e) => handleName(e.target.value)}
-                placeholder="Kesho Debate Union"
-                maxLength={150}
-                required
+                type="url"
+                value={form.logoUrl}
+                onChange={(e) => setForm((current) => ({ ...current, logoUrl: e.target.value }))}
+                placeholder="https://…/family-mark.png"
+                maxLength={500}
               />
+              <span className={styles.hint}>
+                Use a square image. A monogram is shown when no mark is set.
+              </span>
             </label>
-            <label className={styles.field}>
-              Slug
-              <input
-                type="text"
-                value={form.slug}
-                onChange={(e) => {
-                  setSlugTouched(true);
-                  setForm((current) => ({ ...current, slug: e.target.value }));
-                }}
-                placeholder="kesho-debate-union"
-                pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                maxLength={80}
-                required
-              />
-              <span className={styles.hint}>Lowercase letters, numbers and single hyphens.</span>
-            </label>
-          </div>
-          <div className={styles.formRow}>
-            <label className={styles.field}>
-              Home campus
-              <select
-                value={form.homeCampusId}
-                onChange={(e) =>
-                  setForm((current) => ({ ...current, homeCampusId: e.target.value }))
-                }
-                required
+            <div className={styles.actions}>
+              <button
+                type="submit"
+                className={`${styles.button} ${styles.primary}`}
+                disabled={creating}
               >
-                <option value="">Choose a campus</option>
-                {campuses.map((campus) => (
-                  <option key={campus.id} value={campus.id}>
-                    {campus.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={styles.field}>
-              Description
-              <input
-                type="text"
-                value={form.description}
-                onChange={(e) =>
-                  setForm((current) => ({ ...current, description: e.target.value }))
-                }
-                placeholder="Optional shared description"
-                maxLength={2000}
-              />
-            </label>
-          </div>
-          <div className={styles.actions}>
-            <button
-              type="submit"
-              className={`${styles.button} ${styles.primary}`}
-              disabled={creating}
-            >
-              {creating ? "Creating…" : "Create family"}
-            </button>
-          </div>
-        </form>
-      </section>
+                {creating ? "Creating…" : "Create family"}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
 
       <section className={styles.section} aria-labelledby="families-heading">
         <h2 id="families-heading">Families</h2>
@@ -242,6 +266,7 @@ export default function FamilySettings() {
                 family={family}
                 families={families}
                 clubs={clubs}
+                isTier1={isTier1}
                 onChanged={handleFamilySaved}
               />
             ))}
@@ -252,11 +277,12 @@ export default function FamilySettings() {
   );
 }
 
-function FamilyCard({ family, families, clubs, onChanged }) {
+function FamilyCard({ family, families, clubs, isTier1, onChanged }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(family.name);
   const [slug, setSlug] = useState(family.slug);
   const [description, setDescription] = useState(family.description || "");
+  const [logoUrl, setLogoUrl] = useState(family.logoUrl || "");
   const [clubId, setClubId] = useState("");
   const [moveClubId, setMoveClubId] = useState("");
   const [moveTargetId, setMoveTargetId] = useState("");
@@ -272,6 +298,7 @@ function FamilyCard({ family, families, clubs, onChanged }) {
     setName(family.name);
     setSlug(family.slug);
     setDescription(family.description || "");
+    setLogoUrl(family.logoUrl || "");
     setEditing(true);
     setError("");
   }
@@ -281,7 +308,7 @@ function FamilyCard({ family, families, clubs, onChanged }) {
     setError("");
     setBusy("details");
     try {
-      const updated = await updateFamily(family.id, { name, slug, description });
+      const updated = await updateFamily(family.id, { name, slug, description, logoUrl });
       setEditing(false);
       await onChanged(updated, `${updated.name} was updated.`);
     } catch (err) {
@@ -356,11 +383,14 @@ function FamilyCard({ family, families, clubs, onChanged }) {
   return (
     <li className={styles.familyCard}>
       <div className={styles.cardHead}>
-        <div>
-          <h3>{family.name}</h3>
-          <p className={styles.slug}>
-            {family.slug} · home {family.homeCampusName}
-          </p>
+        <div className={styles.identity}>
+          <FamilyMark family={family} />
+          <div>
+            <h3>{family.name}</h3>
+            <p className={styles.slug}>
+              {family.slug} · home {family.homeCampusName}
+            </p>
+          </div>
         </div>
         <div className={styles.cardActions}>
           <span className={styles.status}>{family.status}</span>
@@ -388,14 +418,16 @@ function FamilyCard({ family, families, clubs, onChanged }) {
                   <strong>{chapter.name}</strong>
                   <small>{chapter.campusName}</small>
                 </span>
-                <button
-                  type="button"
-                  className={styles.chapterRemove}
-                  disabled={Boolean(busy)}
-                  onClick={() => handleRemoveChapter(chapter)}
-                >
-                  {busy === `remove-${chapter.id}` ? "…" : "Detach"}
-                </button>
+                {isTier1 && (
+                  <button
+                    type="button"
+                    className={styles.chapterRemove}
+                    disabled={Boolean(busy)}
+                    onClick={() => handleRemoveChapter(chapter)}
+                  >
+                    {busy === `remove-${chapter.id}` ? "…" : "Detach"}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -440,6 +472,16 @@ function FamilyCard({ family, families, clubs, onChanged }) {
               maxLength={2000}
             />
           </label>
+          <label className={styles.field}>
+            Family mark URL <span className={styles.optional}>(optional)</span>
+            <input
+              type="url"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="https://…/family-mark.png"
+              maxLength={500}
+            />
+          </label>
           <div className={styles.actions}>
             <button
               type="submit"
@@ -459,7 +501,7 @@ function FamilyCard({ family, families, clubs, onChanged }) {
           </div>
         </form>
       )}{" "}
-      {families.length > 1 && family.chapters.length > 0 && (
+      {isTier1 && families.length > 1 && family.chapters.length > 0 && (
         <details className={styles.moveBlock}>
           <summary>Move a chapter to another family</summary>
           <form className={styles.form} onSubmit={handleMoveChapter}>
@@ -516,41 +558,162 @@ function FamilyCard({ family, families, clubs, onChanged }) {
           </form>
         </details>
       )}
-      <form
-        className={styles.form}
-        onSubmit={handleAddChapter}
-        aria-label={`Add a chapter to ${family.name}`}
-      >
+      {isTier1 && (
+        <form
+          className={styles.form}
+          onSubmit={handleAddChapter}
+          aria-label={`Add a chapter to ${family.name}`}
+        >
+          <div className={styles.formRow}>
+            <label className={styles.field}>
+              Add an existing club as a chapter
+              <select value={clubId} onChange={(e) => setClubId(e.target.value)}>
+                <option value="">Choose a club</option>
+                {candidates.map((club) => (
+                  <option key={club.id} value={club.id}>
+                    {club.name} — {club.campusName || "campus"}
+                  </option>
+                ))}
+              </select>
+              <span className={styles.hint}>
+                Only unlinked clubs on a campus without a chapter are listed. A family has at most
+                one chapter per campus.
+              </span>
+            </label>
+            <div className={styles.actions} style={{ alignSelf: "end" }}>
+              <button
+                type="submit"
+                className={`${styles.button} ${styles.primary}`}
+                disabled={!clubId || busy === "chapter"}
+              >
+                {busy === "chapter" ? "Linking…" : "Add chapter"}
+              </button>
+            </div>
+          </div>
+          {candidates.length === 0 && (
+            <p className={styles.hint}>No eligible unlinked clubs are available right now.</p>
+          )}
+        </form>
+      )}
+      {isTier1 && <FamilyAdmins family={family} onChanged={onChanged} />}
+    </li>
+  );
+}
+
+function FamilyMark({ family }) {
+  if (family.logoUrl) {
+    return <img className={styles.familyMark} src={family.logoUrl} alt="" />;
+  }
+  return (
+    <span className={styles.familyMarkFallback} aria-hidden="true">
+      {family.name.slice(0, 2).toUpperCase()}
+    </span>
+  );
+}
+
+function FamilyAdmins({ family, onChanged }) {
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("lead");
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+
+  async function handleAdd(e) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setError("");
+    setBusy("add");
+    try {
+      const updated = await addFamilyAdmin(family.id, { email: email.trim(), role });
+      setEmail("");
+      setRole("lead");
+      await onChanged(updated, `${updated.name} has a new family editor.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function handleRemove(admin) {
+    if (!window.confirm(`Remove ${admin.name}'s family editor access?`)) return;
+    setError("");
+    setBusy(`remove-${admin.id}`);
+    try {
+      const updated = await removeFamilyAdmin(family.id, admin.id);
+      await onChanged(updated, `${admin.name} is no longer a family editor.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  return (
+    <div className={styles.adminBlock}>
+      <h4>Family editors</h4>
+      <p className={styles.hint}>
+        Editors can change the shared name, mark and description. They cannot add, move or detach
+        chapters, or edit chapter content.
+      </p>
+      {family.admins?.length ? (
+        <ul className={styles.adminList}>
+          {family.admins.map((admin) => (
+            <li key={admin.id} className={styles.adminRow}>
+              <span>
+                <strong>{admin.name}</strong>
+                <small>
+                  {admin.email} · {admin.role}
+                </small>
+              </span>
+              <button
+                type="button"
+                className={styles.chapterRemove}
+                disabled={Boolean(busy)}
+                onClick={() => handleRemove(admin)}
+              >
+                {busy === `remove-${admin.id}` ? "…" : "Remove"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={styles.hint}>No delegated editors yet.</p>
+      )}
+      <form className={styles.form} onSubmit={handleAdd}>
         <div className={styles.formRow}>
           <label className={styles.field}>
-            Add an existing club as a chapter
-            <select value={clubId} onChange={(e) => setClubId(e.target.value)}>
-              <option value="">Choose a club</option>
-              {candidates.map((club) => (
-                <option key={club.id} value={club.id}>
-                  {club.name} — {club.campusName || "campus"}
-                </option>
-              ))}
-            </select>
-            <span className={styles.hint}>
-              Only unlinked clubs on a campus without a chapter are listed. A family has at most one
-              chapter per campus.
-            </span>
+            Account email
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="member@campus.edu"
+              required
+            />
           </label>
-          <div className={styles.actions} style={{ alignSelf: "end" }}>
-            <button
-              type="submit"
-              className={`${styles.button} ${styles.primary}`}
-              disabled={!clubId || busy === "chapter"}
-            >
-              {busy === "chapter" ? "Linking…" : "Add chapter"}
-            </button>
-          </div>
+          <label className={styles.field}>
+            Role
+            <select value={role} onChange={(e) => setRole(e.target.value)}>
+              <option value="lead">Lead</option>
+              <option value="editor">Editor</option>
+            </select>
+          </label>
         </div>
-        {candidates.length === 0 && (
-          <p className={styles.hint}>No eligible unlinked clubs are available right now.</p>
-        )}
+        <div className={styles.actions}>
+          <button
+            type="submit"
+            className={`${styles.button} ${styles.primary}`}
+            disabled={busy === "add"}
+          >
+            {busy === "add" ? "Adding…" : "Add family editor"}
+          </button>
+        </div>
       </form>
-    </li>
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
