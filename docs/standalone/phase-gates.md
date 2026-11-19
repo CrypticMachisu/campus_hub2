@@ -122,5 +122,12 @@ are all green. Evidence and timings are in
 
 The gate found and fixed four defects: the v2 event day shift, the wire label
 overlap, the missing club-logo fallback and ambiguous family-boundary copy.
-Phase 5 is complete. The next decision is whether to scope the Phase 6 launch
-hardening candidate or pick up the remaining optional refinements.
+Phase 5 is complete.
+
+## Phase 6 decision
+
+**Deferred.** There is no public launch date and hosting stays local/free, so
+backups, observability, public directory verification and operator runbooks have
+no immediate consumer. The next work is the remaining optional refinements and
+real usage feedback. Revisit this decision when a launch date, public audience or
+remote deployment is proposed; scope Phase 6 then.
