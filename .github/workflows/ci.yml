@@ -373,30 +373,11 @@ jobs:
           npm run migrate:baseline
           npm run set-passwords
 
-      - name: Start the API
-        run: |
-          cd server
-          nohup node server.js > "$RUNNER_TEMP/api.log" 2>&1 &
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:5000/api/health > /dev/null; then
-              echo "API is up"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "API did not start within 30s"
-          cat "$RUNNER_TEMP/api.log"
-          exit 1
-
-      # Sequential on purpose: the security suite intentionally exhausts the
-      # key's rate window, and the route suite would spend a minute recovering
-      # if the two files ran concurrently. Run every suite so the cross-campus
-      # and ops coverage cannot silently rot.
+      # One command, two isolated phases: the functional suites run against a
+      # raised limit so they measure behaviour, then the security suite runs
+      # alone against a fresh server with the configured limit so its 429 and
+      # Retry-After contract is still exercised. See server/scripts/run-tests.mjs.
       - name: Run server tests
         run: |
           cd server
-          node --test --test-concurrency=1 tests/*.test.mjs
-
-      - name: Show API log on failure
-        if: failure()
-        run: cat "$RUNNER_TEMP/api.log"
+          npm test

@@ -18,7 +18,7 @@
     "seed:preview": "node scripts/seed-network-preview.mjs",
     "cleanup:preview": "node scripts/cleanup-network-preview.mjs",
     "refresh:agro": "node scripts/refresh-agro-dates.mjs",
-    "test": "node --test \"tests/**/*.test.mjs\""
+    "test": "node scripts/run-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1170.0",
