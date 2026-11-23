@@ -44,6 +44,262 @@ jobs:
       - name: Version tests (Jest)
         run: npx jest
 
+  browser-tests:
+    name: Workspace browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The browser tests mock the API, so this job needs no MySQL service and
+      # no separate server process. Vite is started by Playwright.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run workspace browser tests
+        run: npm run test:e2e
+
+      - name: Upload browser test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  fullstack-smoke:
+    name: Full-stack browser smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: "%"
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: campushub_standalone
+      JWT_SECRET: ci-only-jwt-secret
+      API_KEYS: ci-only-api-key
+      SEED_PASSWORD: campushub123
+      PORT: "5000"
+      CORS_ORIGINS: http://127.0.0.1:5173
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd server && npm ci
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify the schema-only bootstrap
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -proot -e \
+            "CREATE DATABASE campushub_schema_check CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub_schema_check \
+            < server/campushub_schema.sql
+          test "$(mysql -h 127.0.0.1 -P 3306 -u root -proot -N -e 'SELECT COUNT(*) FROM campushub_schema_check.users')" = "0"
+          test "$(mysql -h 127.0.0.1 -P 3306 -u root -proot -N -e 'SELECT COUNT(*) FROM campushub_schema_check.clubs')" = "0"
+          test "$(mysql -h 127.0.0.1 -P 3306 -u root -proot -N -e 'SELECT COUNT(*) FROM campushub_schema_check.categories')" = "7"
+
+      - name: Verify first-operator bootstrap
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_USER: root
+          DB_PASSWORD: root
+          DB_NAME: campushub_schema_check
+          BOOTSTRAP_ADMIN_EMAIL: ci-operator@schema-check.example
+          BOOTSTRAP_ADMIN_PASSWORD: ci-operator-password
+          BOOTSTRAP_CAMPUS_NAME: CI Schema Check
+        run: |
+          cd server
+          npm run bootstrap:admin
+          test "$(mysql -h 127.0.0.1 -P 3306 -u root -proot -N -e 'SELECT role FROM campushub_schema_check.users WHERE email = "ci-operator@schema-check.example"')" = "tier1"
+
+      - name: Load the standalone schema
+        run: mysql -h 127.0.0.1 -P 3306 -u root -proot < server/campushub_database.sql
+
+      - name: Set demo passwords and prepare the waitlist fixture
+        run: |
+          cd server
+          npm run set-passwords
+          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub_standalone < ../scripts/smoke-fixture.sql
+
+      - name: Start the API
+        run: |
+          cd server
+          nohup node server.js > "$RUNNER_TEMP/api.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5000/api/ready > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not start within 30s"
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+
+      - name: Start the frontend
+        run: |
+          VITE_API_URL=http://127.0.0.1:5000/api \
+          VITE_API_KEY=ci-only-api-key \
+          nohup npm run dev -- --host 127.0.0.1 --port 5173 > "$RUNNER_TEMP/vite.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5173 > /dev/null; then
+              echo "Frontend is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Frontend did not start within 30s"
+          cat "$RUNNER_TEMP/vite.log"
+          exit 1
+
+      - name: Run the real browser flow
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:5173
+          SMOKE_API_HEALTH_URL: http://127.0.0.1:5000/api/health
+        run: |
+          # Resolve the exact Playwright Chromium path instead of pinning a
+          # build number that changes when the package updates.
+          CHROME_PATH=$(node -e "console.log(require('@playwright/test').chromium.executablePath())")
+          export CHROME_PATH
+          npm run smoke
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo '--- API log ---'
+          cat "$RUNNER_TEMP/api.log" 2>/dev/null || true
+          echo '--- Vite log ---'
+          cat "$RUNNER_TEMP/vite.log" 2>/dev/null || true
+
+  docker-smoke:
+    name: Docker stack smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      COMPOSE_PROJECT_NAME: kesho-ci
+      MYSQL_ROOT_PASSWORD: ci-root-password
+      MYSQL_PASSWORD: ci-db-password
+      JWT_SECRET: ci-only-jwt-secret
+      API_KEYS: ci-only-api-key
+      VITE_API_KEY: ci-only-api-key
+      SEED_PASSWORD: campushub123
+      BOOTSTRAP_SQL: ./server/campushub_database.sql
+      PUBLIC_URL: http://127.0.0.1:18080
+      CORS_ORIGINS: http://127.0.0.1:18080
+      WEB_PORT: "18080"
+      API_PORT: "15000"
+      CROSS_UNIVERSITY_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate the Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build the stack
+        run: docker compose build
+
+      - name: Start the stack
+        run: |
+          docker compose up -d
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:18080/healthz > /dev/null; then
+              echo "The nginx/prerender stack is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The Docker stack did not become healthy within 120s"
+          docker compose ps
+          docker compose logs --no-color
+          exit 1
+
+      - name: Set demo passwords
+        run: docker compose run --rm migrate npm run set-passwords
+
+      - name: Prepare the waitlist fixture
+        run: |
+          docker compose exec -T db sh -c \
+            'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+            < scripts/smoke-fixture.sql
+
+      # This is the only job that exercises the nginx-to-prerender gateway. A
+      # plain curl catches a broken proxy or missing JSON-LD before the browser
+      # smoke spends time logging in.
+      - name: Check crawler metadata and JSON-LD
+        run: |
+          curl -fsS http://127.0.0.1:18080/clubs/club-01 \
+            | grep -q '"@type":"Organization"'
+          curl -fsS http://127.0.0.1:18080/events/event-05 \
+            | grep -q '"@type":"Event"'
+          curl -fsS http://127.0.0.1:18080/dashboard/club-01 \
+            | grep -q 'name="robots" content="noindex, nofollow"'
+
+      - name: Run the real browser flow through nginx
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:18080
+          SMOKE_API_HEALTH_URL: http://127.0.0.1:15000/api/health
+        run: |
+          CHROME_PATH=$(node -e "console.log(require('@playwright/test').chromium.executablePath())")
+          export CHROME_PATH
+          npm run smoke
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v --remove-orphans
+
   api-tests:
     name: Server tests (MySQL + API)
     runs-on: ubuntu-latest
@@ -72,13 +328,14 @@ jobs:
       DB_PORT: "3306"
       DB_USER: root
       DB_PASSWORD: root
-      DB_NAME: campushub
+      DB_NAME: campushub_standalone
       # Values used only inside this job. They are not secrets because they
       # protect nothing outside the disposable runner.
       JWT_SECRET: ci-only-jwt-secret
       API_KEYS: ci-only-api-key
       SEED_PASSWORD: campushub123
       PORT: "5000"
+      CROSS_UNIVERSITY_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
 
@@ -95,8 +352,8 @@ jobs:
           npm ci
           cd server && npm ci
 
-      # The schema file drops and recreates `campushub` itself, which is
-      # exactly what we want in a throwaway MySQL service container.
+      # The schema file drops and recreates `campushub_standalone` itself,
+      # which is exactly what we want in a throwaway MySQL service container.
       - name: Load schema and demo data
         run: mysql -h 127.0.0.1 -P 3306 -u root -proot < server/campushub_database.sql
 
@@ -106,9 +363,9 @@ jobs:
       # files are re-runnable (CREATE TABLE IF NOT EXISTS / INSERT IGNORE).
       - name: Load the agro tables
         run: |
-          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub < server/migrations/010_agro_opportunities.sql
-          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub < server/migrations/011_seed_agro_interest.sql
-          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub < server/migrations/012_link_seed_growers.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub_standalone < server/migrations/010_agro_opportunities.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub_standalone < server/migrations/011_seed_agro_interest.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -proot campushub_standalone < server/migrations/012_link_seed_growers.sql
 
       - name: Baseline migrations and set demo passwords
         run: |
@@ -116,33 +373,11 @@ jobs:
           npm run migrate:baseline
           npm run set-passwords
 
-      - name: Start the API
-        run: |
-          cd server
-          nohup node server.js > "$RUNNER_TEMP/api.log" 2>&1 &
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:5000/api/health > /dev/null; then
-              echo "API is up"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "API did not start within 30s"
-          cat "$RUNNER_TEMP/api.log"
-          exit 1
-
-      # Sequential on purpose: the security suite intentionally exhausts the
-      # key's rate window, and the route suite would spend a minute recovering
-      # if the two files ran concurrently.
+      # One command, two isolated phases: the functional suites run against a
+      # raised limit so they measure behaviour, then the security suite runs
+      # alone against a fresh server with the configured limit so its 429 and
+      # Retry-After contract is still exercised. See server/scripts/run-tests.mjs.
       - name: Run server tests
         run: |
           cd server
-          node --test --test-concurrency=1 \
-            tests/api-security.test.mjs \
-            tests/migrate.test.mjs \
-            tests/signups-comments.test.mjs \
-            tests/agro-opportunities.test.mjs
-
-      - name: Show API log on failure
-        if: failure()
-        run: cat "$RUNNER_TEMP/api.log"
+          npm test

@@ -59,12 +59,11 @@ test("Unknown API subpaths under known mounts return a JSON 404 without a key", 
     "/auth/not-a-route",
     "/users/not-a-route",
     "/admin-requests/not-a-route",
-    "/clubs/not-a-route",
+    "/clubs/not-a-route/extra",
     "/events/not-a-route",
     "/signups/not-a-route",
     "/comments/not-a-route",
     "/announcements/not-a-route",
-    "/partner/not-a-route",
     "/admin/not-a-route",
   ];
 
@@ -83,11 +82,11 @@ test("Every mounted API router still requires a key on its known routes", async 
     ["GET", "/users"],
     ["GET", "/admin-requests"],
     ["GET", "/clubs"],
+    ["GET", "/clubs/club-01"],
     ["GET", "/events"],
     ["GET", "/signups/mine"],
     ["GET", "/comments?targetType=event&targetId=event-01"],
     ["GET", "/announcements?clubId=club-01"],
-    ["GET", "/partner/produce"],
     ["GET", "/v2/agro/opportunities"],
     ["GET", "/admin"],
   ];
@@ -234,5 +233,5 @@ test("GET /admin rejects a non-admin account with 403", async () => {
   const res = await apiGet("/admin", { ...withValidKey, Authorization: `Bearer ${token}` });
   assert.equal(res.status, 403);
   const body = await res.json();
-  assert.match(body.error, /Tier 1/i);
+  assert.match(body.error, /platform admin/i);
 });

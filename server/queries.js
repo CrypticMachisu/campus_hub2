@@ -8,17 +8,44 @@ import { rowToUser } from "./rowMappers.js";
  */
 export async function findUserById(userId) {
   const [rows] = await pool.query(
-    `SELECT u.*,
+    `SELECT u.*, camp.name AS campus_name, camp.slug AS campus_slug,
        GROUP_CONCAT(DISTINCT ca.club_id) AS admin_club_ids,
        GROUP_CONCAT(DISTINCT cm.club_id) AS member_club_ids
      FROM users u
+     LEFT JOIN campuses camp ON camp.campus_id = u.campus_id
      LEFT JOIN club_admins ca ON ca.user_id = u.user_id
      LEFT JOIN club_members cm ON cm.user_id = u.user_id
      WHERE u.user_id = :userId
-     GROUP BY u.user_id`,
+     GROUP BY u.user_id, camp.name, camp.slug`,
     { userId }
   );
-  return rows[0] ? rowToUser(rows[0]) : null;
+  return rows[0] ? hydrateCampusAdmin(rowToUser(rows[0])) : null;
+}
+
+/**
+ * A campus admin manages every club on their campus. We derive that list at
+ * authentication time so canManageClub() can stay synchronous in every route.
+ * A newly created club appears on the next request; no token rewrite needed.
+ */
+export async function hydrateCampusAdmin(user) {
+  if (!user) return user;
+
+  let hydrated = user;
+  if (user.role === "campus_admin" && user.campusId) {
+    const [rows] = await pool.query("SELECT club_id FROM clubs WHERE campus_id = :campusId", {
+      campusId: user.campusId,
+    });
+    hydrated = { ...hydrated, adminForClubs: rows.map((row) => row.club_id) };
+  }
+
+  // Family admins are a separate link, not a role, so surface the families
+  // they may edit for navigation and client-side affordances. The route
+  // guards still query the link table on every write.
+  const [familyRows] = await pool.query(
+    "SELECT family_id FROM club_family_admins WHERE user_id = :userId",
+    { userId: user.id }
+  );
+  return { ...hydrated, familyAdminOf: familyRows.map((row) => row.family_id) };
 }
 
 /**
@@ -69,14 +96,15 @@ export async function demoteUserFromClubAdmin(userId, clubId) {
 /** Same as findUserById, but by email (case-insensitive) — used by login. Returns the raw row (includes password_hash), not the mapped shape. */
 export async function findUserRowByEmail(email) {
   const [rows] = await pool.query(
-    `SELECT u.*,
+    `SELECT u.*, camp.name AS campus_name, camp.slug AS campus_slug,
        GROUP_CONCAT(DISTINCT ca.club_id) AS admin_club_ids,
        GROUP_CONCAT(DISTINCT cm.club_id) AS member_club_ids
      FROM users u
+     LEFT JOIN campuses camp ON camp.campus_id = u.campus_id
      LEFT JOIN club_admins ca ON ca.user_id = u.user_id
      LEFT JOIN club_members cm ON cm.user_id = u.user_id
      WHERE LOWER(u.email) = LOWER(:email)
-     GROUP BY u.user_id`,
+     GROUP BY u.user_id, camp.name, camp.slug`,
     { email }
   );
   return rows[0] || null;

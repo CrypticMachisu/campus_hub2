@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useClubs } from "../context/ClubsContext";
 import { getAllEvents } from "../utils/eventsStore";
+import { getClub } from "../utils/clubsStore";
+import { CROSS_UNIVERSITY_ENABLED } from "../utils/features";
 import EventCard from "../components/EventCard";
 import CommentSection from "../components/CommentSection";
 import { useAuth } from "../context/AuthContext";
@@ -10,8 +12,11 @@ import { joinClub } from "../utils/membershipStore";
 import { requestClubAdmin } from "../utils/adminStore";
 import { SkeletonGroup, ClubProfileSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
+import ErrorBoundary from "../components/ErrorBoundary";
 import AgriClubSpotlight, { AGRI_CLUB_ID } from "../components/AgriClubSpotlight";
-import AgroOpportunities from "../components/AgroOpportunities";
+import CommitmentsSection from "../components/CommitmentsSection";
+import ClubFeed from "../components/ClubFeed";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./ClubProfile.module.css";
 
 export default function ClubProfile() {
@@ -20,13 +25,51 @@ export default function ClubProfile() {
   const club = clubs.find((c) => c.id === clubId);
   const { user } = useAuth();
 
+  const [remoteClub, setRemoteClub] = useState(null);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const profileClub = club || remoteClub;
+  const isRemote = Boolean(
+    profileClub && user && profileClub.campusId !== user.campusId && user.role !== "tier1"
+  );
+
   const [events, setEvents] = useState([]);
   const [eventsError, setEventsError] = useState("");
   const [eventsReloadKey, setEventsReloadKey] = useState(0);
 
+  usePageMetadata({
+    title: profileClub?.name || "Club",
+    description: profileClub?.description || "View a campus club's events and updates.",
+  });
+
+  // A club opened from My network is not in the local club context. Fetch its
+  // identity through the network scope; the server still decides eligibility.
+  useEffect(() => {
+    if (club || clubsLoading || !CROSS_UNIVERSITY_ENABLED || !user) return;
+    let cancelled = false;
+    setRemoteClub(null);
+    setRemoteLoading(true);
+    getClub(clubId, { scope: "network" })
+      .then((result) => {
+        if (!cancelled) setRemoteClub(result);
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteClub(null);
+      })
+      .finally(() => {
+        if (!cancelled) setRemoteLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [club, clubId, clubsLoading, user]);
+
   useEffect(() => {
     let cancelled = false;
     setEventsError("");
+    if (isRemote) {
+      setEvents([]);
+      return;
+    }
     getAllEvents()
       .then((result) => {
         if (!cancelled) setEvents(result);
@@ -39,9 +82,9 @@ export default function ClubProfile() {
     return () => {
       cancelled = true;
     };
-  }, [eventsReloadKey]);
+  }, [eventsReloadKey, isRemote]);
 
-  if (clubsLoading) {
+  if (clubsLoading || remoteLoading) {
     return (
       <div className={styles.page}>
         <SkeletonGroup label="Loading club…">
@@ -60,13 +103,16 @@ export default function ClubProfile() {
   }
 
   // Global consistency layout check
-  if (!club) {
+  if (!profileClub) {
     return (
       <div className={styles.notFoundPage}>
         <h2>Club Not Found</h2>
-        <p>The club profile you are trying to visit does not exist.</p>
-        <Link to="/" className={styles.backLink}>
-          Return to Feed Discovery
+        <p>
+          The club profile you are trying to visit does not exist, or it is outside your approved
+          network.
+        </p>
+        <Link to={CROSS_UNIVERSITY_ENABLED && user ? "/network" : "/"} className={styles.backLink}>
+          {CROSS_UNIVERSITY_ENABLED && user ? "Back to My network" : "Back to this week"}
         </Link>
       </div>
     );
@@ -74,33 +120,57 @@ export default function ClubProfile() {
 
   // Filter and sort events cleanly via custom dynamic timestamps parsing
   const clubEvents = events
-    .filter((e) => e.clubId === club.id)
+    .filter((e) => e.clubId === profileClub.id)
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 
   return (
     <div className={styles.page}>
+      {isRemote && (
+        <Link to="/network" className={styles.backToNetwork}>
+          ← My network
+        </Link>
+      )}
+
       {/* Structural Profile Banner Header */}
       <header className={styles.clubHeader}>
         <div className={styles.headerMain}>
-          <img src={club.logoUrl} alt={`${club.name} logo`} className={styles.logo} />
+          {profileClub.logoUrl ? (
+            <img
+              src={profileClub.logoUrl}
+              alt={`${profileClub.name} logo`}
+              className={styles.logo}
+            />
+          ) : (
+            <span className={styles.logoFallback} aria-hidden="true">
+              {profileClub.name.slice(0, 2).toUpperCase()}
+            </span>
+          )}
           <div>
-            <span className={styles.categoryBadge}>{club.category}</span>
-            <h1>{club.name}</h1>
+            <span className={styles.categoryBadge}>{profileClub.category}</span>
+            <h1>{profileClub.name}</h1>
+            {isRemote && <p className={styles.remoteCampus}>{profileClub.campusName}</p>}
+            {profileClub.familyId && (
+              <p className={styles.familyLinkRow}>
+                <Link to={`/families/${profileClub.familyId}`} className={styles.familyLink}>
+                  Part of {profileClub.familyName || "a club family"}
+                </Link>
+              </p>
+            )}
           </div>
         </div>
-        <p className={styles.description}>{club.description}</p>
+        <p className={styles.description}>{profileClub.description}</p>
 
         <div className={styles.metaInfo}>
           <p>
-            <strong>Meeting Interval:</strong> {club.meetingTime}
+            <strong>Meets:</strong> {profileClub.meetingTime}
           </p>
           <p>
-            <strong>Location Spot:</strong> {club.meetingLocation}
+            <strong>Where:</strong> {profileClub.meetingLocation}
           </p>
         </div>
 
         <div className={styles.tagList}>
-          {club.tags.map((tag) => (
+          {profileClub.tags.map((tag) => (
             <span key={tag} className={styles.tag}>
               #{tag}
             </span>
@@ -108,22 +178,45 @@ export default function ClubProfile() {
         </div>
       </header>
 
-      {user && user.role !== "tier1" && <MembershipBar club={club} />}
+      {isRemote && (
+        <div className={styles.remoteNote}>
+          <p>
+            <strong>Read-only network view.</strong> This club shares selected events, commitments
+            and posts with My network. Its membership, rosters and discussions stay on{" "}
+            {profileClub.campusName}.
+          </p>
+          <Link
+            to={`/campus-access?campus=${encodeURIComponent(profileClub.campusId)}`}
+            className={styles.requestAccess}
+          >
+            Request access to {profileClub.campusName} <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+      )}
 
-      {user && club && !canManageClub(user, club.id) && <AdminRequestButton clubId={club.id} />}
+      {!isRemote && user && !["tier1", "campus_admin"].includes(user.role) && (
+        <MembershipBar club={profileClub} />
+      )}
 
-      {/* Agri club only: live AgroConnect data used to market the platform and recruit members */}
-      {club.id === AGRI_CLUB_ID && <AgriClubSpotlight />}
+      {!isRemote && user && profileClub && !canManageClub(user, profileClub.id) && (
+        <AdminRequestButton clubId={profileClub.id} />
+      )}
 
-      {/* Agri club only: farm visits, planting days and other grower activities.
-          These are our own records, so they render even when AgroConnect is down. */}
-      {club.id === AGRI_CLUB_ID && <AgroOpportunities />}
+      {/* Agri club only: the club's own recruitment block */}
+      {!isRemote && profileClub.id === AGRI_CLUB_ID && <AgriClubSpotlight />}
 
       {/* Target Club Scheduled Events Segment */}
 
       <section id="events" className={styles.eventsSection}>
-        <h2>Upcoming Events</h2>
-        {eventsError ? (
+        <h2>{isRemote ? "Campus activity" : "Next on the programme"}</h2>
+        {isRemote ? (
+          <div className={styles.emptyEventsBox}>
+            <p>
+              Network events, commitments and posts are listed in My network. Campus-only activity,
+              club membership and discussions remain on {profileClub.campusName}.
+            </p>
+          </div>
+        ) : eventsError ? (
           <ErrorState
             title="Events didn't load"
             message={eventsError}
@@ -142,14 +235,37 @@ export default function ClubProfile() {
         )}
       </section>
 
-      {/* Rule 2: Explicit semantic hr element divider separator */}
-      <hr className={styles.sectionDivider} />
+      {/* Every club's dated activities — the Agri-only panel is gone. */}
+      {!isRemote && (
+        <CommitmentsSection
+          clubId={profileClub.id}
+          canPublishToNetwork={Boolean(profileClub.familyId)}
+        />
+      )}
 
-      {/* Rule 2: Contoured, distinct background tint wrapper isolating conversation tree */}
-      <section className={styles.commentsWrapper}>
-        <h2>Club Discussion</h2>
-        <CommentSection targetType="club" targetId={club.id} />
-      </section>
+      {/* The club's own dispatches, with comments at each permalink. */}
+      {!isRemote && (
+        <ErrorBoundary
+          title="The club posts didn't render"
+          resetKey={profileClub.id}
+          message="The rest of the club page is still available. Try this section again."
+        >
+          <ClubFeed clubId={profileClub.id} canPublishToNetwork={Boolean(profileClub.familyId)} />
+        </ErrorBoundary>
+      )}
+
+      {!isRemote && (
+        <>
+          {/* Rule 2: Explicit semantic hr element divider separator */}
+          <hr className={styles.sectionDivider} />
+
+          {/* Rule 2: Contoured, distinct background tint wrapper isolating conversation tree */}
+          <section className={styles.commentsWrapper}>
+            <h2>Club discussion</h2>
+            <CommentSection targetType="club" targetId={profileClub.id} />
+          </section>
+        </>
+      )}
     </div>
   );
 }
@@ -198,7 +314,9 @@ function MembershipBar({ club }) {
       >
         {status === "joining" ? "Joining…" : `Join ${club.name}`}
       </button>
-      <p className={styles.joinHint}>Joining swaps this discovery feed for your club workspace.</p>
+      <p className={styles.joinHint}>
+        Join this club to see its events and updates in your workspace.
+      </p>
       {status === "error" && <p className={styles.error}>{error}</p>}
     </div>
   );
@@ -215,7 +333,7 @@ function AdminRequestButton({ clubId }) {
     try {
       await requestClubAdmin(clubId);
       setStatus("sent");
-      setMessage("Request sent — a tier 1 admin will review it.");
+      setMessage("Request sent — a platform admin will review it.");
     } catch (err) {
       setStatus("error");
       setMessage(err.message);

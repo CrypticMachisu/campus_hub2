@@ -1,0 +1,762 @@
+// Commitments — a dated activity a member can actually commit to.
+//
+// A commitment belongs to one club, has a host, a place, a time and an
+// optional capacity. Signups past capacity are waitlisted in arrival order
+// (created_at, then id as the tie-break), which is the same rule event RSVPs
+// use. Positions are computed on read so a cancellation promotes the next
+// person without a background job.
+//
+// Reads are public: the club page and the commitment page are part of the
+// edition. Signed-in readers also get `joined` and their own waitlist
+// position. Creating, deleting and viewing the roster require managing the
+// owning club.
+import { pool } from "../db.js";
+import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
+import { readCampusScope, campusInUserNetwork } from "../campus.js";
+import { createApiRouter } from "../middleware/apiGuards.js";
+import { recordAudit } from "../audit.js";
+import { parseStartTime } from "./events.js";
+import { notifyUsers } from "../notify.js";
+import { crossUniversityEnabled } from "../features.js";
+
+export const commitmentsRouter = createApiRouter();
+
+const KINDS = [
+  "farm_visit",
+  "tree_planting",
+  "harvest",
+  "volunteering",
+  "meeting",
+  "workshop",
+  "activity",
+];
+
+/** Human label for a kind, mirrored in src/utils/commitmentsStore.js. */
+export function kindLabel(kind) {
+  return (
+    {
+      farm_visit: "Farm visit",
+      tree_planting: "Tree planting",
+      harvest: "Harvest",
+      volunteering: "Volunteering",
+      meeting: "Meeting",
+      workshop: "Workshop",
+      activity: "Activity",
+    }[kind] || "Activity"
+  );
+}
+
+const COMMITMENT_AUDIENCES = new Set(["campus", "network", "public"]);
+
+/** Audience is conservative: campus default, network needs the flag and a family. */
+function validateCommitmentAudience(value, club) {
+  const audience = value === undefined ? "campus" : String(value).trim().toLowerCase();
+  if (!COMMITMENT_AUDIENCES.has(audience)) return { error: "Choose a valid commitment audience." };
+  if (audience === "public") {
+    return { error: "Public commitments aren't available yet." };
+  }
+  if (audience === "network") {
+    if (!crossUniversityEnabled()) {
+      return { error: "Network commitments aren't available here." };
+    }
+    if (!club?.family_id) {
+      return { error: "Only a club in a family can publish to the network." };
+    }
+  }
+  return { audience };
+}
+
+const COMMITMENT_QUERY = `
+  SELECT c.*, cl.campus_id AS club_campus_id, cl.name AS club_name,
+         cl.family_id, cp.name AS campus_name,
+         DATE_FORMAT(c.starts_at, '%Y-%m-%dT%H:%i') AS starts_local,
+         (SELECT COUNT(*) FROM commitment_signups s
+           WHERE s.commitment_id = c.commitment_id) AS signup_count
+  FROM commitments c
+  JOIN clubs cl ON cl.club_id = c.club_id
+  JOIN campuses cp ON cp.campus_id = cl.campus_id
+`;
+
+/** Commitment row -> API shape. `startsAt` follows the v2 events convention. */
+function rowToCommitment(row, joinedIds = new Set()) {
+  return {
+    id: row.commitment_id,
+    clubId: row.club_id,
+    clubName: row.club_name || "",
+    campusName: row.campus_name || "",
+    audience: row.audience || "campus",
+    kind: row.kind,
+    kindLabel: kindLabel(row.kind),
+    title: row.title,
+    description: row.description || "",
+    location: row.location,
+    county: row.county || "",
+    // DATE_FORMAT keeps the stored East Africa wall clock; no Date round-trip.
+    startsAt: `${String(row.starts_local)}:00+03:00`,
+    capacity: row.capacity == null ? null : Number(row.capacity),
+    hostName: row.host_name || "",
+    source: row.source,
+    signupCount: Number(row.signup_count || 0),
+    joined: joinedIds.has(row.commitment_id),
+  };
+}
+
+/** Where this signup sits among the commitment's signups (1-based). */
+async function positionOf(commitmentId, signupId) {
+  const [rows] = await pool.query(
+    `SELECT signup_id FROM commitment_signups
+     WHERE commitment_id = :commitmentId
+     ORDER BY created_at, signup_id`,
+    { commitmentId }
+  );
+  const index = rows.findIndex((row) => row.signup_id === signupId);
+  return index === -1 ? null : index + 1;
+}
+
+function waitlistedFor(capacity, position) {
+  return capacity != null && position != null && position > Number(capacity);
+}
+
+/** "Thu 19 Nov, 08:00" from an East Africa wall-clock date and time. */
+function describeStart(date, time = "") {
+  const [year, month, day] = String(date).split("-").map(Number);
+  if (!year || !month || !day) return `${date} ${time}`.trim();
+  const label = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+  return time ? `${label}, ${time.slice(0, 5)}` : label;
+}
+
+/** Signup user ids, read before a cancel deletes the rows. */
+async function signupUserIds(commitmentId) {
+  const [rows] = await pool.query(
+    "SELECT user_id FROM commitment_signups WHERE commitment_id = :id",
+    { id: commitmentId }
+  );
+  return rows.map((row) => row.user_id);
+}
+
+/** The ids of this user's commitment signups, for the `joined` flag. */
+async function joinedIdsFor(user) {
+  if (!user) return new Set();
+  const [rows] = await pool.query(
+    "SELECT commitment_id FROM commitment_signups WHERE user_id = :userId",
+    { userId: user.id }
+  );
+  return new Set(rows.map((row) => row.commitment_id));
+}
+
+// GET /commitments/mine — the signed-in member's commitments, with position.
+// Registered before /:id so "mine" is never read as an id.
+commitmentsRouter.get("/mine", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT c.*, DATE_FORMAT(c.starts_at, '%Y-%m-%dT%H:%i') AS starts_local,
+            (SELECT COUNT(*) FROM commitment_signups s
+              WHERE s.commitment_id = c.commitment_id) AS signup_count,
+            s.signup_id, s.created_at AS signed_at,
+            (SELECT COUNT(*) FROM commitment_signups o
+              WHERE o.commitment_id = c.commitment_id
+                AND (o.created_at < s.created_at
+                     OR (o.created_at = s.created_at AND o.signup_id < s.signup_id))) AS ahead_count
+     FROM commitment_signups s
+     JOIN commitments c ON c.commitment_id = s.commitment_id
+     WHERE s.user_id = :userId
+     ORDER BY c.starts_at, c.commitment_id`,
+    { userId: req.user.id }
+  );
+
+  res.json({
+    commitments: rows.map((row) => {
+      const position = Number(row.ahead_count) + 1;
+      const joined = new Set([row.commitment_id]);
+      return {
+        ...rowToCommitment(row, joined),
+        signup: {
+          id: row.signup_id,
+          commitmentId: row.commitment_id,
+          position,
+          waitlisted: waitlistedFor(row.capacity, position),
+          createdAt: row.signed_at,
+        },
+      };
+    }),
+  });
+});
+
+/**
+ * GET /commitments?clubId=…&upcoming=0
+ * Public list, earliest first. `upcoming=0` includes past commitments for the
+ * officer view; the edition defaults to upcoming only.
+ */
+commitmentsRouter.get("/", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+
+  const clubId = typeof req.query.clubId === "string" ? req.query.clubId.trim() : "";
+  const includePast = req.query.upcoming === "0";
+
+  const where = [];
+  const params = {};
+  if (scope.campusIds) {
+    const keys = scope.campusIds.map((campusId, index) => {
+      const key = `campusId${index}`;
+      params[key] = campusId;
+      return `:${key}`;
+    });
+    where.push(`cl.campus_id IN (${keys.join(", ")})`);
+    where.push("c.audience = 'network'");
+    where.push("cl.family_id IS NOT NULL");
+  } else if (scope.campusId) {
+    where.push("cl.campus_id = :campusId");
+    where.push("c.audience IN ('campus', 'network')");
+    params.campusId = scope.campusId;
+  }
+  if (clubId) {
+    where.push("c.club_id = :clubId");
+    params.clubId = clubId;
+  }
+  if (!includePast) where.push("c.starts_at >= NOW()");
+
+  const [rows] = await pool.query(
+    `${COMMITMENT_QUERY}
+     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+     ORDER BY c.starts_at, c.commitment_id`,
+    params
+  );
+
+  const joinedIds = await joinedIdsFor(req.user);
+  res.json({ commitments: rows.map((row) => rowToCommitment(row, joinedIds)) });
+});
+
+/** GET /commitments/:id — one commitment, plus the reader's own signup. */
+commitmentsRouter.get("/:id", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+
+  const [rows] = await pool.query(`${COMMITMENT_QUERY} WHERE c.commitment_id = :id`, {
+    id: req.params.id,
+  });
+  const row = rows[0];
+  const networkRead =
+    scope.campusIds &&
+    row?.audience === "network" &&
+    row?.family_id &&
+    scope.campusIds.includes(row.club_campus_id);
+  if (
+    !row ||
+    (scope.campusIds && !networkRead) ||
+    (scope.campusId && row.club_campus_id !== scope.campusId)
+  ) {
+    return res.status(404).json({ error: "Commitment not found." });
+  }
+
+  const commitment = rowToCommitment(rows[0], await joinedIdsFor(req.user));
+  let signup = null;
+
+  if (req.user) {
+    const [mine] = await pool.query(
+      "SELECT * FROM commitment_signups WHERE commitment_id = :id AND user_id = :userId",
+      { id: req.params.id, userId: req.user.id }
+    );
+    if (mine[0]) {
+      const position = await positionOf(req.params.id, mine[0].signup_id);
+      signup = {
+        id: mine[0].signup_id,
+        commitmentId: req.params.id,
+        position,
+        waitlisted: waitlistedFor(commitment.capacity, position),
+        createdAt: mine[0].created_at,
+      };
+    }
+  }
+
+  res.json({ commitment, signup });
+});
+
+/**
+ * POST /commitments — publish a commitment.
+ * Managers of the target club only, checked against the club's own admins.
+ */
+commitmentsRouter.post("/", requireAuth, async (req, res) => {
+  const body = req.body || {};
+  const clubId = typeof body.clubId === "string" ? body.clubId.trim() : "";
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
+
+  const [clubRows] = await pool.query(
+    "SELECT club_id, family_id FROM clubs WHERE club_id = :clubId",
+    { clubId }
+  );
+  if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
+  if (!canManageClub(req.user, clubId)) {
+    return res.status(403).json({ error: "You need club admin access to do that." });
+  }
+
+  const audienceResult = validateCommitmentAudience(body.audience, clubRows[0]);
+  if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+  const { audience } = audienceResult;
+
+  const kind = typeof body.kind === "string" ? body.kind.trim() : "activity";
+  if (!KINDS.includes(kind)) {
+    return res.status(400).json({ error: "Choose a valid commitment type." });
+  }
+
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  if (!title) return res.status(400).json({ error: "Title is required." });
+  if (title.length > 150) return res.status(400).json({ error: "Title is too long." });
+
+  const location = typeof body.location === "string" ? body.location.trim() : "";
+  if (!location) return res.status(400).json({ error: "Location is required." });
+  if (location.length > 150) return res.status(400).json({ error: "Location is too long." });
+
+  const start = parseStartTime({ startTime: body.startsAt, date: body.date, time: body.time });
+  if (!start) return res.status(400).json({ error: "Choose a valid date and time." });
+
+  let capacity = null;
+  if (body.capacity !== undefined && body.capacity !== null && body.capacity !== "") {
+    const parsed = Number(body.capacity);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
+      return res
+        .status(400)
+        .json({ error: "Capacity must be a whole number between 1 and 10,000." });
+    }
+    capacity = parsed;
+  }
+
+  const id = `commit-${Date.now()}`;
+  await pool.query(
+    `INSERT INTO commitments
+       (commitment_id, club_id, kind, title, description, location, county,
+        starts_at, capacity, host_name, source, created_by, audience)
+     VALUES
+       (:id, :clubId, :kind, :title, :description, :location, :county,
+        :startsAt, :capacity, :hostName, 'admin', :createdBy, :audience)`,
+    {
+      id,
+      clubId,
+      kind,
+      title,
+      description: typeof body.description === "string" ? body.description.trim() : "",
+      location,
+      county: typeof body.county === "string" ? body.county.trim().slice(0, 80) : "",
+      startsAt: `${start.date} ${start.time}`,
+      capacity,
+      hostName: typeof body.hostName === "string" ? body.hostName.trim().slice(0, 120) : "",
+      createdBy: req.user.id,
+      audience,
+    }
+  );
+
+  const [rows] = await pool.query(`${COMMITMENT_QUERY} WHERE c.commitment_id = :id`, { id });
+  await recordAudit(req, {
+    action: "commitment.create",
+    targetType: "commitment",
+    targetId: id,
+    detail: { clubId, kind, title, startsAt: `${start.date} ${start.time}`, capacity, audience },
+  });
+  res.status(201).json({ commitment: rowToCommitment(rows[0]) });
+});
+
+/**
+ * PATCH /commitments/:id — managers can edit the notice or the seat count.
+ * Fields are optional and only the ones present are written. Lowering capacity
+ * below the current list moves the newest signups to the waitlist, which is
+ * exactly what the member ticket will then show; nothing is deleted.
+ */
+commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT c.commitment_id, c.club_id, c.title, c.capacity, c.starts_at, c.audience,
+            cl.family_id, DATE_FORMAT(c.starts_at, '%Y-%m-%dT%H:%i') AS starts_local
+     FROM commitments c
+     JOIN clubs cl ON cl.club_id = c.club_id
+     WHERE c.commitment_id = :id`,
+    { id: req.params.id }
+  );
+  const commitment = rows[0];
+  if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (!canManageClub(req.user, commitment.club_id)) {
+    return res.status(403).json({ error: "You need club admin access to do that." });
+  }
+
+  const body = req.body || {};
+  const updates = {};
+  const set = (column, key, value) => {
+    updates[key] = { column, value };
+  };
+
+  if (Object.prototype.hasOwnProperty.call(body, "capacity")) {
+    const raw = body.capacity;
+    let capacity = null;
+    if (raw !== null && raw !== "" && raw !== undefined) {
+      const parsed = Number(raw);
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
+        return res
+          .status(400)
+          .json({ error: "Capacity must be a whole number between 1 and 10,000." });
+      }
+      capacity = parsed;
+    }
+    set("capacity", "capacity", capacity);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "kind")) {
+    const kind = typeof body.kind === "string" ? body.kind.trim() : "";
+    if (!KINDS.includes(kind)) {
+      return res.status(400).json({ error: "Choose a valid commitment type." });
+    }
+    set("kind", "kind", kind);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "title")) {
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title) return res.status(400).json({ error: "Title is required." });
+    if (title.length > 150) return res.status(400).json({ error: "Title is too long." });
+    set("title", "title", title);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "description")) {
+    set(
+      "description",
+      "description",
+      typeof body.description === "string" ? body.description.trim() : ""
+    );
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "location")) {
+    const location = typeof body.location === "string" ? body.location.trim() : "";
+    if (!location) return res.status(400).json({ error: "Location is required." });
+    if (location.length > 150) return res.status(400).json({ error: "Location is too long." });
+    set("location", "location", location);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "county")) {
+    set("county", "county", typeof body.county === "string" ? body.county.trim().slice(0, 80) : "");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "hostName")) {
+    set(
+      "host_name",
+      "hostName",
+      typeof body.hostName === "string" ? body.hostName.trim().slice(0, 120) : ""
+    );
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "audience")) {
+    const audienceResult = validateCommitmentAudience(body.audience, commitment);
+    if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+    set("audience", "audience", audienceResult.audience);
+  }
+
+  if (body.startsAt !== undefined || body.date !== undefined || body.time !== undefined) {
+    if (body.startsAt === undefined && !(body.date && body.time)) {
+      return res.status(400).json({ error: "Send a date and time together." });
+    }
+    const start = parseStartTime({ startTime: body.startsAt, date: body.date, time: body.time });
+    if (!start) return res.status(400).json({ error: "Choose a valid date and time." });
+    set("starts_at", "startsAt", `${start.date} ${start.time}`);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "Send at least one field to update." });
+  }
+
+  const assignments = Object.entries(updates).map(([key, entry]) => `${entry.column} = :${key}`);
+  const params = { id: req.params.id };
+  for (const [key, entry] of Object.entries(updates)) params[key] = entry.value;
+
+  await pool.query(
+    `UPDATE commitments SET ${assignments.join(", ")} WHERE commitment_id = :id`,
+    params
+  );
+  const [updatedRows] = await pool.query(`${COMMITMENT_QUERY} WHERE c.commitment_id = :id`, {
+    id: req.params.id,
+  });
+
+  // A moved notice is the one edit members cannot see by refreshing a page
+  // they no longer have open, so it gets a targeted notice. Failing to write
+  // that notice must not turn a saved edit into an error.
+  if (updates.startsAt) {
+    const newStartLocal = updates.startsAt.value.slice(0, 16).replace(" ", "T");
+    if (newStartLocal !== commitment.starts_local) {
+      try {
+        await notifyUsers(await signupUserIds(req.params.id), {
+          kind: "commitment_rescheduled",
+          title: `${updatedRows[0].title} moved`,
+          body: `It was ${describeStart(
+            commitment.starts_local.slice(0, 10),
+            commitment.starts_local.slice(11)
+          )}; it is now ${describeStart(newStartLocal.slice(0, 10), newStartLocal.slice(11))}.`,
+          link: `/commitments/${req.params.id}`,
+        });
+      } catch (err) {
+        console.error("Could not notify commitment signups about a reschedule:", err.message);
+      }
+    }
+  }
+
+  const fields = Object.keys(updates);
+  const capacityOnly = fields.length === 1 && fields[0] === "capacity";
+  await recordAudit(req, {
+    action: capacityOnly ? "commitment.capacity" : "commitment.update",
+    targetType: "commitment",
+    targetId: req.params.id,
+    detail: capacityOnly
+      ? { clubId: commitment.club_id, from: commitment.capacity, to: updates.capacity.value }
+      : { clubId: commitment.club_id, fields },
+  });
+  res.json({ commitment: rowToCommitment(updatedRows[0]) });
+});
+
+/**
+ * DELETE /commitments/:id/signups/:signupId — a manager removes one person
+ * (withdrawal by phone, duplicate, no-show). The remaining order, and so the
+ * waitlist, closes up automatically on the next read.
+ */
+commitmentsRouter.delete("/:id/signups/:signupId", requireAuth, async (req, res) => {
+  const [commitmentRows] = await pool.query(
+    "SELECT commitment_id, club_id, title FROM commitments WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+  const commitment = commitmentRows[0];
+  if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (!canManageClub(req.user, commitment.club_id)) {
+    return res.status(403).json({ error: "You need club admin access to do that." });
+  }
+
+  const [signupRows] = await pool.query(
+    "SELECT signup_id, user_id FROM commitment_signups WHERE signup_id = :signupId AND commitment_id = :id",
+    { signupId: req.params.signupId, id: req.params.id }
+  );
+  if (!signupRows[0]) return res.status(404).json({ error: "Signup not found." });
+
+  await pool.query("DELETE FROM commitment_signups WHERE signup_id = :signupId", {
+    signupId: req.params.signupId,
+  });
+  const [[{ count }]] = await pool.query(
+    "SELECT COUNT(*) AS count FROM commitment_signups WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+
+  await recordAudit(req, {
+    action: "commitment.signup.remove",
+    targetType: "commitment",
+    targetId: req.params.id,
+    detail: { clubId: commitment.club_id, removedUserId: signupRows[0].user_id },
+  });
+  res.json({ signupCount: Number(count) });
+});
+
+/** DELETE /commitments/:id — managers only; signups cascade and are told why. */
+commitmentsRouter.delete("/:id", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT c.commitment_id, c.club_id, c.title, cl.name AS club_name
+     FROM commitments c
+     JOIN clubs cl ON cl.club_id = c.club_id
+     WHERE c.commitment_id = :id`,
+    { id: req.params.id }
+  );
+  const commitment = rows[0];
+  if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (!canManageClub(req.user, commitment.club_id)) {
+    return res.status(403).json({ error: "You need club admin access to do that." });
+  }
+
+  // Capture recipients before the cascade deletes their signup rows.
+  const recipients = await signupUserIds(req.params.id);
+  await pool.query("DELETE FROM commitments WHERE commitment_id = :id", { id: req.params.id });
+
+  try {
+    await notifyUsers(recipients, {
+      kind: "commitment_cancelled",
+      title: `${commitment.title} was cancelled`,
+      body: `${commitment.club_name} cancelled this commitment. It has been removed from your commitments.`,
+      link: `/clubs/${commitment.club_id}`,
+    });
+  } catch (err) {
+    console.error("Could not notify commitment signups about a cancellation:", err.message);
+  }
+
+  await recordAudit(req, {
+    action: "commitment.delete",
+    targetType: "commitment",
+    targetId: req.params.id,
+    detail: { clubId: commitment.club_id, title: commitment.title },
+  });
+  res.status(204).end();
+});
+
+/**
+ * POST /commitments/:id/signup — commit to showing up.
+ * Idempotent. The response carries the new count, the position and whether
+ * that position is a waitlisted one, so the UI never has to guess.
+ */
+commitmentsRouter.post("/:id/signup", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT c.commitment_id, c.capacity, c.audience, cl.campus_id, cl.family_id
+     FROM commitments c
+     JOIN clubs cl ON cl.club_id = c.club_id
+     WHERE c.commitment_id = :id`,
+    { id: req.params.id }
+  );
+  const commitment = rows[0];
+  if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (req.user.role !== "tier1" && commitment.campus_id !== req.user.campusId) {
+    const networkAllowed =
+      commitment.audience === "network" &&
+      commitment.family_id &&
+      crossUniversityEnabled() &&
+      (await campusInUserNetwork(req.user.id, req.user.campusId, commitment.campus_id));
+    if (!networkAllowed) {
+      return res.status(403).json({ error: "That commitment belongs to another campus." });
+    }
+  }
+
+  const [existing] = await pool.query(
+    "SELECT * FROM commitment_signups WHERE commitment_id = :id AND user_id = :userId",
+    { id: req.params.id, userId: req.user.id }
+  );
+
+  let signupId = existing[0]?.signup_id;
+  if (!signupId) {
+    signupId = `cs-${Date.now()}-${req.user.id}`;
+    await pool.query(
+      `INSERT INTO commitment_signups
+         (signup_id, commitment_id, user_id, name_snapshot, email_snapshot)
+       VALUES (:signupId, :id, :userId, :name, :email)`,
+      {
+        signupId,
+        id: req.params.id,
+        userId: req.user.id,
+        name: req.user.name,
+        email: req.user.email,
+      }
+    );
+  }
+
+  const position = await positionOf(req.params.id, signupId);
+  const [[{ count }]] = await pool.query(
+    "SELECT COUNT(*) AS count FROM commitment_signups WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+
+  res.status(existing[0] ? 200 : 201).json({
+    signup: {
+      id: signupId,
+      commitmentId: req.params.id,
+      position,
+      waitlisted: waitlistedFor(commitment.capacity, position),
+      createdAt: existing[0]?.created_at ?? new Date().toISOString(),
+    },
+    signupCount: Number(count),
+  });
+});
+
+/** DELETE /commitments/:id/signup — withdraw your own commitment. */
+commitmentsRouter.delete("/:id/signup", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT commitment_id FROM commitments WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+  if (!rows[0]) return res.status(404).json({ error: "Commitment not found." });
+
+  await pool.query(
+    "DELETE FROM commitment_signups WHERE commitment_id = :id AND user_id = :userId",
+    { id: req.params.id, userId: req.user.id }
+  );
+  const [[{ count }]] = await pool.query(
+    "SELECT COUNT(*) AS count FROM commitment_signups WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+  res.json({ signup: null, signupCount: Number(count) });
+});
+
+/**
+ * GET /commitments/:id/roster — managers see who is going and who waits.
+ * Position and waitlist state are computed here, so the officer view and the
+ * member's own ticket can never disagree.
+ */
+commitmentsRouter.get("/:id/roster", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT commitment_id, club_id, capacity, title FROM commitments WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+  const commitment = rows[0];
+  if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (!canManageClub(req.user, commitment.club_id)) {
+    return res.status(403).json({ error: "You need club admin access to do that." });
+  }
+
+  const [people] = await pool.query(
+    `SELECT s.signup_id, s.user_id, s.created_at, s.name_snapshot, s.email_snapshot,
+            s.attendance
+     FROM commitment_signups s
+     WHERE s.commitment_id = :id
+     ORDER BY s.created_at, s.signup_id`,
+    { id: req.params.id }
+  );
+
+  const capacity = commitment.capacity == null ? null : Number(commitment.capacity);
+  res.json({
+    commitment: { id: commitment.commitment_id, title: commitment.title, capacity },
+    roster: people.map((person, index) => {
+      const position = index + 1;
+      return {
+        id: person.signup_id,
+        userId: person.user_id,
+        name: person.name_snapshot,
+        email: person.email_snapshot,
+        position,
+        waitlisted: capacity != null && position > capacity,
+        attendance: person.attendance || "unknown",
+        signedUpAt: person.created_at,
+      };
+    }),
+    summary: {
+      going: capacity == null ? people.length : Math.min(people.length, capacity),
+      waitlisted: capacity == null ? 0 : Math.max(0, people.length - capacity),
+      capacity,
+      attended: people.filter((person) => person.attendance === "attended").length,
+      noShow: people.filter((person) => person.attendance === "no_show").length,
+    },
+  });
+});
+
+/**
+ * PATCH /commitments/:id/signups/:signupId/attendance — officer check-in.
+ * The enum is intentional: "unknown" is a real state (nobody has been marked
+ * yet), so clearing a mistaken tap does not erase the person from the roster.
+ */
+commitmentsRouter.patch("/:id/signups/:signupId/attendance", requireAuth, async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT commitment_id, club_id, title FROM commitments WHERE commitment_id = :id",
+    { id: req.params.id }
+  );
+  const commitment = rows[0];
+  if (!commitment) return res.status(404).json({ error: "Commitment not found." });
+  if (!canManageClub(req.user, commitment.club_id)) {
+    return res.status(403).json({ error: "You need club admin access to do that." });
+  }
+
+  const status = typeof req.body?.status === "string" ? req.body.status : "";
+  if (!["unknown", "attended", "no_show"].includes(status)) {
+    return res.status(400).json({ error: "Choose a valid attendance status." });
+  }
+
+  const [result] = await pool.query(
+    `UPDATE commitment_signups
+     SET attendance = :status
+     WHERE signup_id = :signupId AND commitment_id = :id`,
+    { status, signupId: req.params.signupId, id: req.params.id }
+  );
+  if (result.affectedRows === 0) return res.status(404).json({ error: "Signup not found." });
+
+  await recordAudit(req, {
+    action: "commitment.attendance",
+    targetType: "commitment",
+    targetId: req.params.id,
+    detail: { clubId: commitment.club_id, signupId: req.params.signupId, status },
+  });
+  res.json({ signupId: req.params.signupId, status });
+});

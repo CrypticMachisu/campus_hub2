@@ -1,1 +1,4 @@
-npx lint-staged
+# Relative paths and an explicit argument budget keep the generated eslint and
+# prettier commands under Windows' 8191-character command-line limit, which
+# lint-staged's auto-detection can exceed when many files are staged.
+npx lint-staged --relative --max-arg-length 6000

@@ -1,13 +1,28 @@
 // src/pages/Dashboard.jsx
-import { useEffect, useState, useCallback } from "react";
+import { Fragment, useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { CATEGORIES, createClub, updateClub } from "../utils/clubsStore";
 import { useClubs } from "../context/ClubsContext";
 import { useAuth } from "../context/AuthContext";
 import { getAllEvents, saveCustomEvent, deleteCustomEvent } from "../utils/eventsStore";
+import { CROSS_UNIVERSITY_ENABLED } from "../utils/features";
 import { getSignupsByEvent } from "../utils/storage";
 import { getAnnouncements, saveAnnouncement } from "../utils/dashboardStorage";
-import { formatDateTime } from "../utils/dateTime";
+import ClubPostsDesk from "../components/ClubPostsDesk";
+import ErrorBoundary from "../components/ErrorBoundary";
+import Tier1ReportQueue from "../components/Tier1ReportQueue";
+import { formatDateTime, formatEventDate } from "../utils/dateTime";
+import {
+  COMMITMENT_KINDS,
+  createCommitment,
+  deleteCommitment,
+  getCommitments,
+  getCommitmentRoster,
+  updateCommitment,
+  updateCommitmentCapacity,
+  removeCommitmentSignup,
+  markCommitmentAttendance,
+} from "../utils/commitmentsStore";
 import {
   getPendingAdminRequests,
   getAllUsers,
@@ -15,13 +30,22 @@ import {
   demoteFromClubAdmin,
   approveAdminRequest,
   denyAdminRequest,
+  promoteToCampusAdmin,
+  removeCampusAdmin,
 } from "../utils/adminStore";
 import { canManageClub } from "../utils/authStore";
+import { EVENT_IMAGE_FALLBACK } from "../utils/images";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import { SkeletonGroup, SkeletonListRow, CardStackSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
 import styles from "./Dashboard.module.css";
 
-const FALLBACK_IMAGE = "https://placehold.co/600x300";
+const ROLE_LABELS = {
+  tier1: "Platform admin",
+  campus_admin: "Campus admin",
+  tier2: "Club admin",
+  member: "Member",
+};
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -48,6 +72,7 @@ const emptyForm = {
   imageUrl: "",
   bringNote: "",
   capacity: "",
+  audience: "campus",
 };
 
 export default function Dashboard() {
@@ -57,6 +82,7 @@ export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const club = clubs.find((c) => c.id === clubId);
   const authorized = canManageClub(user, clubId);
+  const isCampusAdmin = ["tier1", "campus_admin"].includes(user?.role);
 
   const [allEvents, setAllEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
@@ -65,6 +91,13 @@ export default function Dashboard() {
   const [announcementText, setAnnouncementText] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [saveMessage, setSaveMessage] = useState("");
+
+  usePageMetadata({
+    title: club ? `${club.name} club desk` : "Club desk",
+    description: club
+      ? `Manage ${club.name}'s events, commitments, announcements, and posts.`
+      : "Manage a club on Kesho.",
+  });
 
   async function refreshEvents() {
     setAllEvents(await getAllEvents());
@@ -157,6 +190,7 @@ export default function Dashboard() {
       imageUrl: event.imageUrl || "",
       bringNote: event.bringNote || "",
       capacity: event.capacity ?? "",
+      audience: event.audience || "campus",
     });
     setSaveMessage("");
   }
@@ -208,9 +242,10 @@ export default function Dashboard() {
         time: form.time || "12:00",
         location,
         category: form.category,
-        imageUrl: imageUrl || FALLBACK_IMAGE,
+        imageUrl: imageUrl || EVENT_IMAGE_FALLBACK,
         bringNote: form.bringNote.trim(),
         capacity,
+        audience: form.audience || "campus",
       });
 
       await refreshEvents();
@@ -253,7 +288,7 @@ export default function Dashboard() {
             <p className={styles.eyebrow}>Club Admin</p>
             <h1>{club.name} Dashboard</h1>
             <p className={styles.subtitle}>
-              Logged in as {user.name} ({user.role === "tier1" ? "Tier 1" : "Tier 2"})
+              Logged in as {user.name} ({ROLE_LABELS[user.role]}) · {user.campusName}
             </p>
           </div>
           <div className={styles.headerStamp} aria-hidden="true">
@@ -285,13 +320,16 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Create a new club (tier1 only) ------------------------------------ */}
-        {user.role === "tier1" && (
+        {/* Create a new club (tier1 and campus admins) ----------------------- */}
+        {isCampusAdmin && (
           <CreateClubSection onCreated={(newClub) => navigate(`/dashboard/${newClub.id}`)} />
         )}
 
-        {/* Admin management (tier1 only) ------------------------------------ */}
-        {user.role === "tier1" && <AdminManagementSection clubId={clubId} />}
+        {/* Admin management (tier1 and campus admins) ----------------------- */}
+        {isCampusAdmin && <AdminManagementSection clubId={clubId} />}
+
+        {/* Cross-club moderation (tier1 and campus admins) ------------------ */}
+        {isCampusAdmin && <Tier1ReportQueue />}
 
         {saveMessage && <div className={styles.toast}>{saveMessage}</div>}
 
@@ -319,7 +357,12 @@ export default function Dashboard() {
                     className={styles.eventRowMain}
                     onClick={() => setSelectedEventId(event.id)}
                   >
-                    <span className={styles.eventTitle}>{event.title}</span>
+                    <span className={styles.eventTitle}>
+                      {event.title}
+                      {event.audience === "network" && (
+                        <span className={styles.networkBadge}>Network</span>
+                      )}
+                    </span>
                     <span className={styles.eventMeta}>
                       {event.date} · {event.time}
                     </span>
@@ -338,7 +381,7 @@ export default function Dashboard() {
                       </button>
                     </span>
                   ) : (
-                    <span className={styles.readOnlyBadge}>Seed event · read-only</span>
+                    <span className={styles.readOnlyBadge}>Example event · read-only</span>
                   )}
                 </li>
               );
@@ -436,14 +479,33 @@ export default function Dashboard() {
               </select>
             </label>
 
+            {CROSS_UNIVERSITY_ENABLED && club?.familyId ? (
+              <label>
+                Audience
+                <select
+                  value={form.audience}
+                  onChange={(e) => handleFormChange("audience", e.target.value)}
+                >
+                  <option value="campus">This campus only</option>
+                  <option value="network">My club network</option>
+                </select>
+                <span className={styles.optional}>
+                  Network events are visible to approved members across this family’s chapters.
+                </span>
+              </label>
+            ) : (
+              <p className={styles.optional}>This event will be visible on this campus only.</p>
+            )}
+
             <label>
               Image URL <span className={styles.optional}>(optional)</span>
               <input
                 type="url"
                 value={form.imageUrl}
-                placeholder={FALLBACK_IMAGE}
+                placeholder="https://…"
                 onChange={(e) => handleFormChange("imageUrl", e.target.value)}
               />
+              <span className={styles.optional}>Leave blank to use the Kesho fallback.</span>
             </label>
 
             <div className={styles.formActions}>
@@ -473,19 +535,26 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* 4. Announcements ----------------------------------------------- */}
+        {/* 4. Commitments -------------------------------------------------- */}
+        <section className={`${styles.section} ${styles.commitmentsSection}`}>
+          <h2>Commitments</h2>
+          <CommitmentsDesk clubId={club.id} canPublishToNetwork={Boolean(club.familyId)} />
+        </section>
+
+        {/* 5. Announcements ----------------------------------------------- */}
         <section className={`${styles.section} ${styles.announcementsSection}`}>
           <h2>Announcements</h2>
+          <p className={styles.optional}>Updates for club members in the workspace.</p>
           <form className={styles.announcementForm} onSubmit={handlePostAnnouncement}>
             <textarea
               value={announcementText}
               onChange={(e) => setAnnouncementText(e.target.value)}
               aria-label="Announcement text"
-              placeholder="Post an update to club members…"
+              placeholder="Write an announcement for club members…"
               rows={2}
             />
             <button type="submit" className={styles.primaryButton}>
-              Post
+              Publish announcement
             </button>
           </form>
           <ul className={styles.announcementList}>
@@ -503,10 +572,23 @@ export default function Dashboard() {
           </ul>
         </section>
 
-        {/* 5. Playbook — the club-specific bits members see ------------------- */}
+        {/* 6. Posts — the club page's dispatches and report queue ------------ */}
+        <section className={`${styles.section} ${styles.postsSection}`}>
+          <h2>Posts</h2>
+          <p className={styles.optional}>Public updates on the club page.</p>
+          <ErrorBoundary
+            title="The posts desk didn't render"
+            resetKey={club.id}
+            message="The rest of the desk is still available. Try this section again."
+          >
+            <ClubPostsDesk clubId={club.id} canPublishToNetwork={Boolean(club.familyId)} />
+          </ErrorBoundary>
+        </section>
+
+        {/* 7. Playbook — the club-specific bits members see ------------------- */}
         <ClubFocusSection club={club} className={styles.focusSection} />
 
-        {/* 6. Stats ----------------------------------------------------------- */}
+        {/* 8. Stats ----------------------------------------------------------- */}
         <section className={`${styles.section} ${styles.statsSection}`}>
           <h2>Stats</h2>
           <table className={styles.statsTable}>
@@ -552,6 +634,753 @@ function StatsRow({ event }) {
       <td>{event.title}</td>
       <td>{count === null ? "—" : count}</td>
     </tr>
+  );
+}
+
+/**
+ * Officer desk for commitments: publish, edit and cancel notices, change the
+ * seat count, and read the waitlist and roster in one place. Lowering capacity
+ * never deletes anyone, the newest signups simply become waitlisted, which the
+ * member ticket reflects on its next read. Roster removal is for withdrawals
+ * taken by phone; cancelling removes the notice and its signups after an
+ * explicit confirmation that says so.
+ */
+const EMPTY_EDITOR = {
+  mode: "create",
+  id: null,
+  kind: "activity",
+  title: "",
+  description: "",
+  date: "",
+  time: "09:00",
+  location: "",
+  county: "",
+  capacity: "",
+  hostName: "",
+  audience: "campus",
+};
+
+function sortCommitments(list) {
+  return [...list].sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+}
+
+function CommitmentsDesk({ clubId, canPublishToNetwork = false }) {
+  const [rows, setRows] = useState(null); // null = loading
+  const [failed, setFailed] = useState("");
+  const [notice, setNotice] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [capacityDraft, setCapacityDraft] = useState("");
+  const [savingId, setSavingId] = useState(null);
+  const [rosters, setRosters] = useState({});
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+  const [savingAttendanceId, setSavingAttendanceId] = useState(null);
+  const [editor, setEditor] = useState(null);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorError, setEditorError] = useState("");
+  const [confirmCancelId, setConfirmCancelId] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
+
+  const load = useCallback(async () => {
+    setFailed("");
+    try {
+      setRows(await getCommitments({ clubId }));
+    } catch (err) {
+      setFailed(err.message);
+      setRows([]);
+    }
+  }, [clubId]);
+
+  useEffect(() => {
+    setRows(null);
+    setRosters({});
+    setEditingId(null);
+    setNotice("");
+    setEditor(null);
+    setConfirmCancelId(null);
+    load();
+  }, [clubId, load]);
+
+  async function loadRoster(commitmentId) {
+    setRosters((current) => ({
+      ...current,
+      [commitmentId]: { loading: true, error: "" },
+    }));
+    try {
+      const data = await getCommitmentRoster(commitmentId);
+      setRosters((current) => ({ ...current, [commitmentId]: { data } }));
+    } catch (err) {
+      setRosters((current) => ({
+        ...current,
+        [commitmentId]: { error: err.message },
+      }));
+    }
+  }
+
+  function toggleRoster(row) {
+    if (rosters[row.id]?.data) {
+      setRosters((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+      return;
+    }
+    loadRoster(row.id);
+  }
+
+  async function saveCapacity(row) {
+    setSavingId(row.id);
+    setNotice("");
+    try {
+      const updated = await updateCommitmentCapacity(
+        row.id,
+        capacityDraft === "" ? null : Number(capacityDraft)
+      );
+      setRows((current) =>
+        current.map((entry) =>
+          entry.id === row.id ? { ...entry, capacity: updated.capacity } : entry
+        )
+      );
+      setEditingId(null);
+      setNotice(
+        updated.capacity == null
+          ? `${row.title} now has no seat limit.`
+          : `${row.title} now has ${updated.capacity} ${updated.capacity === 1 ? "place" : "places"}.`
+      );
+      if (rosters[row.id]) loadRoster(row.id);
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  async function removePerson(row, person) {
+    setRemovingId(person.id);
+    setNotice("");
+    try {
+      const result = await removeCommitmentSignup(row.id, person.id);
+      setRows((current) =>
+        current.map((entry) =>
+          entry.id === row.id ? { ...entry, signupCount: result.signupCount } : entry
+        )
+      );
+      setConfirmRemoveId(null);
+      setNotice(`${person.name} was removed from ${row.title}.`);
+      loadRoster(row.id);
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  async function markAttendance(row, person, status) {
+    setSavingAttendanceId(person.id);
+    setNotice("");
+    try {
+      await markCommitmentAttendance(row.id, person.id, status);
+      setRosters((current) => {
+        const entry = current[row.id];
+        if (!entry?.data) return current;
+        const roster = entry.data.roster.map((candidate) =>
+          candidate.id === person.id ? { ...candidate, attendance: status } : candidate
+        );
+        return {
+          ...current,
+          [row.id]: {
+            data: {
+              ...entry.data,
+              roster,
+              summary: {
+                ...entry.data.summary,
+                attended: roster.filter((candidate) => candidate.attendance === "attended").length,
+                noShow: roster.filter((candidate) => candidate.attendance === "no_show").length,
+              },
+            },
+          },
+        };
+      });
+      if (status === "unknown") {
+        setNotice(`Cleared the attendance mark for ${person.name}.`);
+      } else {
+        setNotice(
+          `${person.name} marked ${status === "attended" ? "attended" : "as a no-show"} for ${row.title}.`
+        );
+      }
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setSavingAttendanceId(null);
+    }
+  }
+
+  function startCreate() {
+    setEditor({ ...EMPTY_EDITOR });
+    setEditorError("");
+    setNotice("");
+    setConfirmCancelId(null);
+  }
+
+  function startEdit(row) {
+    setEditor({
+      mode: "edit",
+      id: row.id,
+      kind: row.kind,
+      title: row.title,
+      description: row.description || "",
+      date: row.date,
+      time: row.time,
+      location: row.location,
+      county: row.county || "",
+      capacity: row.capacity == null ? "" : String(row.capacity),
+      hostName: row.hostName || "",
+      audience: row.audience || "campus",
+    });
+    setEditorError("");
+    setNotice("");
+    setConfirmCancelId(null);
+  }
+
+  function updateEditorField(field, value) {
+    setEditor((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveEditor(event) {
+    event.preventDefault();
+    if (!editor) return;
+    setEditorError("");
+
+    let capacity = null;
+    if (editor.capacity !== "" && editor.capacity !== null) {
+      capacity = Number(editor.capacity);
+      if (!Number.isInteger(capacity) || capacity < 1 || capacity > 10000) {
+        setEditorError(
+          "Spaces must be a whole number between 1 and 10000 — leave it blank for no limit."
+        );
+        return;
+      }
+    }
+
+    const payload = {
+      kind: editor.kind,
+      title: editor.title.trim(),
+      description: editor.description.trim(),
+      date: editor.date,
+      time: editor.time,
+      location: editor.location.trim(),
+      county: editor.county.trim(),
+      hostName: editor.hostName.trim(),
+      capacity,
+      audience: editor.audience || "campus",
+    };
+
+    setEditorSaving(true);
+    try {
+      if (editor.mode === "edit") {
+        const updated = await updateCommitment(editor.id, payload);
+        setRows((current) =>
+          sortCommitments(current.map((entry) => (entry.id === updated.id ? updated : entry)))
+        );
+        setNotice(`${updated.title} was updated.`);
+        if (rosters[editor.id]?.data) loadRoster(editor.id);
+      } else {
+        const created = await createCommitment({ clubId, ...payload });
+        setRows((current) => sortCommitments([...current, created]));
+        setNotice(`${created.title} is now on the club's commitments.`);
+      }
+      setEditor(null);
+    } catch (err) {
+      setEditorError(err.message);
+    } finally {
+      setEditorSaving(false);
+    }
+  }
+
+  async function cancelCommitment(row) {
+    setCancellingId(row.id);
+    setNotice("");
+    try {
+      await deleteCommitment(row.id);
+      setRows((current) => current.filter((entry) => entry.id !== row.id));
+      setRosters((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+      setConfirmCancelId(null);
+      setNotice(
+        row.signupCount > 0
+          ? `${row.title} was cancelled and ${row.signupCount} ${row.signupCount === 1 ? "signup" : "signups"} removed.`
+          : `${row.title} was cancelled.`
+      );
+    } catch (err) {
+      setNotice(err.message);
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
+  if (failed) {
+    return (
+      <div>
+        <p className={styles.emptyState}>Commitments didn&apos;t load: {failed}</p>
+        <button type="button" onClick={load}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (rows === null) {
+    return (
+      <SkeletonGroup label="Loading commitments…">
+        <CardStackSkeleton count={2} />
+      </SkeletonGroup>
+    );
+  }
+
+  return (
+    <>
+      <p className={styles.deskNote}>
+        Publish and edit notices here; changes apply immediately. Lowering a capacity moves the
+        newest signups to the waitlist instead of deleting them, and cancelling a commitment removes
+        its signups after an explicit confirmation.
+      </p>
+
+      {notice && (
+        <p className={styles.deskNotice} role="status">
+          {notice}
+        </p>
+      )}
+
+      <div className={styles.deskToolbar}>
+        <button
+          type="button"
+          className={styles.primaryButton}
+          aria-expanded={Boolean(editor)}
+          onClick={() => {
+            if (editor) {
+              setEditor(null);
+              setEditorError("");
+            } else {
+              startCreate();
+            }
+          }}
+        >
+          {editor ? "Close editor" : "Publish a commitment"}
+        </button>
+      </div>
+
+      {editor && (
+        <form
+          className={styles.form}
+          onSubmit={saveEditor}
+          aria-label={editor.mode === "edit" ? "Edit commitment" : "New commitment"}
+        >
+          <h3>{editor.mode === "edit" ? "Edit commitment" : "New commitment"}</h3>
+
+          <div className={styles.formRow}>
+            <label>
+              Type
+              <select
+                value={editor.kind}
+                onChange={(e) => updateEditorField("kind", e.target.value)}
+              >
+                {COMMITMENT_KINDS.map((kind) => (
+                  <option key={kind.id} value={kind.id}>
+                    {kind.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Title
+              <input
+                type="text"
+                required
+                maxLength={150}
+                value={editor.title}
+                onChange={(e) => updateEditorField("title", e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className={styles.formRow}>
+            <label>
+              Date
+              <input
+                type="date"
+                required
+                value={editor.date}
+                onChange={(e) => updateEditorField("date", e.target.value)}
+              />
+            </label>
+            <label>
+              Time
+              <input
+                type="time"
+                required
+                value={editor.time}
+                onChange={(e) => updateEditorField("time", e.target.value)}
+              />
+            </label>
+            <label>
+              Spaces <span className={styles.optional}>(blank = no limit)</span>
+              <input
+                type="number"
+                min="1"
+                max="10000"
+                value={editor.capacity}
+                placeholder="No limit"
+                onChange={(e) => updateEditorField("capacity", e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className={styles.formRow}>
+            <label>
+              Where
+              <input
+                type="text"
+                required
+                maxLength={150}
+                value={editor.location}
+                onChange={(e) => updateEditorField("location", e.target.value)}
+              />
+            </label>
+            <label>
+              County
+              <input
+                type="text"
+                maxLength={80}
+                value={editor.county}
+                onChange={(e) => updateEditorField("county", e.target.value)}
+              />
+            </label>
+            <label>
+              Host
+              <input
+                type="text"
+                maxLength={120}
+                value={editor.hostName}
+                placeholder="Who is hosting?"
+                onChange={(e) => updateEditorField("hostName", e.target.value)}
+              />
+            </label>
+          </div>
+
+          <label>
+            What happens
+            <textarea
+              rows={3}
+              value={editor.description}
+              onChange={(e) => updateEditorField("description", e.target.value)}
+            />
+          </label>
+
+          {canPublishToNetwork && (
+            <label>
+              Audience
+              <select
+                value={editor.audience || "campus"}
+                onChange={(e) => updateEditorField("audience", e.target.value)}
+              >
+                <option value="campus">This campus only</option>
+                <option value="network">My club network</option>
+              </select>
+            </label>
+          )}
+
+          {editorError && (
+            <p className={styles.error} role="alert">
+              {editorError}
+            </p>
+          )}
+
+          <div className={styles.formActions}>
+            <button type="submit" className={styles.primaryButton} disabled={editorSaving}>
+              {editorSaving
+                ? "Saving…"
+                : editor.mode === "edit"
+                  ? "Save changes"
+                  : "Publish commitment"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditor(null);
+                setEditorError("");
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {rows.length === 0 ? (
+        <p className={styles.emptyState}>No upcoming commitments for this club.</p>
+      ) : (
+        <table className={`${styles.signupsTable} ${styles.commitmentsTable}`}>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Commitment</th>
+              <th scope="col">Places</th>
+              <th scope="col">Waitlist</th>
+              <th scope="col">Roster</th>
+              <th scope="col">Manage</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const going =
+                row.capacity == null ? row.signupCount : Math.min(row.signupCount, row.capacity);
+              const waiting =
+                row.capacity == null ? 0 : Math.max(0, row.signupCount - row.capacity);
+              const rosterState = rosters[row.id];
+              const isEditing = editingId === row.id;
+
+              return (
+                <Fragment key={row.id}>
+                  <tr>
+                    <td>
+                      <time dateTime={`${row.date}T${row.time}`}>{formatEventDate(row.date)}</time>
+                      <br />
+                      <span className={styles.cellNote}>{row.time}</span>
+                    </td>
+                    <td>
+                      <strong>{row.title}</strong>
+                      <br />
+                      <span className={styles.cellNote}>
+                        {row.kindLabel}
+                        {row.audience === "network" ? " · Network" : ""} · {row.location}
+                      </span>
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <span className={styles.capacityEditor}>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10000"
+                            value={capacityDraft}
+                            placeholder="No limit"
+                            aria-label={`Spaces for ${row.title}`}
+                            onChange={(e) => setCapacityDraft(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className={styles.smallButton}
+                            onClick={() => saveCapacity(row)}
+                            disabled={savingId === row.id}
+                          >
+                            {savingId === row.id ? "Saving…" : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.smallButton}
+                            onClick={() => setEditingId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <span>
+                          {going}
+                          {row.capacity == null ? " · no limit" : ` / ${row.capacity}`}
+                          <br />
+                          <button
+                            type="button"
+                            className={styles.smallButton}
+                            onClick={() => {
+                              setEditingId(row.id);
+                              setCapacityDraft(row.capacity == null ? "" : String(row.capacity));
+                            }}
+                          >
+                            Edit seats
+                          </button>
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {waiting > 0 ? (
+                        <span className={styles.waitBadge}>{waiting} waiting</span>
+                      ) : (
+                        <span className={styles.cellNote}>None</span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.smallButton}
+                        onClick={() => toggleRoster(row)}
+                        aria-expanded={Boolean(rosterState?.data)}
+                      >
+                        {rosterState?.data ? "Hide" : `View (${row.signupCount})`}
+                      </button>
+                    </td>
+                    <td>
+                      {confirmCancelId === row.id ? (
+                        <span className={styles.cancelConfirm}>
+                          <span className={styles.cellNote}>
+                            Cancel this notice
+                            {row.signupCount > 0
+                              ? ` and remove ${row.signupCount} ${row.signupCount === 1 ? "signup" : "signups"}?`
+                              : "?"}
+                          </span>
+                          <span className={styles.rowActions}>
+                            <button
+                              type="button"
+                              className={styles.dangerButton}
+                              onClick={() => cancelCommitment(row)}
+                              disabled={cancellingId === row.id}
+                              aria-label={`Confirm cancelling ${row.title}`}
+                            >
+                              {cancellingId === row.id ? "Cancelling…" : "Yes"}
+                            </button>
+                            <button type="button" onClick={() => setConfirmCancelId(null)}>
+                              No
+                            </button>
+                          </span>
+                        </span>
+                      ) : (
+                        <span className={styles.rowActions}>
+                          <button type="button" onClick={() => startEdit(row)}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.dangerButton}
+                            onClick={() => setConfirmCancelId(row.id)}
+                            aria-label={`Cancel ${row.title}`}
+                          >
+                            Cancel
+                          </button>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+
+                  {rosterState && (
+                    <tr key={`${row.id}-roster`}>
+                      <td colSpan={6} className={styles.rosterCell}>
+                        {rosterState.loading && (
+                          <p className={styles.emptyState}>Loading roster…</p>
+                        )}
+                        {rosterState.error && (
+                          <p className={styles.emptyState}>
+                            Roster didn&apos;t load: {rosterState.error}
+                          </p>
+                        )}
+                        {rosterState.data && (
+                          <>
+                            <p className={styles.rosterSummary}>
+                              Going {rosterState.data.summary.going}
+                              {rosterState.data.summary.capacity != null
+                                ? ` of ${rosterState.data.summary.capacity}`
+                                : ""}{" "}
+                              · Waitlist {rosterState.data.summary.waitlisted} · Checked in{" "}
+                              {rosterState.data.summary.attended}
+                              {rosterState.data.summary.noShow > 0
+                                ? ` · No-shows ${rosterState.data.summary.noShow}`
+                                : ""}
+                            </p>
+                            {rosterState.data.roster.length === 0 ? (
+                              <p className={styles.emptyState}>Nobody has committed yet.</p>
+                            ) : (
+                              <table className={styles.rosterTable}>
+                                <thead>
+                                  <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Signed up</th>
+                                    <th scope="col">State</th>
+                                    <th scope="col">Attendance</th>
+                                    <th scope="col">Remove</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {rosterState.data.roster.map((person) => (
+                                    <tr key={person.id}>
+                                      <td>{person.position}</td>
+                                      <td>{person.name}</td>
+                                      <td>{person.email}</td>
+                                      <td>{formatDateTime(person.signedUpAt)}</td>
+                                      <td>
+                                        {person.waitlisted ? (
+                                          <span className={styles.waitBadge}>Waitlist</span>
+                                        ) : (
+                                          "Going"
+                                        )}
+                                      </td>
+                                      <td>
+                                        {person.waitlisted ? (
+                                          <span className={styles.cellNote}>Waitlist</span>
+                                        ) : (
+                                          <select
+                                            className={styles.attendanceSelect}
+                                            value={person.attendance || "unknown"}
+                                            aria-label={`Attendance for ${person.name}`}
+                                            disabled={savingAttendanceId === person.id}
+                                            onChange={(e) =>
+                                              markAttendance(row, person, e.target.value)
+                                            }
+                                          >
+                                            <option value="unknown">Not marked</option>
+                                            <option value="attended">Attended</option>
+                                            <option value="no_show">No-show</option>
+                                          </select>
+                                        )}
+                                      </td>
+                                      <td>
+                                        {confirmRemoveId === person.id ? (
+                                          <span className={styles.confirmInline}>
+                                            <button
+                                              type="button"
+                                              className={styles.dangerButton}
+                                              onClick={() => removePerson(row, person)}
+                                              disabled={removingId === person.id}
+                                            >
+                                              {removingId === person.id ? "Removing…" : "Yes"}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setConfirmRemoveId(null)}
+                                            >
+                                              No
+                                            </button>
+                                          </span>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            className={styles.smallButton}
+                                            onClick={() => setConfirmRemoveId(person.id)}
+                                          >
+                                            Remove
+                                          </button>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </>
   );
 }
 
@@ -613,12 +1442,15 @@ function SignupsTable({ eventId }) {
   );
 }
 
-// Tier1-only panel: review pending admin requests for this club, revoke
-// or grant tier2 admin access for it.
+// Tier1 and campus-admin panel: review pending admin requests for this club,
+// revoke or grant tier2 admin access for it. The API scopes a campus admin to
+// their own campus's users and clubs.
 function AdminManagementSection({ clubId }) {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedCampusAdminId, setSelectedCampusAdminId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -634,11 +1466,15 @@ function AdminManagementSection({ clubId }) {
   }, [refresh]);
 
   const currentAdmins = users.filter((u) => u.adminForClubs.includes(clubId));
-  const promotableUsers = users.filter((u) => !u.adminForClubs.includes(clubId));
+  const promotableUsers = users.filter(
+    (u) => !u.adminForClubs.includes(clubId) && u.role !== "campus_admin"
+  );
+  const campusAdmins = users.filter((u) => u.role === "campus_admin");
+  const campusCandidates = users.filter((u) => u.role !== "campus_admin");
 
   async function handleApprove(requestId) {
     await approveAdminRequest(requestId);
-    setMessage("Request approved — that user is now a tier 2 admin for this club.");
+    setMessage("Request approved — that user is now a club admin.");
     await refresh();
   }
 
@@ -652,7 +1488,7 @@ function AdminManagementSection({ clubId }) {
     e.preventDefault();
     if (!selectedUserId) return;
     await promoteToClubAdmin(selectedUserId, clubId);
-    setMessage("Promoted to tier 2 admin for this club.");
+    setMessage("Promoted to club admin.");
     setSelectedUserId("");
     await refresh();
   }
@@ -665,9 +1501,26 @@ function AdminManagementSection({ clubId }) {
     await refresh();
   }
 
+  async function handlePromoteCampusAdmin(e) {
+    e.preventDefault();
+    if (!selectedCampusAdminId) return;
+    const updated = await promoteToCampusAdmin(selectedCampusAdminId);
+    setMessage(`${updated.name} can now manage every club on ${updated.campusName}.`);
+    setSelectedCampusAdminId("");
+    await refresh();
+  }
+
+  async function handleRemoveCampusAdmin(userId) {
+    const confirmed = window.confirm("Remove this user's campus-admin rights?");
+    if (!confirmed) return;
+    const updated = await removeCampusAdmin(userId);
+    setMessage(`${updated.name} is now a ${ROLE_LABELS[updated.role] || "member"}.`);
+    await refresh();
+  }
+
   return (
     <section className={styles.section}>
-      <h2>Admin Management</h2>
+      <h2>Admin management</h2>
       {message && <div className={styles.toast}>{message}</div>}
 
       <h3>Current admins for this club</h3>
@@ -677,7 +1530,7 @@ function AdminManagementSection({ clubId }) {
         </SkeletonGroup>
       )}
       {!loading && currentAdmins.length === 0 && (
-        <p className={styles.emptyState}>No tier 2 admins for this club yet.</p>
+        <p className={styles.emptyState}>No club admins for this club yet.</p>
       )}
       <ul className={styles.eventList}>
         {currentAdmins.map((u) => (
@@ -732,17 +1585,72 @@ function AdminManagementSection({ clubId }) {
             <option value="">Select a user…</option>
             {promotableUsers.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} ({u.email}) — {u.role === "tier2" ? "Tier 2 admin" : "Member"}
+                {u.name} ({u.email}) — {ROLE_LABELS[u.role] || "Member"}
               </option>
             ))}
           </select>
         </label>
         <div className={styles.formActions}>
           <button type="submit" className={styles.primaryButton} disabled={!selectedUserId}>
-            Promote to Tier 2 Admin
+            Make club admin
           </button>
         </div>
       </form>
+
+      {user?.role === "tier1" && (
+        <>
+          <h3>Campus administration</h3>
+          <p className={styles.emptyState}>
+            A campus admin manages every club on their campus. Platform admins can manage every
+            campus.
+          </p>
+          {campusAdmins.length === 0 && <p className={styles.emptyState}>No campus admins yet.</p>}
+          <ul className={styles.eventList}>
+            {campusAdmins.map((u) => (
+              <li key={u.id} className={styles.eventRow}>
+                <span>
+                  {u.name} <span className={styles.eventMeta}>({u.email})</span>
+                </span>
+                <span className={styles.rowActions}>
+                  <button
+                    type="button"
+                    className={styles.dangerButton}
+                    onClick={() => handleRemoveCampusAdmin(u.id)}
+                  >
+                    Remove
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <form className={styles.form} onSubmit={handlePromoteCampusAdmin}>
+            <label>
+              User
+              <select
+                value={selectedCampusAdminId}
+                onChange={(e) => setSelectedCampusAdminId(e.target.value)}
+              >
+                <option value="">Select a user…</option>
+                {campusCandidates.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email}) — {ROLE_LABELS[u.role] || "Member"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className={styles.formActions}>
+              <button
+                type="submit"
+                className={styles.primaryButton}
+                disabled={!selectedCampusAdminId}
+              >
+                Make campus admin
+              </button>
+            </div>
+          </form>
+        </>
+      )}
     </section>
   );
 }
@@ -819,7 +1727,7 @@ function ClubFocusSection({ club, className = "" }) {
           <input
             type="text"
             value={form.rsvpLabel}
-            placeholder="I'm going"
+            placeholder="RSVP"
             maxLength={40}
             onChange={(e) => handleChange("rsvpLabel", e.target.value)}
           />
@@ -904,8 +1812,9 @@ const emptyClubForm = {
   tags: "",
 };
 
-// Tier1-only panel: create a brand-new club, then hand it off (via
-// onCreated) so the caller can navigate straight to its dashboard.
+// Tier1 and campus-admin panel: create a brand-new club, then hand it off (via
+// onCreated) so the caller can navigate straight to its dashboard. The server
+// pins a campus admin to their own campus.
 function CreateClubSection({ onCreated }) {
   const { refresh } = useClubs();
   const [form, setForm] = useState(emptyClubForm);

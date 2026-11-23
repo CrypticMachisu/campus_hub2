@@ -16,8 +16,12 @@ export function rowToUser(row) {
     name: row.name,
     email: row.email,
     role: row.role,
+    campusId: row.campus_id,
+    campusName: row.campus_name || "",
+    campusSlug: row.campus_slug || "",
     adminForClubs: splitIds(row.admin_club_ids),
     memberOfClubs: splitIds(row.member_club_ids),
+    familyAdminOf: [],
   };
 }
 
@@ -30,6 +34,11 @@ function splitIds(value) {
 export function rowToClub(row) {
   return {
     id: row.club_id,
+    campusId: row.campus_id,
+    campusName: row.campus_name || "",
+    familyId: row.family_id || null,
+    familyName: row.family_name || "",
+    familySlug: row.family_slug || "",
     name: row.name,
     category: row.category_name,
     description: row.description,
@@ -66,12 +75,17 @@ export function rowToEvent(row) {
   return {
     id: row.event_id,
     clubId: row.club_id,
+    clubName: row.club_name || "",
+    campusName: row.campus_name || "",
     title: row.title,
     description: row.description,
     category: row.category_name,
+    // MySQL DATE is a wall-clock calendar date. Building it through
+    // toISOString() shifts it back a day in any timezone east of UTC, which
+    // then makes v2's startTime disagree with the stored date.
     date:
       row.event_date instanceof Date
-        ? row.event_date.toISOString().split("T")[0]
+        ? localDateOnly(row.event_date)
         : String(row.event_date).split("T")[0],
     time: formatTime(row.event_time),
     location: row.location,
@@ -79,10 +93,16 @@ export function rowToEvent(row) {
     bringNote: row.bring_note || "",
     // NULL/absent capacity means "no limit" — keep the frontend check simple.
     capacity: row.capacity == null ? null : Number(row.capacity),
+    audience: row.audience || "campus",
     // Present whenever the query joins event_signups (all /api/events reads do).
     signupCount: row.signup_count == null ? 0 : Number(row.signup_count),
     isSeed: !row.event_id.startsWith("custom-"),
   };
+}
+
+function localDateOnly(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 /** MySQL TIME columns come back as "HH:MM:SS" strings — trim to "HH:MM". */

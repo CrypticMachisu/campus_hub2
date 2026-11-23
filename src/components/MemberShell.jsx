@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { NavLink, Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { canManageClub } from "../utils/authStore";
+import { CROSS_UNIVERSITY_ENABLED } from "../utils/features";
+import ConnectionStatus from "./ConnectionStatus";
+import ThemeToggle from "./ThemeToggle";
 import styles from "./MemberShell.module.css";
 
 /** "Debate & Rhetoric Society" -> "DR" (skips short joining words). */
@@ -95,7 +98,7 @@ export default function MemberShell({ myClubs }) {
             <span className="visually-hidden">Hide sidebar</span>
           </button>
           <Link to="/" className={styles.brand}>
-            Campus<span className={styles.brandAccent}>Hub</span>
+            kesho<span className={styles.brandAccent}>.</span>
           </Link>
           <p className={styles.tagline}>Member workspace</p>
 
@@ -113,7 +116,9 @@ export default function MemberShell({ myClubs }) {
                       {monogram(club.name)}
                     </span>
                     <span className={styles.clubText}>
-                      <span className={styles.clubName}>{club.name}</span>
+                      <span className={styles.clubName} title={club.name}>
+                        {club.name}
+                      </span>
                       <span className={styles.clubMeta}>
                         {canManageClub(user, club.id) ? "You manage" : club.category}
                       </span>
@@ -126,14 +131,29 @@ export default function MemberShell({ myClubs }) {
 
           <nav aria-label="Workspace" className={styles.utilityNav}>
             <NavLink to="/discover" className={utilityClass}>
-              Discover other clubs
+              This week&apos;s edition
             </NavLink>
             <NavLink to="/my-events" className={utilityClass}>
-              My events
+              My commitments
             </NavLink>
+            {CROSS_UNIVERSITY_ENABLED && user?.role !== "tier1" && (
+              <NavLink to="/network" className={utilityClass}>
+                My network
+              </NavLink>
+            )}
+            {CROSS_UNIVERSITY_ENABLED && (
+              <NavLink to="/campus-access" className={utilityClass}>
+                Campus access
+              </NavLink>
+            )}
+            {CROSS_UNIVERSITY_ENABLED && (
+              <NavLink to="/families" className={utilityClass}>
+                Club families
+              </NavLink>
+            )}
             {activeClub && canManageClub(user, activeClub.id) && (
               <NavLink to={`/dashboard/${activeClub.id}`} className={utilityClass}>
-                Manage {activeClub.name}
+                The desk
               </NavLink>
             )}
           </nav>
@@ -141,6 +161,7 @@ export default function MemberShell({ myClubs }) {
           <div className={styles.account}>
             <span className={styles.accountName}>{user.name}</span>
             <span className={styles.accountEmail}>{user.email}</span>
+            <ThemeToggle />
             <button type="button" className={styles.logout} onClick={logout}>
               Log out
             </button>
@@ -165,13 +186,16 @@ export default function MemberShell({ myClubs }) {
       <div className={styles.mainArea}>
         <header className={styles.mobileHeader}>
           <Link to="/" className={styles.brand}>
-            Campus<span className={styles.brandAccent}>Hub</span>
+            kesho<span className={styles.brandAccent}>.</span>
           </Link>
           <span className={styles.mobileContext}>{activeClub?.name || "Member workspace"}</span>
+          <ThemeToggle />
           <button type="button" className={styles.logout} onClick={logout}>
             Log out
           </button>
         </header>
+
+        <ConnectionStatus />
 
         <main id="workspace-main" className={styles.main}>
           <Outlet />
@@ -202,7 +226,7 @@ export default function MemberShell({ myClubs }) {
           className={styles.bottomDiscover}
           onClick={() => navigate("/discover")}
         >
-          Discover
+          This week
         </button>
       </nav>
 

@@ -17,9 +17,16 @@ export function toUiEvent(event) {
   return { ...rest, date, time: clock.slice(0, 5) };
 }
 
-/** All events — seed events and custom events from the backend. */
-export async function getAllEvents() {
-  const { events } = await apiFetch("/events", { auth: false });
+/**
+ * Events on the signed-in reader's campus (or the default campus when signed
+ * out). Tier 1 may pass a campusId; the server rejects it for other roles.
+ */
+export async function getAllEvents({ campusId, scope } = {}) {
+  const params = new URLSearchParams();
+  if (campusId) params.set("campusId", campusId);
+  if (scope) params.set("scope", scope);
+  const query = params.toString() ? `?${params}` : "";
+  const { events } = await apiFetch(`/events${query}`);
   return events.map(toUiEvent);
 }
 

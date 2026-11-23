@@ -38,16 +38,6 @@ export function AuthProvider({ children }) {
     return loggedInUser;
   }
 
-  /**
-   * Drops a just-created session without redirecting — used by the
-   * login page's admin-path gate, which rejects the attempt right after
-   * Login() has stored the token and set the context user.
-   */
-  function discardLogin() {
-    storeLogout();
-    setUser(null);
-  }
-
   function logout() {
     storeLogout();
     setUser(null);
@@ -78,9 +68,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider
-      value={{ user, loading, login, logout, discardLogin, signup, refresh, applyUser }}
-    >
+    <AuthContext.Provider value={{ user, loading, login, logout, signup, refresh, applyUser }}>
       {children}
     </AuthContext.Provider>
   );

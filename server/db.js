@@ -21,3 +21,25 @@ export async function assertDbConnection() {
     conn.release();
   }
 }
+
+/**
+ * Readiness probe: bounded so a wedged database cannot make the health check
+ * hang. Returns false rather than throwing because the route only needs a
+ * yes/no answer, never the driver error (which could name internal hosts).
+ */
+export async function databaseReady(timeoutMs = 2_000) {
+  let timer;
+  try {
+    await Promise.race([
+      pool.query("SELECT 1"),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Database readiness timed out.")), timeoutMs);
+      }),
+    ]);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}

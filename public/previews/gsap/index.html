@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kesho — GSAP preview</title>
+    <style>
+      @font-face {
+        font-family: "Anton";
+        src: url("/fonts/anton-400.woff2") format("woff2");
+        font-weight: 400;
+        font-display: swap;
+      }
+      :root {
+        --paper: #f4f2ec;
+        --ink: #0e0f0c;
+        --muted: #5c5e52;
+        --signal: #c63312;
+        --rule: #c9c6b8;
+        --mono: "IBM Plex Mono", ui-monospace, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: system-ui, sans-serif;
+      }
+      a {
+        color: inherit;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 2rem;
+        border-bottom: 1px solid var(--ink);
+        font-family: var(--mono);
+        font-size: 0.65rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      header strong {
+        font-family: "Anton", "Arial Narrow", Impact, sans-serif;
+        font-weight: 400;
+        font-size: 1rem;
+        letter-spacing: 0;
+        text-transform: lowercase;
+      }
+      header strong span {
+        color: var(--signal);
+      }
+      main {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 4rem 2rem 6rem;
+      }
+      h1 {
+        max-width: 10ch;
+        margin: 0;
+        font-family: "Anton", "Arial Narrow", Impact, sans-serif;
+        font-size: clamp(3rem, 8vw, 7rem);
+        font-weight: 400;
+        line-height: 0.9;
+        text-transform: uppercase;
+      }
+      .lede {
+        max-width: 62ch;
+        margin-top: 1.5rem;
+        color: var(--muted);
+      }
+      .live-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 1.5rem;
+      }
+      .live-links a {
+        padding: 0.7rem 1rem;
+        border: 1px solid var(--ink);
+        background: var(--ink);
+        color: var(--paper);
+        font-family: var(--mono);
+        font-size: 0.63rem;
+        letter-spacing: 0.08em;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+      .live-links a:last-child {
+        background: transparent;
+        color: var(--ink);
+      }
+      .shot {
+        margin-top: 4rem;
+        border-top: 2px solid var(--ink);
+        padding-top: 1rem;
+      }
+      .shot-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        font-family: var(--mono);
+        font-size: 0.62rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .shot-head strong {
+        color: var(--ink);
+        font-weight: 500;
+      }
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--rule);
+      }
+      .shot p {
+        max-width: 70ch;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 2rem;
+        border-top: 1px solid var(--rule);
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      @media (max-width: 640px) {
+        header,
+        footer {
+          padding-inline: 1rem;
+        }
+        main {
+          padding: 2.5rem 1rem 4rem;
+        }
+        .shot {
+          margin-top: 2.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>kesho<span>.</span></strong>
+      <span>GSAP preview / review only</span>
+    </header>
+
+    <main>
+      <h1>The app, with motion.</h1>
+      <p class="lede">
+        These are real screenshots of the running app after the GSAP layer: the Discover edition
+        opening and reading line, and the Network paper filter using Flip. The screenshots are
+        static; open a live page to feel the timing.
+      </p>
+      <div class="live-links">
+        <a href="http://127.0.0.1:5173/discover">Open live Discover</a>
+        <a href="http://127.0.0.1:5173/network">Open live Network</a>
+      </div>
+
+      <section class="shot">
+        <div class="shot-head">
+          <strong>01 / Discover</strong>
+          <span>Edition sequence</span>
+        </div>
+        <a href="./discover.png"
+          ><img src="./discover.png" alt="Kesho Discover edition after its opening sequence"
+        /></a>
+        <p>
+          The title is set first, then the lead headline, facts and art, then the wire and club rows.
+          A three-pixel reading line tracks the edition without taking over the page. There is no
+          pinning; the DOM is restored when the sequence finishes.
+        </p>
+      </section>
+
+      <section class="shot">
+        <div class="shot-head">
+          <strong>02 / Network</strong>
+          <span>Loaded state</span>
+        </div>
+        <a href="./network-overview.png"
+          ><img src="./network-overview.png" alt="Kesho Network page with notices and commitments"
+        /></a>
+        <p>
+          The network header enters once. Notices and commitments are left alone; motion does not
+          compete with the boundary explanation or the reading order.
+        </p>
+      </section>
+
+      <section class="shot">
+        <div class="shot-head">
+          <strong>03 / Network cards</strong>
+          <span>Before filtering</span>
+        </div>
+        <a href="./network-cards.png"
+          ><img src="./network-cards.png" alt="Network club cards before family filtering"
+        /></a>
+        <p>
+          With the preview fixture loaded: nine club cards across the home campus and the exchange
+          campus. The family filter is the third control in the filter bar.
+        </p>
+      </section>
+
+      <section class="shot">
+        <div class="shot-head">
+          <strong>04 / Network family filter</strong>
+          <span>Paper stage / after</span>
+        </div>
+        <a href="./network-family-filter.png"
+          ><img
+            src="./network-family-filter.png"
+            alt="Network club cards after selecting the Debate Across Campuses family"
+        /></a>
+        <p>
+          The two surviving chapters move into their new grid positions while the clipped results
+          stage closes to their height. There is no absolute positioning, no ghost card and no
+          section bleed; the boundary note follows the paper edge.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <span>Kesho / review artifact</span>
+      <a href="http://127.0.0.1:5173/">Back to app</a>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2.5rem 1.625rem 4rem;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+  margin: 0 0 0.4rem;
+}
+
+.page h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(2.4rem, 5vw, 3.8rem);
+  line-height: 0.92;
+  letter-spacing: -0.012em;
+  margin: 0 0 0.6rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 3px solid var(--ink);
+  max-width: 18ch;
+}
+
+.body {
+  max-width: 56ch;
+  color: var(--ink-2);
+  margin: 0 0 1rem;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 1rem;
+  background: var(--signal);
+  border: 1px solid var(--signal);
+  color: var(--on-signal);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.link:hover {
+  background: var(--signal-hover);
+  border-color: var(--signal-deep);
+}

@@ -1,0 +1,40 @@
+/* In-flow connection status. No fixed positioning: this strip must never
+   cover masthead controls or page actions. */
+.strip {
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.42rem 1.625rem;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.strip[data-state="restored"] .dot {
+  background: var(--signal);
+}
+
+@media (max-width: 640px) {
+  .inner {
+    align-items: flex-start;
+    padding: 0.5rem 1rem;
+  }
+}

@@ -1,0 +1,369 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  border: 1px dashed var(--color-border);
+  background: var(--field-bg-soft);
+}
+
+.composerLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.composerLabel select {
+  min-height: 38px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  background: var(--field-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  text-transform: none;
+}
+
+.composerLabel textarea,
+.editBox textarea {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--rule-strong);
+  border-radius: 2px;
+  background: var(--field-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.composerFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  color: var(--color-text-muted);
+}
+
+.primaryButton {
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--color-primary-dark);
+  border-radius: 2px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--signal-hover);
+}
+
+.primaryButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ghostButton {
+  min-height: 34px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ghostButton:hover:not(:disabled) {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+.empty {
+  margin: 0;
+  padding: 0.7rem;
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.empty p {
+  margin: 0 0 0.4rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.table th {
+  padding: 0.42rem 0.35rem;
+  border-bottom: 1px solid var(--color-text);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.53rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.table td {
+  padding: 0.55rem 0.35rem;
+  border-bottom: 1px dashed var(--color-border);
+  vertical-align: top;
+}
+
+.dateCell time {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.bodyCell {
+  min-width: 14rem;
+}
+
+.excerpt {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+  line-height: 1.45;
+}
+
+.permalink {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid transparent;
+}
+
+.permalink:hover {
+  color: var(--color-primary-dark);
+  border-bottom-color: var(--color-primary);
+}
+
+.editBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.editPhotos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.editPhotoList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editPhotoList li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-width: 96px;
+}
+
+.editPhotoList img {
+  display: block;
+  width: 96px;
+  height: 68px;
+  object-fit: cover;
+  background: var(--color-bg-alt);
+}
+
+.editActions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.photoCount {
+  display: inline-block;
+  margin: 0.25rem 0 0 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.status {
+  font-family: var(--font-mono);
+  font-size: 0.53rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pinnedBadge {
+  display: block;
+  margin-top: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.48rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-primary-dark);
+}
+
+.published {
+  color: var(--color-primary-dark);
+}
+
+.hidden {
+  color: var(--gold);
+}
+
+.removed {
+  color: var(--danger);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.7rem;
+}
+
+.textButton {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.53rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.textButton:hover:not(:disabled) {
+  color: var(--color-text);
+  border-bottom-color: var(--color-primary);
+}
+
+.textButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.reportBlock {
+  margin-top: 0.4rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.reportBlock h3 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.reportList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report {
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-primary);
+  background: var(--field-bg-mid);
+}
+
+.reportHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.53rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reportKind {
+  color: var(--color-primary-dark);
+}
+
+.reportReason {
+  color: var(--color-text);
+}
+
+.reportCount {
+  color: var(--color-text-muted);
+}
+
+.reportText {
+  margin: 0.35rem 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.reportNote {
+  margin: 0.35rem 0 0;
+  padding-left: 0.55rem;
+  border-left: 2px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.reportActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}

@@ -14,10 +14,18 @@ export const CATEGORIES = [
   "Social",
 ];
 
-/** All clubs. */
-export async function getAllClubs() {
-  const { clubs } = await apiFetch("/clubs", { auth: false });
+/** Clubs on the signed-in reader's campus, or across an affiliated network. */
+export async function getAllClubs({ scope } = {}) {
+  const query = scope ? `?scope=${encodeURIComponent(scope)}` : "";
+  const { clubs } = await apiFetch(`/clubs${query}`);
   return clubs;
+}
+
+/** One club identity, within the requested discovery scope. */
+export async function getClub(clubId, { scope } = {}) {
+  const query = scope ? `?scope=${encodeURIComponent(scope)}` : "";
+  const { club } = await apiFetch(`/clubs/${encodeURIComponent(clubId)}${query}`);
+  return club;
 }
 
 /**

@@ -8,6 +8,7 @@ import {
   setCommentPinned,
   deleteComment,
 } from "../utils/commentsStore";
+import ReportButton from "./ReportButton";
 import styles from "./CommentSection.module.css";
 
 const REACTION_CHOICES = ["👍", "❤️", "🎉", "😂"];
@@ -34,8 +35,9 @@ function formatTimestamp(iso) {
 const byTime = (a, b) => new Date(a.createdAt) - new Date(b.createdAt);
 
 /**
- * Comment thread for an event or a club: one level of replies, emoji reactions,
- * pinned answers, and delete for the author or a club admin.
+ * Comment thread for a club, event, commitment or post: one level of replies,
+ * emoji reactions, pinned answers, reporting for readers, and delete for the
+ * author or a club admin.
  */
 export default function CommentSection({
   targetType,
@@ -233,6 +235,10 @@ export default function CommentSection({
             >
               {comment.pinned ? "Unpin" : "Pin"}
             </button>
+          )}
+
+          {user && !comment.canModerate && comment.userId !== user.id && (
+            <ReportButton targetType="comment" targetId={comment.id} />
           )}
 
           {canDelete && (

@@ -1,0 +1,286 @@
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 3vw, 2.75rem) var(--space-lg) 5rem;
+}
+
+.header {
+  padding-bottom: var(--space-6);
+  border-bottom: 2px solid var(--ink);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--signal-deep);
+}
+
+.header h1 {
+  max-width: 22ch;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  max-width: 68ch;
+  margin: var(--space-4) 0 0;
+  color: var(--ink-2);
+}
+
+.notice,
+.error {
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4);
+}
+
+.notice {
+  border-left: 4px solid var(--signal);
+  background: var(--tint);
+}
+
+.error {
+  border: 1px solid var(--signal-deep);
+  color: var(--signal-deep);
+}
+
+.section {
+  margin-top: var(--space-8);
+}
+
+.section h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  letter-spacing: -0.015em;
+}
+
+.sectionLede {
+  max-width: 72ch;
+  margin: var(--space-2) 0 var(--space-4);
+  color: var(--muted);
+}
+
+.affiliationList,
+.queueList {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.affiliationCard,
+.queueCard {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--rule);
+  background: var(--card);
+}
+
+.affiliationCard h3,
+.queueCard h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+}
+
+.slug {
+  margin: 0.2rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.note {
+  max-width: 62ch;
+  margin: var(--space-3) 0 0;
+  color: var(--ink-2);
+  font-size: 0.92rem;
+}
+
+.requestLine {
+  margin: var(--space-3) 0 0;
+  color: var(--ink-2);
+}
+
+.ownRequest {
+  margin: var(--space-3) 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--signal-deep);
+}
+
+.status {
+  flex: none;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.active {
+  border-color: var(--success-border);
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.pending {
+  border-color: var(--warning-border);
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.empty {
+  padding: var(--space-6);
+  border: 1px dashed var(--rule);
+  color: var(--muted);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--rule);
+  background: var(--card);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible,
+.button:focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.hint {
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.button {
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--paper-2);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.primary {
+  border-color: var(--signal-deep);
+  background: var(--signal);
+  color: var(--on-signal);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--signal-hover);
+}
+
+.quietButton {
+  border-color: var(--rule);
+  color: var(--ink-2);
+}
+
+.danger {
+  border-color: var(--signal-deep);
+  color: var(--signal-deep);
+}
+
+.queueCard {
+  border-left: 5px solid var(--signal);
+}
+
+.queueBody {
+  min-width: 0;
+}
+
+@media (max-width: 680px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .affiliationCard,
+  .queueCard {
+    flex-direction: column;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .queueCard .actions .button {
+    flex: 1;
+  }
+}

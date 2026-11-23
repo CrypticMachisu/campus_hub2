@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Study 03 — The day sheet</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./mockups.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Flip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+    <style>
+      .hero-03 {
+        position: relative;
+        min-height: 100svh;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding-block: 8.5rem 2rem;
+        overflow: hidden;
+        border-bottom: 1px solid var(--ink);
+      }
+      .hero-03 .display {
+        position: relative;
+        z-index: 1;
+        max-width: 10.5ch;
+        font-size: clamp(4rem, 13.5vw, 12rem);
+      }
+      .hero-03 .display em {
+        color: var(--signal);
+        font-style: normal;
+      }
+      .hero-03 .lede {
+        position: relative;
+        z-index: 1;
+        max-width: 48ch;
+        margin-top: 1.4rem;
+      }
+      .day-stamp {
+        position: absolute;
+        top: 7rem;
+        right: clamp(0rem, 3vw, 3rem);
+        width: clamp(150px, 21vw, 260px);
+        aspect-ratio: 1;
+        display: grid;
+        place-content: center;
+        text-align: center;
+        border: 1px solid var(--ink);
+        border-radius: 50%;
+        background: var(--tint);
+        transform: rotate(7deg);
+      }
+      .day-stamp::before {
+        content: "";
+        position: absolute;
+        inset: 10px;
+        border: 1px dashed var(--signal);
+        border-radius: 50%;
+      }
+      .day-stamp b {
+        display: block;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(3rem, 7vw, 5.8rem);
+        line-height: 0.8;
+      }
+      .day-stamp span {
+        display: block;
+        margin-top: 0.35rem;
+        font-family: var(--mono);
+        font-size: 0.58rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .hero-foot {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 2rem;
+        margin-top: 3rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid var(--rule);
+      }
+      .hero-foot .mono {
+        color: var(--muted);
+        font-size: 0.62rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .drag-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+      }
+      .drag-hint i {
+        display: inline-block;
+        width: 24px;
+        height: 1px;
+        background: var(--signal);
+      }
+
+      .agenda {
+        padding-block: 2rem 0;
+        border-bottom: 1px solid var(--ink);
+        background: var(--paper-2);
+        overflow: hidden;
+      }
+      .agenda-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 1rem;
+        margin-bottom: 0.8rem;
+      }
+      .agenda-head span {
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .agenda-viewport {
+        overflow: hidden;
+        cursor: grab;
+        padding-bottom: 1.2rem;
+        touch-action: pan-y;
+      }
+      .agenda-viewport:active {
+        cursor: grabbing;
+      }
+      .agenda-track {
+        display: flex;
+        gap: 1px;
+        width: max-content;
+        padding-inline: max(var(--gutter), calc((100vw - 1180px) / 2));
+        background: var(--rule);
+        border-block: 1px solid var(--rule);
+        will-change: transform;
+      }
+      .is-reduced .agenda-viewport {
+        overflow-x: auto;
+        cursor: auto;
+      }
+      .agenda-day {
+        width: 230px;
+        min-height: 138px;
+        padding: 0.9rem 1rem;
+        background: var(--card);
+      }
+      .agenda-day.today {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .agenda-day .day-name {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        font-family: var(--mono);
+        font-size: 0.58rem;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .agenda-day.today .day-name {
+        color: color-mix(in srgb, var(--paper) 58%, transparent);
+      }
+      .agenda-day .day-name b {
+        color: var(--signal);
+        font-weight: 400;
+      }
+      .agenda-day h3 {
+        margin: 1.2rem 0 0.3rem;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 2.2rem;
+        line-height: 0.85;
+        text-transform: uppercase;
+      }
+      .agenda-day p {
+        margin: 0;
+        font-size: 0.76rem;
+        color: var(--muted);
+      }
+      .agenda-day.today p {
+        color: color-mix(in srgb, var(--paper) 72%, transparent);
+      }
+
+      .sheet {
+        padding-block: clamp(3rem, 7vw, 6rem) clamp(5rem, 10vw, 9rem);
+      }
+      .sheet-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.2rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .filter-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .filter-button {
+        border: 1px solid var(--rule);
+        background: transparent;
+        color: var(--ink);
+        padding: 0.45rem 0.75rem;
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition:
+          background 160ms var(--ease),
+          color 160ms var(--ease);
+      }
+      .filter-button:hover,
+      .filter-button[aria-pressed="true"] {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: var(--paper);
+      }
+      .sheet-count {
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .sheet-stage {
+        position: relative;
+        overflow: hidden;
+      }
+      .sheet-grid {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        background: var(--rule);
+        border: 1px solid var(--rule);
+      }
+      .sheet-card {
+        min-height: 300px;
+        background: var(--card);
+        overflow: hidden;
+      }
+      .sheet-card.is-hidden {
+        display: none;
+      }
+      .card-inner {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 300px;
+        padding: 1.15rem;
+        transform-style: preserve-3d;
+        will-change: transform;
+        transition:
+          background 200ms var(--ease),
+          color 200ms var(--ease);
+      }
+      .card-inner:hover {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .card-inner:hover .card-kicker,
+      .card-inner:hover .card-desc,
+      .card-inner:hover .card-foot {
+        color: color-mix(in srgb, var(--paper) 64%, transparent);
+      }
+      .card-inner:hover .card-arrow {
+        opacity: 1;
+        transform: translate(0);
+      }
+      .card-kicker {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.8rem;
+        font-family: var(--mono);
+        font-size: 0.58rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .card-kicker b {
+        color: var(--signal);
+        font-weight: 400;
+      }
+      .card-title {
+        margin: auto 0 0.55rem;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(1.8rem, 3vw, 2.9rem);
+        line-height: 0.86;
+        text-transform: uppercase;
+      }
+      .card-desc {
+        margin: 0;
+        max-width: 32ch;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+      .card-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1rem;
+        padding-top: 0.65rem;
+        border-top: 1px solid currentColor;
+        font-family: var(--mono);
+        font-size: 0.58rem;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .card-arrow {
+        color: var(--signal);
+        opacity: 0;
+        transform: translateX(-5px);
+        transition:
+          opacity 180ms var(--ease),
+          transform 180ms var(--ease);
+      }
+      .card-inner:hover .card-arrow {
+        color: var(--signal-deep);
+      }
+
+      .close-03 {
+        padding-block: clamp(4rem, 9vw, 8rem);
+        background: var(--paper-2);
+        border-top: 1px solid var(--ink);
+      }
+      .close-03 .display {
+        max-width: 19ch;
+        font-size: clamp(3rem, 8vw, 7.2rem);
+      }
+      .close-row-03 {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 2rem;
+      }
+      .close-row-03 p {
+        max-width: 42ch;
+        color: var(--ink-2);
+      }
+
+      @media (max-width: 900px) {
+        .sheet-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .day-stamp {
+          top: 6.5rem;
+          opacity: 0.5;
+        }
+        .close-row-03 {
+          align-items: start;
+          flex-direction: column;
+        }
+      }
+      @media (max-width: 620px) {
+        .sheet-grid {
+          grid-template-columns: 1fr;
+        }
+        .hero-03 .display {
+          max-width: 9ch;
+        }
+        .day-stamp {
+          width: 120px;
+          opacity: 0.32;
+        }
+        .agenda-day {
+          width: 200px;
+        }
+      }
+    </style>
+  </head>
+  <body class="study study-03">
+    <a class="skip-link" href="#main">Skip to the day sheet</a>
+    <div class="scroll-progress" aria-hidden="true"></div>
+    <header class="study-bar">
+      <a class="study-brand" href="./index.html">kesho<span>.</span></a>
+      <span class="study-tag">Study 03 / The day sheet</span>
+      <div class="study-actions">
+        <button class="chip-button" type="button" data-reduce-toggle aria-pressed="false">
+          Reduced motion
+        </button>
+        <a class="chip-button" href="./index.html">All studies</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero-03 container">
+        <div class="day-stamp" aria-hidden="true">
+          <b>20</b>
+          <span>Thursday / Nov</span>
+        </div>
+        <p class="eyebrow">The day sheet · What is actually on</p>
+        <h1 class="display">Make<br />room<br />for <em>this.</em></h1>
+        <p class="lede">
+          Six things worth leaving your room for. Filter the sheet, drag the week, then pick the one
+          you will actually attend.
+        </p>
+        <div class="hero-foot">
+          <span class="mono">18 notices → 6 picks</span>
+          <span class="mono drag-hint"><i></i> Drag the week above</span>
+        </div>
+      </section>
+
+      <section class="agenda container-fluid" aria-labelledby="agenda-title">
+        <div class="container">
+          <div class="agenda-head">
+            <h2 id="agenda-title" class="mono" style="font-size: 0.68rem; letter-spacing: 0.1em">
+              THE WEEK, IN ONE STRIP
+            </h2>
+            <span>Drag / swipe</span>
+          </div>
+        </div>
+        <div class="agenda-viewport" data-agenda tabindex="0" aria-label="Draggable week agenda">
+          <div class="agenda-track">
+            <article class="agenda-day today">
+              <div class="day-name"><b>Thu 20</b><span>Today</span></div>
+              <h3>Open<br />studio</h3>
+              <p>18:30 · Design Society</p>
+            </article>
+            <article class="agenda-day">
+              <div class="day-name"><b>Fri 21</b><span>2 things</span></div>
+              <h3>Film<br />night</h3>
+              <p>20:15 · Film Circle</p>
+            </article>
+            <article class="agenda-day">
+              <div class="day-name"><b>Sat 22</b><span>3 things</span></div>
+              <h3>Clean<br />up</h3>
+              <p>09:00 · Volunteer Network</p>
+            </article>
+            <article class="agenda-day">
+              <div class="day-name"><b>Sun 23</b><span>1 thing</span></div>
+              <h3>Slow<br />read</h3>
+              <p>11:00 · Library desk</p>
+            </article>
+            <article class="agenda-day">
+              <div class="day-name"><b>Mon 24</b><span>2 things</span></div>
+              <h3>Motion<br />floor</h3>
+              <p>19:00 · Debate Union</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="sheet container" aria-labelledby="sheet-title">
+        <div class="section-head">
+          <h2 id="sheet-title">Six picks</h2>
+          <span data-view aria-live="polite">Everything · 06</span>
+        </div>
+        <div class="sheet-toolbar">
+          <div class="filter-group" role="group" aria-label="Filter the day sheet">
+            <button class="filter-button" type="button" data-filter="all" aria-pressed="true">
+              Everything
+            </button>
+            <button class="filter-button" type="button" data-filter="event" aria-pressed="false">
+              Events
+            </button>
+            <button class="filter-button" type="button" data-filter="notice" aria-pressed="false">
+              Notices
+            </button>
+            <button class="filter-button" type="button" data-filter="family" aria-pressed="false">
+              Families
+            </button>
+          </div>
+          <span class="sheet-count" data-count>06 shown</span>
+        </div>
+
+        <div class="sheet-stage" data-sheet-stage>
+          <div class="sheet-grid" data-sheet>
+            <article class="sheet-card" data-kind="event">
+              <a class="card-inner" href="#agenda-title">
+                <div class="card-kicker"><span>18:30 · Nairobi</span><b>Event</b></div>
+                <h3 class="card-title">Open studio:<br />the shared mark</h3>
+                <p class="card-desc">
+                  Bring one unfinished thing. The family mark gets a second draft.
+                </p>
+                <div class="card-foot">
+                  <span>Design Society · 12 going</span><span class="card-arrow">→</span>
+                </div>
+              </a>
+            </article>
+            <article class="sheet-card" data-kind="event">
+              <a class="card-inner" href="#agenda-title">
+                <div class="card-kicker"><span>19:00 · Kisumu</span><b>Event</b></div>
+                <h3 class="card-title">Motion:<br />this house believes</h3>
+                <p class="card-desc">
+                  Cross-campus motion, local floor. The argument travels; the room does not.
+                </p>
+                <div class="card-foot">
+                  <span>Debate Union · 28 going</span><span class="card-arrow">→</span>
+                </div>
+              </a>
+            </article>
+            <article class="sheet-card" data-kind="notice">
+              <a class="card-inner" href="#agenda-title">
+                <div class="card-kicker"><span>20:15 · Mombasa</span><b>Notice</b></div>
+                <h3 class="card-title">Three chapters,<br />one reel</h3>
+                <p class="card-desc">
+                  A short programme curated across the network. Six seats left.
+                </p>
+                <div class="card-foot">
+                  <span>Film Circle · 6 seats</span><span class="card-arrow">→</span>
+                </div>
+              </a>
+            </article>
+            <article class="sheet-card" data-kind="notice">
+              <a class="card-inner" href="#agenda-title">
+                <div class="card-kicker"><span>All day · Library</span><b>Notice</b></div>
+                <h3 class="card-title">The reading<br />room is open</h3>
+                <p class="card-desc">
+                  Quiet hours extended through exam week. Bring your own lamp.
+                </p>
+                <div class="card-foot">
+                  <span>Library desk · Campus</span><span class="card-arrow">→</span>
+                </div>
+              </a>
+            </article>
+            <article class="sheet-card" data-kind="family">
+              <a class="card-inner" href="#agenda-title">
+                <div class="card-kicker"><span>Saturday · Network</span><b>Family</b></div>
+                <h3 class="card-title">One family,<br />three campuses</h3>
+                <p class="card-desc">
+                  See the chapters, the shared mark and the next network event.
+                </p>
+                <div class="card-foot">
+                  <span>Design family · 3 chapters</span><span class="card-arrow">→</span>
+                </div>
+              </a>
+            </article>
+            <article class="sheet-card" data-kind="family">
+              <a class="card-inner" href="#agenda-title">
+                <div class="card-kicker"><span>09:00 · Network</span><b>Family</b></div>
+                <h3 class="card-title">Saturday<br />clean-up</h3>
+                <p class="card-desc">
+                  Attendance is intent. The host campus still keeps the roster.
+                </p>
+                <div class="card-foot">
+                  <span>Volunteer Network · Open</span><span class="card-arrow">→</span>
+                </div>
+              </a>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="close-03">
+        <div class="container close-row-03">
+          <div>
+            <p class="eyebrow">The argument</p>
+            <h2 class="display">A filter should feel like moving paper, not reloading a page.</h2>
+          </div>
+          <div>
+            <p>
+              Flip keeps the layout logic where it already lives. GSAP only animates the difference
+              between two states — no duplicated card markup, no hidden list.
+            </p>
+            <a class="button ghost" href="./01-signal-editorial.html">Back to study 01 →</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="container footer">
+      <span>Kesho / study 03</span>
+      <a href="./index.html">All studies</a>
+    </footer>
+
+    <script>
+      const reduceQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      let reduceMotion = reduceQuery.matches;
+      let ctx = null;
+      let draggable = null;
+      const toggle = document.querySelector("[data-reduce-toggle]");
+      const stage = document.querySelector("[data-sheet-stage]");
+      const grid = document.querySelector("[data-sheet]");
+      const title = document.querySelector("#sheet-title");
+      const view = document.querySelector("[data-view]");
+      const cards = gsap.utils.toArray(".sheet-card");
+      const count = document.querySelector("[data-count]");
+      const labels = {
+        all: "Everything",
+        event: "Events",
+        notice: "Notices",
+        family: "Families",
+      };
+
+      function applyFilter(kind) {
+        if (!window.gsap || !window.Flip) {
+          cards.forEach((card) => {
+            card.classList.toggle("is-hidden", kind !== "all" && card.dataset.kind !== kind);
+          });
+          return;
+        }
+
+        const startHeight = stage.offsetHeight;
+        const nextVisible = cards.filter((card) => kind === "all" || card.dataset.kind === kind);
+        const state = Flip.getState(nextVisible);
+        cards.forEach((card) => {
+          card.classList.toggle("is-hidden", kind !== "all" && card.dataset.kind !== kind);
+        });
+        const visible = cards.filter((card) => !card.classList.contains("is-hidden"));
+        const endHeight = grid.offsetHeight;
+        const shown = String(visible.length).padStart(2, "0");
+        count.textContent = `${shown} shown`;
+        view.textContent = `${labels[kind]} · ${shown}`;
+        title.textContent = kind === "all" ? "Six picks" : labels[kind];
+
+        if (reduceMotion) {
+          stage.style.height = "";
+          return;
+        }
+
+        gsap.fromTo(
+          [title, view],
+          { opacity: 0.45, y: 6 },
+          { opacity: 1, y: 0, duration: 0.35, stagger: 0.04, overwrite: true, ease: "power2.out" }
+        );
+
+        // Flip measures cards in the new layout. The stage keeps its old height
+        // for one beat, then closes smoothly so the argument below never jumps
+        // up over a card that is still leaving.
+        gsap.killTweensOf(stage);
+        stage.style.height = `${startHeight}px`;
+        Flip.from(state, {
+          duration: 0.55,
+          ease: "power2.inOut",
+          absolute: false,
+          stagger: 0.03,
+          onEnter: (elements) =>
+            gsap.fromTo(
+              elements,
+              { opacity: 0, scale: 0.96 },
+              { opacity: 1, scale: 1, duration: 0.35, ease: "power2.out" }
+            ),
+        });
+        gsap.to(stage, {
+          height: endHeight,
+          duration: 0.55,
+          ease: "power2.inOut",
+          onComplete: () => {
+            stage.style.height = "";
+          },
+        });
+      }
+
+      function build() {
+        if (!window.gsap) return;
+        if (ctx) ctx.revert();
+        ctx = null;
+        if (draggable) {
+          draggable.kill();
+          draggable = null;
+        }
+        gsap.registerPlugin(ScrollTrigger, Flip, Draggable);
+
+        document.body.classList.toggle("is-reduced", reduceMotion);
+        ctx = gsap.context(() => {
+          if (reduceMotion) {
+            gsap.set(".sheet-card", { clearProps: "all" });
+            return;
+          }
+
+          gsap
+            .timeline({ defaults: { ease: "power3.out" } })
+            .fromTo(".hero-03 .eyebrow", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5 })
+            .fromTo(
+              ".hero-03 .display",
+              { opacity: 0, y: 55 },
+              { opacity: 1, y: 0, duration: 1, ease: "power4.out" },
+              "-=0.15"
+            )
+            .fromTo(
+              ".hero-03 .lede",
+              { opacity: 0, y: 22 },
+              { opacity: 1, y: 0, duration: 0.65 },
+              "-=0.55"
+            )
+            .fromTo(
+              ".hero-foot",
+              { opacity: 0, y: 16 },
+              { opacity: 1, y: 0, duration: 0.55 },
+              "-=0.4"
+            )
+            .fromTo(
+              ".day-stamp",
+              { opacity: 0, scale: 0.8, rotation: -8 },
+              {
+                opacity: 1,
+                scale: 1,
+                rotation: 7,
+                duration: 0.85,
+                ease: "back.out(1.4)",
+              },
+              "-=0.7"
+            );
+
+          gsap.from(".agenda-day", {
+            opacity: 0,
+            y: 30,
+            duration: 0.55,
+            stagger: 0.06,
+            ease: "power2.out",
+            scrollTrigger: { trigger: ".agenda", start: "top 85%" },
+          });
+
+          gsap.from(".sheet-card", {
+            opacity: 0,
+            y: 34,
+            duration: 0.55,
+            stagger: 0.06,
+            ease: "power2.out",
+            scrollTrigger: { trigger: ".sheet-grid", start: "top 85%" },
+          });
+
+          gsap.from(".close-03 .display", {
+            opacity: 0,
+            y: 35,
+            duration: 0.85,
+            ease: "power3.out",
+            scrollTrigger: { trigger: ".close-03", start: "top 72%" },
+          });
+
+          const viewport = document.querySelector("[data-agenda]");
+          const track = document.querySelector(".agenda-track");
+          const maxX = () => Math.min(0, viewport.clientWidth - track.scrollWidth);
+          draggable = Draggable.create(track, {
+            type: "x",
+            bounds: { minX: maxX(), maxX: 0 },
+            edgeResistance: 0.9,
+            cursor: "grab",
+            activeCursor: "grabbing",
+            onPress() {
+              viewport.style.cursor = "grabbing";
+            },
+            onRelease() {
+              viewport.style.cursor = "grab";
+            },
+          })[0];
+
+          window.addEventListener("resize", () => {
+            if (draggable) draggable.applyBounds({ minX: maxX(), maxX: 0 });
+          });
+
+          const tiltCards = gsap.utils.toArray(".sheet-card");
+          tiltCards.forEach((card) => {
+            const inner = card.querySelector(".card-inner");
+            const rx = gsap.quickTo(inner, "rotationX", { duration: 0.45, ease: "power3" });
+            const ry = gsap.quickTo(inner, "rotationY", { duration: 0.45, ease: "power3" });
+            card.addEventListener("mousemove", (event) => {
+              const rect = card.getBoundingClientRect();
+              ry(((event.clientX - rect.left) / rect.width - 0.5) * 7);
+              rx(((event.clientY - rect.top) / rect.height - 0.5) * -7);
+            });
+            card.addEventListener("mouseleave", () => {
+              rx(0);
+              ry(0);
+            });
+          });
+
+          gsap.to(".scroll-progress", {
+            scaleX: 1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: document.body,
+              start: "top top",
+              end: "bottom bottom",
+              scrub: true,
+            },
+          });
+        });
+
+        applyFilter(document.querySelector("[data-filter][aria-pressed='true']").dataset.filter);
+        if (window.ScrollTrigger) ScrollTrigger.refresh();
+        toggle.setAttribute("aria-pressed", String(reduceMotion));
+        toggle.textContent = reduceMotion ? "Motion on" : "Reduced motion";
+      }
+
+      document.querySelectorAll("[data-filter]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-filter]").forEach((other) => {
+            other.setAttribute("aria-pressed", String(other === button));
+          });
+          applyFilter(button.dataset.filter);
+        });
+      });
+
+      toggle.addEventListener("click", () => {
+        reduceMotion = !reduceMotion;
+        if (ctx) ctx.revert();
+        ctx = null;
+        if (draggable) {
+          draggable.kill();
+          draggable = null;
+        }
+        build();
+      });
+
+      reduceQuery.addEventListener("change", () => {
+        reduceMotion = reduceQuery.matches;
+        build();
+      });
+
+      build();
+      window.addEventListener("load", () => {
+        if (window.ScrollTrigger) ScrollTrigger.refresh();
+      });
+    </script>
+  </body>
+</html>

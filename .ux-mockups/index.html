@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kesho UX Lab — Loading &amp; Motion Directions</title>
+    <link rel="icon" type="image/svg+xml" href="../public/favicon.svg" />
+    <link rel="stylesheet" href="lab.css" />
+    <style>
+      .index-main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 2.4rem 2rem 5rem;
+      }
+      .index-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-bottom: 0.8rem;
+        border-bottom: 3px solid var(--ink);
+        font-family: var(--font-mono);
+        font-size: 0.55rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .index-head strong {
+        font-family: var(--font-display);
+        font-size: 1.55rem;
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: lowercase;
+        color: var(--ink);
+      }
+      .index-head strong span {
+        color: var(--signal);
+      }
+      .index-title {
+        max-width: 13ch;
+        margin: 2rem 0 0.8rem;
+        font-family: var(--font-display);
+        font-size: clamp(3.4rem, 8vw, 7rem);
+        font-weight: 400;
+        line-height: 0.85;
+        text-transform: uppercase;
+        letter-spacing: -0.02em;
+      }
+      .index-lede {
+        max-width: 68ch;
+        margin: 0 0 0.6rem;
+        font-size: 1.05rem;
+        color: var(--ink-2);
+      }
+      .index-note {
+        max-width: 68ch;
+        margin: 0 0 2rem;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+      .essentials-entry {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 1.4rem;
+        align-items: center;
+        margin: 0 0 1.6rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--signal);
+        border-left-width: 4px;
+        background: var(--tint);
+      }
+      .essentials-entry h2 {
+        margin: 0.15rem 0 0.25rem;
+        font-family: var(--font-display);
+        font-size: clamp(1.7rem, 3vw, 2.4rem);
+        font-weight: 400;
+        line-height: 0.95;
+        text-transform: uppercase;
+      }
+      .essentials-entry p {
+        max-width: 68ch;
+        margin: 0;
+        font-size: 0.84rem;
+        color: var(--ink-2);
+      }
+      .essentials-entry .direction-kicker {
+        margin: 0;
+      }
+      .essentials-entry .btn {
+        white-space: nowrap;
+      }
+      @media (max-width: 760px) {
+        .essentials-entry {
+          grid-template-columns: 1fr;
+        }
+        .essentials-entry .btn {
+          justify-self: start;
+        }
+      }
+      .directions {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1px;
+        background: var(--rule);
+        border: 1px solid var(--rule);
+      }
+      .direction {
+        display: flex;
+        flex-direction: column;
+        min-height: 420px;
+        padding: 1.1rem;
+        background: var(--card);
+      }
+      .direction-kicker {
+        margin: 0 0 0.35rem;
+        font-family: var(--font-mono);
+        font-size: 0.52rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--signal-deep);
+      }
+      .direction h2 {
+        margin: 0 0 0.45rem;
+        font-family: var(--font-display);
+        font-size: 2rem;
+        font-weight: 400;
+        line-height: 0.95;
+        text-transform: uppercase;
+      }
+      .direction p {
+        margin: 0 0 0.7rem;
+        font-size: 0.84rem;
+        line-height: 1.5;
+        color: var(--ink-2);
+      }
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin: 0 0 1rem;
+        padding: 0;
+        list-style: none;
+      }
+      .tag-list li {
+        padding: 0.2rem 0.4rem;
+        border: 1px solid var(--rule);
+        font-family: var(--font-mono);
+        font-size: 0.47rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .direction .best {
+        margin-top: auto;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--rule);
+        font-size: 0.76rem;
+      }
+      .direction .best b {
+        display: block;
+        margin-bottom: 0.1rem;
+        font-family: var(--font-mono);
+        font-size: 0.48rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .direction .btn {
+        margin-top: 0.8rem;
+        justify-content: space-between;
+      }
+      .matrix {
+        margin-top: 2.4rem;
+        border-top: 3px solid var(--ink);
+      }
+      .matrix h2 {
+        margin: 0.7rem 0 0.5rem;
+        font-family: var(--font-display);
+        font-size: 1.8rem;
+        font-weight: 400;
+        text-transform: uppercase;
+      }
+      .matrix table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8rem;
+      }
+      .matrix th,
+      .matrix td {
+        padding: 0.55rem 0.5rem;
+        border-bottom: 1px solid var(--rule);
+        text-align: left;
+        vertical-align: top;
+      }
+      .matrix th {
+        font-family: var(--font-mono);
+        font-size: 0.49rem;
+        font-weight: 500;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .matrix td:first-child {
+        width: 20%;
+        font-weight: 600;
+      }
+      .howto {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+      .howto h2 {
+        margin: 0 0 0.4rem;
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        font-weight: 400;
+        text-transform: uppercase;
+      }
+      .howto p,
+      .howto li {
+        font-size: 0.82rem;
+        color: var(--ink-2);
+      }
+      .howto ol {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+      .howto li {
+        margin-bottom: 0.35rem;
+      }
+      code {
+        padding: 0.1rem 0.3rem;
+        background: var(--paper-2);
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+      }
+      @media (max-width: 1100px) {
+        .directions {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 900px) {
+        .directions {
+          grid-template-columns: 1fr;
+        }
+        .direction {
+          min-height: 0;
+        }
+        .howto {
+          grid-template-columns: 1fr;
+          gap: 1.2rem;
+        }
+        .matrix {
+          overflow-x: auto;
+        }
+        .matrix table {
+          min-width: 920px;
+        }
+      }
+      @media (max-width: 640px) {
+        .index-main {
+          padding: 1.2rem 1rem 3rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="index-main" id="main">
+      <header class="index-head">
+        <strong>kesho<span>.</span></strong>
+        <span>UX lab / loading + motion / review only</span>
+      </header>
+
+      <h1 class="index-title">Loading, without the wait.</h1>
+      <p class="index-lede">
+        Four runnable directions built on the real Discover and member-workspace structures. A, B
+        and C explore separate balances of perceived-performance loading, GSAP choreography and
+        operational honesty. D pairs B's editorial setting with C's independent section boundaries.
+      </p>
+      <p class="index-note">
+        No production code was changed. The mockups use the installed GSAP version (3.15.1) via
+        CDN, the real Signal tokens, self-hosted fonts and actual campus imagery.
+      </p>
+
+      <section class="essentials-entry" aria-labelledby="essentials-title">
+        <div>
+          <p class="direction-kicker">New lab / structural essentials</p>
+          <h2 id="essentials-title">Test the invisible parts.</h2>
+          <p>
+            URL-synced views, dirty-form guards, local fault boundaries, focus traps, offline and
+            session continuity, pointer-aware actions, a z-index ladder and dark oklch elevation—all
+            simulated on one review page before any production extraction.
+          </p>
+        </div>
+        <a class="btn btn-primary" href="essentials.html">Open essentials lab <span aria-hidden="true">→</span></a>
+      </section>
+
+      <section class="directions" aria-label="Directions">
+        <article class="direction">
+          <p class="direction-kicker">Direction A / Discover</p>
+          <h2>The Instant Desk</h2>
+          <p>
+            Crisp, high-velocity product behaviour. The page frame is immediate; content earns a
+            skeleton only after a 160ms delay. Warm navigation renders from cache and refreshes
+            silently.
+          </p>
+          <ul class="tag-list">
+            <li>Delayed skeleton</li>
+            <li>200ms crossfade</li>
+            <li>Optimistic Flip</li>
+            <li>SWR</li>
+          </ul>
+          <p class="best"><b>Choose it if</b> speed should be felt before it is noticed. Motion confirms work; it never stages the page.</p>
+          <a class="btn btn-primary" href="direction-a.html">Open Direction A <span aria-hidden="true">→</span></a>
+        </article>
+
+        <article class="direction">
+          <p class="direction-kicker">Direction B / Discover</p>
+          <h2>The Morning Edition</h2>
+          <p>
+            An editorial reading of the same data. A typographic skeleton holds the page, then the
+            edition is set: SplitText title, masked lead lines, LQIP settle and a paper filter stage.
+          </p>
+          <ul class="tag-list">
+            <li>Type skeleton</li>
+            <li>SplitText</li>
+            <li>LQIP settle</li>
+            <li>Flip stage</li>
+          </ul>
+          <p class="best"><b>Choose it if</b> the product should feel authored. Loading becomes a short typesetting ritual, still without pinning or scroll-jacking.</p>
+          <a class="btn btn-primary" href="direction-b.html">Open Direction B <span aria-hidden="true">→</span></a>
+        </article>
+
+        <article class="direction">
+          <p class="direction-kicker">Direction C / Workspace</p>
+          <h2>Quiet Operations</h2>
+          <p>
+            Independent section boundaries for a member workspace. Header and metrics stay put while
+            the next event, feed and roster hydrate in sequence at 600 / 1080 / 1520ms. Frames hold
+            their shape between plates, and a rejected pin rolls back.
+          </p>
+          <ul class="tag-list">
+            <li>Partial hydration</li>
+            <li>Boundary states</li>
+            <li>Optimistic pin</li>
+            <li>Determinate export</li>
+          </ul>
+          <p class="best"><b>Choose it if</b> trust and continuity matter most. A failed panel should never blank the page; a long job should explain itself.</p>
+          <a class="btn btn-primary" href="direction-c.html">Open Direction C <span aria-hidden="true">→</span></a>
+        </article>
+
+        <article class="direction">
+          <p class="direction-kicker">Direction D / Discover × Workspace</p>
+          <h2>The Edited Desk</h2>
+          <p>
+            B's printed edition with C's operational boundaries. The masthead is immediate, then the
+            lead, club index and desk rail set independently. A failed club plate never blanks the
+            lead or agenda.
+          </p>
+          <ul class="tag-list">
+            <li>Masthead first</li>
+            <li>Sequential plates</li>
+            <li>Boundary states</li>
+            <li>Determinate save</li>
+          </ul>
+          <p class="best"><b>Choose it if</b> the edition should feel authored, but every section still needs to fail and recover on its own.</p>
+          <a class="btn btn-primary" href="direction-d.html">Open Direction D <span aria-hidden="true">→</span></a>
+        </article>
+      </section>
+
+      <section class="matrix" aria-labelledby="matrix-title">
+        <h2 id="matrix-title">Where they differ</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Moment</th>
+              <th>A / Instant Desk</th>
+              <th>B / Morning Edition</th>
+              <th>C / Quiet Operations</th>
+              <th>D / Edited Desk</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cold load</td>
+              <td>Header first; skeleton after 160ms; content crossfade.</td>
+              <td>Type-setting skeleton; staged edition reveal.</td>
+              <td>Header + metrics first; three plates hydrate at 600 / 1080 / 1520ms with their frames held.</td>
+              <td>Masthead printed; lead, clubs and desk set at 600 / 1080 / 1520ms.</td>
+            </tr>
+            <tr>
+              <td>Warm cache</td>
+              <td>Cached content in under 100ms; silent refresh.</td>
+              <td>Cached edition immediately; no second entrance.</td>
+              <td>Cached workspace immediately; sync stamp updates quietly.</td>
+              <td>Full edition immediately; the desk refreshes silently.</td>
+            </tr>
+            <tr>
+              <td>Write action</td>
+              <td>RSVP + filter at 0ms; Flip; rollback on Alt-click.</td>
+              <td>Filter + RSVP at 0ms; paper stage closes; rollback on Alt-click.</td>
+              <td>Pin moves to top at 0ms; Flip; rejected write restores order.</td>
+              <td>RSVP + filter at 0ms; paper stage Flip; rollback on Alt-click.</td>
+            </tr>
+            <tr>
+              <td>Long task</td>
+              <td>Not shown — no predictable long job on Discover.</td>
+              <td>Not shown — keeps the edition pure.</td>
+              <td>Roster export: determinate bar, percentage and step label.</td>
+              <td>Save the edition: determinate PDF progress, locked button width.</td>
+            </tr>
+            <tr>
+              <td>Failure</td>
+              <td>Whole edition error with retry, frame preserved.</td>
+              <td>“The presses stopped” with retry; header frame preserved.</td>
+              <td>Only the failed panel changes; agenda and roster survive.</td>
+              <td>Only the club plate changes; lead and desk stay intact.</td>
+            </tr>
+            <tr>
+              <td>Reduced motion</td>
+              <td>Opacity-only, static skeleton, no Flip movement.</td>
+              <td>No SplitText or masks; short fades only.</td>
+              <td>Instant reorder, static skeletons, progress still updates.</td>
+              <td>No SplitText or masks; short fades; state changes instant.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="howto" aria-label="How to review">
+        <div>
+          <h2>How to test</h2>
+          <ol>
+            <li>Open a direction and let it settle.</li>
+            <li>Press <b>Cold load</b> and watch when the skeleton appears.</li>
+            <li>Press <b>Warm cache</b>; confirm there is no skeleton flash.</li>
+            <li>Press <b>Optimistic / Flip</b>. Alt-click it to see rollback.</li>
+            <li>Press <b>Empty / Error</b> repeatedly to cycle the hand-off states.</li>
+          </ol>
+        </div>
+        <div>
+          <h2>Run it</h2>
+          <p>
+            Both direct file opening and the Vite dev server work. If you use Vite, open
+            <code>http://127.0.0.1:5173/.ux-mockups/index.html</code>. The mockups also run from
+            the filesystem; GSAP loads from the same pinned 3.15.1 CDN release.
+          </p>
+          <p>
+            Direction C also has two embedded tests: <b>Post an update</b> shows a locked-width
+            inline spinner, and <b>Export roster</b> runs a determinate long task. In Direction D,
+            <b>Empty / Error</b> only replaces the club plate, and <b>Save the edition</b> runs the
+            determinate PDF task from the desk rail.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

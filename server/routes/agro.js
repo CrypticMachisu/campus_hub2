@@ -1,21 +1,18 @@
-// AgroConnect opportunities — the Agri-Business & Farming club's activities.
+// Club opportunities — the Agri-Business & Farming club's activities.
 //
-// Team 6's contract has no opportunities resource, so these rows are OURS:
-// farm visits, tree-planting days, harvest mornings and volunteering shifts,
-// seeded below or added by a club admin. We never derive an opportunity from
-// a farmer or produce record — a grower listing tomatoes is not a farm visit,
-// and pretending otherwise would put activities in front of students that no
-// one ever scheduled. `source` records which local origin a row has:'seed' or
-// 'admin'; neither comes from the partner.
+// These rows are the club's own: farm visits, tree-planting days, harvest
+// mornings and volunteering shifts, seeded below or added by a club admin.
+// Nothing is derived from an outside listing — a grower selling tomatoes is
+// not a farm visit, and pretending otherwise would put activities in front of
+// students that no one ever scheduled. `source` records which local origin a
+// row has: 'seed' or 'admin'.
 //
-// AgroConnect supplies context only (the matched grower's name and county),
-// which means the list still works when it is down — the last farmer list we
-// received is stored in `partner_snapshots` and served with an asOf stamp.
+// Standalone build: there is no external partner call on this path. Host
+// names are typed by the club admin and stored with the activity itself.
 import { pool } from "../db.js";
 import { requireAuth, canManageClub } from "../middleware/auth.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 import { recordAudit } from "../audit.js";
-import { partnerGet } from "./partner.js";
 import { parseStartTime } from "./events.js";
 
 // The club row created by migrations/004_add_agriculture_club.sql, and the same
@@ -29,7 +26,7 @@ export const agroRouter = createApiRouter();
 const OPPORTUNITY_QUERY = `
   SELECT o.opportunity_id, o.kind, o.title, o.description, o.location, o.county,
          DATE_FORMAT(o.starts_at, '%Y-%m-%dT%H:%i') AS starts_local,
-         o.capacity, o.host_name, o.farmer_id, o.source,
+         o.capacity, o.host_name, o.source,
          (SELECT COUNT(*) FROM agro_interest i
            WHERE i.opportunity_id = o.opportunity_id) AS interest_count
   FROM agro_opportunities o
@@ -49,137 +46,9 @@ function rowToOpportunity(row, interestIds = new Set()) {
     startsAt: `${starts}:00+03:00`,
     capacity: row.capacity == null ? null : Number(row.capacity),
     hostName: row.host_name || "",
-    farmerId: row.farmer_id == null ? null : Number(row.farmer_id),
     source: row.source,
     interestCount: Number(row.interest_count || 0),
     interested: interestIds.has(row.opportunity_id),
-  };
-}
-
-const FARMERS_SNAPSHOT = "agroconnect:farmers";
-const PRODUCE_SNAPSHOT = "agroconnect:produce";
-
-/** Last list we successfully fetched for one partner feed, or null. */
-async function readSnapshot(key) {
-  const [rows] = await pool.query(
-    "SELECT payload, as_of FROM partner_snapshots WHERE cache_key = :key",
-    { key }
-  );
-  const row = rows[0];
-  if (!row) return null;
-  try {
-    const items = JSON.parse(row.payload);
-    if (!Array.isArray(items)) return null;
-    return { items, asOf: new Date(row.as_of).toISOString() };
-  } catch {
-    return null;
-  }
-}
-
-/** Save a feed on every success, so a restart does not erase it. */
-async function writeSnapshot(key, items, asOf) {
-  await pool.query(
-    `INSERT INTO partner_snapshots (cache_key, payload, as_of)
-     VALUES (:key, :payload, :asOf)
-     ON DUPLICATE KEY UPDATE payload = VALUES(payload), as_of = VALUES(as_of)`,
-    { key, payload: JSON.stringify(items), asOf: new Date(asOf) }
-  );
-}
-
-/**
- * Live -> saved copy -> nothing, the same rule for every partner list.
- * Nothing here is turned into an opportunity; these lists only decorate a
- * card the club already created.
- */
-async function cachedFeed(path, key, shape, map) {
-  const result = await partnerGet(path);
-  if (result.ok && shape(result.data)) {
-    const items = map(result.data);
-    try {
-      await writeSnapshot(key, items, result.asOf);
-    } catch (err) {
-      console.error(`could not save the ${key} snapshot:`, err.message);
-    }
-    return { items, live: true, asOf: result.asOf };
-  }
-
-  const saved = await readSnapshot(key).catch((err) => {
-    console.error(`could not read the ${key} snapshot:`, err.message);
-    return null;
-  });
-  return saved
-    ? { items: saved.items, live: false, asOf: saved.asOf }
-    : { items: [], live: false, asOf: null };
-}
-
-/**
- * Both partner feeds for the cards, fetched together: one timeout budget
- * (~5.1 s worst case) rather than two, which keeps the page inside its 10 s
- * client fetch.
- */
-async function partnerFeeds() {
-  const [farmers, produce] = await Promise.all([
-    cachedFeed(
-      "/farmers",
-      FARMERS_SNAPSHOT,
-      (data) => Array.isArray(data?.farmers),
-      (data) =>
-        data.farmers.map((farmer) => ({
-          id: farmer.id,
-          fullName: farmer.fullName,
-          county: farmer.county,
-          focus: farmer.focus,
-        }))
-    ),
-    cachedFeed(
-      "/produce",
-      PRODUCE_SNAPSHOT,
-      (data) => Array.isArray(data?.listings),
-      (data) =>
-        data.listings.map((listing) => ({
-          id: listing.id,
-          title: listing.title,
-          price: listing.price,
-          unit: listing.unit,
-          quantity: listing.quantity,
-          county: listing.county,
-          sellerName: listing.sellerName,
-        }))
-    ),
-  ]);
-  return { farmers, produce };
-}
-
-/**
- * Attach the matched grower and their current listings. The opportunity stays
- * ours; the partner data is shown beside it and labelled as theirs.
- */
-function withGrower(opportunity, farmers, produce) {
-  const host = opportunity.hostName.trim().toLowerCase();
-  const match = farmers.find(
-    (farmer) =>
-      (opportunity.farmerId != null && Number(farmer.id) === opportunity.farmerId) ||
-      (host && String(farmer.fullName).toLowerCase() === host)
-  );
-  if (!match) return opportunity;
-
-  // Their listings identify the seller only by name, so this is a name match
-  // rather than an id join. A miss simply shows no stall, never a wrong one.
-  const listings = produce
-    .filter(
-      (listing) => String(listing.sellerName).toLowerCase() === String(match.fullName).toLowerCase()
-    )
-    .slice(0, 3);
-
-  return {
-    ...opportunity,
-    grower: {
-      id: match.id,
-      name: match.fullName,
-      county: match.county || "",
-      focus: match.focus || "",
-      listings,
-    },
   };
 }
 
@@ -214,47 +83,24 @@ agroRouter.get("/opportunities", requireAuth, async (req, res) => {
   );
   const interestIds = new Set(mine.map((row) => row.opportunity_id));
 
-  const feeds = await partnerFeeds();
   res.json({
-    opportunities: rows.map((row) =>
-      withGrower(rowToOpportunity(row, interestIds), feeds.farmers.items, feeds.produce.items)
-    ),
-    partner: {
-      live: feeds.farmers.live,
-      asOf: feeds.farmers.asOf,
-      stale: !feeds.farmers.live && Boolean(feeds.farmers.asOf),
-      growerCount: feeds.farmers.items.length,
-      produce: {
-        live: feeds.produce.live,
-        asOf: feeds.produce.asOf,
-        stale: !feeds.produce.live && Boolean(feeds.produce.asOf),
-        count: feeds.produce.items.length,
-      },
-      // Team 6 publishes growers and produce, not activities. Report the
-      // opportunities feed as unavailable rather than deriving rows from a
-      // grower or produce listing — that would put activities in front of
-      // students that nobody scheduled. When they expose a feed, it is read
-      // here and this stops being false, without changing the local rows.
-      opportunities: [],
-      opportunitiesAvailable: false,
-    },
+    opportunities: rows.map((row) => rowToOpportunity(row, interestIds)),
   });
 });
 
 /**
  * POST /api/v2/agro/opportunities — an admin of the Agri club adds an
- * activity. This is the "admin-added" half of the fallback story: it never
- * depends on the partner being reachable.
+ * activity. It depends only on this database, never on an external service.
  */
 agroRouter.post("/opportunities", requireAuth, async (req, res) => {
   if (!canManageClub(req.user, AGRI_CLUB_ID)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const body = req.body || {};
   const kind = typeof body.kind === "string" ? body.kind.trim() : "";
   if (!OPPORTUNITY_KINDS.includes(kind)) {
-    return res.status(400).json({ error: `kind must be one of: ${OPPORTUNITY_KINDS.join(", ")}.` });
+    return res.status(400).json({ error: "Choose a valid opportunity type." });
   }
 
   const title = typeof body.title === "string" ? body.title.trim() : "";
@@ -270,7 +116,7 @@ agroRouter.post("/opportunities", requireAuth, async (req, res) => {
     date: body.date,
     time: body.time,
   });
-  if (!start) return res.status(400).json({ error: "Invalid startsAt." });
+  if (!start) return res.status(400).json({ error: "Choose a valid date and time." });
 
   let capacity = null;
   if (body.capacity !== undefined && body.capacity !== null && body.capacity !== "") {
@@ -278,28 +124,19 @@ agroRouter.post("/opportunities", requireAuth, async (req, res) => {
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
       return res
         .status(400)
-        .json({ error: "capacity must be a whole number between 1 and 10000." });
+        .json({ error: "Capacity must be a whole number between 1 and 10,000." });
     }
     capacity = parsed;
-  }
-
-  let farmerId = null;
-  if (body.farmerId !== undefined && body.farmerId !== null && body.farmerId !== "") {
-    const parsed = Number(body.farmerId);
-    if (!Number.isInteger(parsed) || parsed < 1) {
-      return res.status(400).json({ error: "farmerId must be a positive whole number." });
-    }
-    farmerId = parsed;
   }
 
   const id = `agro-${Date.now()}`;
   await pool.query(
     `INSERT INTO agro_opportunities
        (opportunity_id, kind, title, description, location, county, starts_at,
-        capacity, host_name, farmer_id, source)
+        capacity, host_name, source)
      VALUES
        (:id, :kind, :title, :description, :location, :county, :startsAt,
-        :capacity, :hostName, :farmerId, 'admin')`,
+        :capacity, :hostName, 'admin')`,
     {
       id,
       kind,
@@ -310,7 +147,6 @@ agroRouter.post("/opportunities", requireAuth, async (req, res) => {
       startsAt: `${start.date} ${start.time}`,
       capacity,
       hostName: typeof body.hostName === "string" ? body.hostName.trim().slice(0, 120) : "",
-      farmerId,
     }
   );
 
@@ -327,7 +163,7 @@ agroRouter.post("/opportunities", requireAuth, async (req, res) => {
 /** DELETE /api/v2/agro/opportunities/:id — admins only; interests cascade. */
 agroRouter.delete("/opportunities/:id", requireAuth, async (req, res) => {
   if (!canManageClub(req.user, AGRI_CLUB_ID)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
   const [rows] = await pool.query(
     "SELECT opportunity_id, title FROM agro_opportunities WHERE opportunity_id = :id",
@@ -355,7 +191,7 @@ agroRouter.delete("/opportunities/:id", requireAuth, async (req, res) => {
  */
 agroRouter.get("/opportunities/:id/interested", requireAuth, async (req, res) => {
   if (!canManageClub(req.user, AGRI_CLUB_ID)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const [opportunities] = await pool.query(

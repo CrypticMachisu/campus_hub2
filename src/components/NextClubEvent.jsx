@@ -39,7 +39,7 @@ export default function NextClubEvent({
   onToggle,
   playbook,
 }) {
-  const rsvpLabel = playbook?.rsvpLabel || "I'm going";
+  const rsvpLabel = playbook?.rsvpLabel || "RSVP";
   const cancelLabel = playbook?.cancelLabel || "Can't make it";
 
   if (!event) {

@@ -9,7 +9,7 @@ export const announcementsRouter = createApiRouter();
 /** GET /api/announcements?clubId=... */
 announcementsRouter.get("/", async (req, res) => {
   const { clubId } = req.query;
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
 
   const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
     clubId,
@@ -37,7 +37,7 @@ announcementsRouter.post("/", requireAuth, async (req, res) => {
   if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
 
   if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
   if (!trimmed) return res.status(400).json({ error: "Announcement text can't be empty." });
 

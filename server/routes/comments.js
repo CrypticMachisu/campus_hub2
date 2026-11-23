@@ -15,11 +15,35 @@ const MAX_TEXT = 1000;
 /** Which club does this comment target belong to? null when it can't be resolved. */
 async function clubForTarget(targetType, targetId) {
   if (targetType === "club") return targetId;
-  if (targetType !== "event") return null;
-  const [rows] = await pool.query("SELECT club_id FROM events WHERE event_id = :targetId", {
-    targetId,
-  });
+  const tables = {
+    event: { table: "events", idColumn: "event_id" },
+    commitment: { table: "commitments", idColumn: "commitment_id" },
+    post: { table: "posts", idColumn: "post_id" },
+  };
+  const target = tables[targetType];
+  if (!target) return null;
+  const [rows] = await pool.query(
+    `SELECT club_id FROM ${target.table} WHERE ${target.idColumn} = :targetId`,
+    { targetId }
+  );
   return rows[0]?.club_id ?? null;
+}
+
+/** A post thread is only readable while the post itself is published. */
+async function postIsReadable(postId) {
+  const [rows] = await pool.query(
+    "SELECT 1 FROM posts WHERE post_id = :postId AND status = 'published'",
+    { postId }
+  );
+  return Boolean(rows[0]);
+}
+
+/** Target table/id column for the polymorphic target_type column. */
+function targetTable(targetType) {
+  if (targetType === "event") return { table: "events", idColumn: "event_id" };
+  if (targetType === "commitment") return { table: "commitments", idColumn: "commitment_id" };
+  if (targetType === "post") return { table: "posts", idColumn: "post_id" };
+  return { table: "clubs", idColumn: "club_id" };
 }
 
 /**
@@ -51,7 +75,7 @@ async function reactionsForTarget(targetType, targetId, userId) {
 }
 
 /**
- * GET /api/comments?targetType=event|club&targetId=...
+ * GET /api/comments?targetType=event|club|commitment&targetId=...
  * Public. Pinned comments first, then oldest-first; `canModerate` and each
  * reaction's `mine` need the caller's token, so the route reads it optionally
  * rather than requiring login to read a discussion.
@@ -60,6 +84,9 @@ commentsRouter.get("/", optionalAuth, async (req, res) => {
   const { targetType, targetId } = req.query;
   if (!targetType || !targetId) {
     return res.status(400).json({ error: "targetType and targetId are required." });
+  }
+  if (targetType === "post" && !(await postIsReadable(targetId))) {
+    return res.status(404).json({ error: "Post not found." });
   }
 
   const [rows] = await pool.query(
@@ -83,14 +110,14 @@ commentsRouter.get("/", optionalAuth, async (req, res) => {
 
 /**
  * POST /api/comments — post a comment or a reply (one level deep).
- * target_id is polymorphic (event or club), so it's validated against whichever
- * table targetType points at before inserting.
+ * target_id is polymorphic (event, club or commitment), so it's validated
+ * against whichever table targetType points at before inserting.
  */
 commentsRouter.post("/", requireAuth, async (req, res) => {
   const { targetType, targetId, parentId } = req.body;
   const trimmed = (req.body.text || "").trim();
 
-  if (!["event", "club"].includes(targetType) || !targetId) {
+  if (!["event", "club", "commitment", "post"].includes(targetType) || !targetId) {
     return res.status(400).json({ error: "Valid targetType and targetId are required." });
   }
   if (!trimmed) return res.status(400).json({ error: "Comment text can't be empty." });
@@ -98,11 +125,12 @@ commentsRouter.post("/", requireAuth, async (req, res) => {
     return res.status(400).json({ error: `Comments are capped at ${MAX_TEXT} characters.` });
   }
 
-  const table = targetType === "event" ? "events" : "clubs";
-  const idColumn = targetType === "event" ? "event_id" : "club_id";
-  const [targetRows] = await pool.query(`SELECT 1 FROM ${table} WHERE ${idColumn} = :targetId`, {
-    targetId,
-  });
+  const { table, idColumn } = targetTable(targetType);
+  const readable = targetType === "post" ? "AND status = 'published'" : "";
+  const [targetRows] = await pool.query(
+    `SELECT 1 FROM ${table} WHERE ${idColumn} = :targetId ${readable}`,
+    { targetId }
+  );
   if (!targetRows[0]) {
     return res.status(404).json({ error: `No ${targetType} with that id.` });
   }

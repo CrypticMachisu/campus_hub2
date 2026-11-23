@@ -14,16 +14,19 @@
 -- src/utils/storage.js   (signups)                      -> event_signups
 -- src/utils/commentsStore.js (event/club comments)      -> comments
 -- src/utils/dashboardStorage.js (announcements)         -> announcements
+-- src/utils/postsStore.js    (club dispatch, comments)  -> posts, comments
+-- src/utils/reportsStore.js  (report queue)             -> reports
 --
--- Three-tier role system preserved exactly as in authStore.canManageClub():
---   tier1  -> site-wide admin, can manage every club
---   tier2  -> club-scoped admin, can manage only clubs in club_admins
---   member -> no management rights
+-- Four-role system after Phase 4:
+--   tier1        -> platform-wide admin, can manage every campus and club
+--   campus_admin -> manages every club on their own campus
+--   tier2        -> club-scoped admin, can manage only clubs in club_admins
+--   member       -> no management rights
 -- ============================================================================
 
-DROP DATABASE IF EXISTS campushub;
-CREATE DATABASE campushub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE campushub;
+DROP DATABASE IF EXISTS campushub_standalone;
+CREATE DATABASE campushub_standalone CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE campushub_standalone;
 
 -- ----------------------------------------------------------------------------
 -- categories
@@ -33,6 +36,26 @@ USE campushub;
 CREATE TABLE categories (
     category_id   INT AUTO_INCREMENT PRIMARY KEY,
     name          VARCHAR(50) NOT NULL UNIQUE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- campuses
+-- Phase 4 boundary. A user and a club each belong to exactly one campus; a
+-- campus may own several email domains so signup can join the right one.
+-- ----------------------------------------------------------------------------
+CREATE TABLE campuses (
+    campus_id  VARCHAR(30) PRIMARY KEY,
+    name       VARCHAR(150) NOT NULL,
+    slug       VARCHAR(80) NOT NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE campus_email_domains (
+    domain    VARCHAR(190) PRIMARY KEY,
+    campus_id VARCHAR(30) NOT NULL,
+    CONSTRAINT fk_campus_domain_campus
+        FOREIGN KEY (campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
@@ -46,13 +69,88 @@ CREATE TABLE users (
     user_id       VARCHAR(30)  PRIMARY KEY,      -- e.g. 'user-01', or 'user-<timestamp>' from signup()
     name          VARCHAR(100) NOT NULL,
     email         VARCHAR(150) NOT NULL UNIQUE,
-    role          ENUM('tier1', 'tier2', 'member') NOT NULL DEFAULT 'member',
+    role          ENUM('tier1', 'campus_admin', 'tier2', 'member') NOT NULL DEFAULT 'member',
+    campus_id     VARCHAR(30) NOT NULL,
     -- Password auth (migrations 001 + 002). Empty hash = can't log in until
     -- `npm run set-passwords` has run.
     password_hash       VARCHAR(255) NOT NULL DEFAULT '',
     reset_token_hash    VARCHAR(64)  NULL,
     reset_token_expires DATETIME     NULL,
-    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_users_campus
+        FOREIGN KEY (campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    INDEX idx_users_campus (campus_id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- user_campus_affiliations
+-- One active home row per user, plus approved additional campuses. A request
+-- starts pending and is approved or denied by that campus's admin or tier 1.
+-- ----------------------------------------------------------------------------
+CREATE TABLE user_campus_affiliations (
+    affiliation_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id         VARCHAR(30) NOT NULL,
+    campus_id       VARCHAR(30) NOT NULL,
+    kind            ENUM('home', 'exchange', 'dual', 'staff', 'alumni', 'other')
+                    NOT NULL DEFAULT 'other',
+    status          ENUM('pending', 'active', 'denied', 'revoked')
+                    NOT NULL DEFAULT 'pending',
+    note            VARCHAR(500) NULL,
+    requested_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    decided_at      DATETIME NULL,
+    decided_by      VARCHAR(30) NULL,
+    CONSTRAINT fk_affiliation_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_affiliation_campus
+        FOREIGN KEY (campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_affiliation_decider
+        FOREIGN KEY (decided_by) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    UNIQUE KEY uq_user_campus_affiliation (user_id, campus_id),
+    INDEX idx_affiliation_campus_status (campus_id, status, requested_at)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- club_families
+-- Phase 5 foundation. A family owns a multi-campus club's shared identity;
+-- each campus still has its own clubs row (the chapter). No family rows are
+-- seeded until the cross-university feature is enabled.
+-- ----------------------------------------------------------------------------
+CREATE TABLE club_families (
+    family_id      VARCHAR(30) PRIMARY KEY,
+    name           VARCHAR(150) NOT NULL,
+    slug           VARCHAR(80) NOT NULL UNIQUE,
+    description    TEXT NULL,
+    logo_url       VARCHAR(500) NULL,
+    home_campus_id VARCHAR(30) NOT NULL,
+    status         ENUM('active', 'archived') NOT NULL DEFAULT 'active',
+    created_by     VARCHAR(30) NULL,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_club_family_home_campus
+        FOREIGN KEY (home_campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_club_family_creator
+        FOREIGN KEY (created_by) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_club_families_status (status, name)
+) ENGINE=InnoDB;
+
+-- Delegated family identity editors (Phase 5 foundation; no routes yet).
+CREATE TABLE club_family_admins (
+    family_id VARCHAR(30) NOT NULL,
+    user_id   VARCHAR(30) NOT NULL,
+    role      ENUM('lead', 'editor') NOT NULL DEFAULT 'lead',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (family_id, user_id),
+    CONSTRAINT fk_family_admin_family
+        FOREIGN KEY (family_id) REFERENCES club_families(family_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_family_admin_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
@@ -61,6 +159,8 @@ CREATE TABLE users (
 -- ----------------------------------------------------------------------------
 CREATE TABLE clubs (
     club_id          VARCHAR(30) PRIMARY KEY,      -- e.g. 'club-01'
+    campus_id        VARCHAR(30) NOT NULL,
+    family_id        VARCHAR(30) NULL,             -- Phase 5 chapter link
     name             VARCHAR(150) NOT NULL,
     category_id      INT NOT NULL,
     description      TEXT,
@@ -78,7 +178,16 @@ CREATE TABLE clubs (
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_clubs_category
         FOREIGN KEY (category_id) REFERENCES categories(category_id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_clubs_campus
+        FOREIGN KEY (campus_id) REFERENCES campuses(campus_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_clubs_family
+        FOREIGN KEY (family_id) REFERENCES club_families(family_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_clubs_campus (campus_id),
+    INDEX idx_clubs_family (family_id),
+    UNIQUE KEY uq_club_family_campus (family_id, campus_id)
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
@@ -159,6 +268,7 @@ CREATE TABLE events (
     -- Added in migrations/006_event_capacity.sql for existing DBs.
     bring_note    VARCHAR(240),                   -- per-event "what to bring", overrides the club playbook
     capacity      INT,                            -- NULL = unlimited; RSVPs past it are waitlisted in order
+    audience      ENUM('campus', 'network', 'public') NOT NULL DEFAULT 'campus',
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_events_club
         FOREIGN KEY (club_id) REFERENCES clubs(club_id)
@@ -202,7 +312,7 @@ CREATE TABLE event_signups (
 -- ----------------------------------------------------------------------------
 CREATE TABLE comments (
     comment_id      VARCHAR(30) PRIMARY KEY,       -- e.g. 'comment-<timestamp>'
-    target_type     ENUM('event', 'club') NOT NULL,
+    target_type     ENUM('event', 'club', 'commitment', 'post') NOT NULL,
     target_id       VARCHAR(30) NOT NULL,
     user_id         VARCHAR(30) NOT NULL,
     user_name_snapshot VARCHAR(100) NOT NULL,       -- mirrors the snapshot pattern used for signups
@@ -255,6 +365,144 @@ CREATE TABLE announcements (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
+-- workspace_pins
+-- Club-wide pins over the merged member workspace feed. The feed combines
+-- announcements and top-level club comments, so the source is stored here
+-- instead of adding a pinned flag to both tables.
+-- ----------------------------------------------------------------------------
+CREATE TABLE workspace_pins (
+    pin_id      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    club_id     VARCHAR(30) NOT NULL,
+    item_type   ENUM('announcement', 'comment') NOT NULL,
+    item_id     VARCHAR(64) NOT NULL,
+    pinned_by   VARCHAR(30) NULL,
+    pinned_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_workspace_pin (club_id, item_type, item_id),
+    INDEX idx_workspace_pins_club (club_id, pinned_at),
+    CONSTRAINT fk_workspace_pins_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- notifications
+-- Targeted in-app notices (commitment moved or cancelled). Read state is
+-- per user; the client only ever sees its own rows.
+-- ----------------------------------------------------------------------------
+CREATE TABLE notifications (
+    notification_id VARCHAR(64)  PRIMARY KEY,
+    user_id         VARCHAR(30)  NOT NULL,
+    kind            VARCHAR(40)  NOT NULL,
+    title           VARCHAR(200) NOT NULL,
+    body            TEXT         NULL,
+    link            VARCHAR(255) NULL,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    read_at         DATETIME     NULL,
+    INDEX idx_notifications_user_created (user_id, created_at),
+    INDEX idx_notifications_unread (user_id, read_at),
+    CONSTRAINT fk_notifications_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- posts
+-- Club dispatches for the Phase 3 noticeboard. Officers publish text and, in
+-- 3b, up to three photos. Status is soft: hidden and removed rows stay for the
+-- audit trail and so their comment threads do not disappear into a dangling id.
+-- ----------------------------------------------------------------------------
+CREATE TABLE posts (
+    post_id              VARCHAR(64)  PRIMARY KEY,   -- e.g. 'post-<timestamp>'
+    club_id              VARCHAR(30)  NOT NULL,
+    author_id            VARCHAR(30)  NULL,
+    author_name_snapshot VARCHAR(100) NOT NULL,
+    body                 TEXT         NOT NULL,
+    status               ENUM('published', 'hidden', 'removed') NOT NULL DEFAULT 'published',
+    audience             ENUM('campus', 'network', 'public') NOT NULL DEFAULT 'campus',
+    pinned_at            DATETIME     NULL,             -- one standing notice per club
+    created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_posts_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_posts_author
+        FOREIGN KEY (author_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_posts_club_created (club_id, status, created_at),
+    INDEX idx_posts_status_created (status, created_at),
+    INDEX idx_posts_club_pinned (club_id, status, pinned_at)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- post_media
+-- Photos for club posts. A row starts pending when the API signs an upload;
+-- post_id stays null until the post is created and HeadObject confirms the
+-- object. Only ready rows are returned to readers.
+-- ----------------------------------------------------------------------------
+CREATE TABLE post_media (
+    media_id       VARCHAR(64)  PRIMARY KEY,                 -- e.g. 'media-<uuid>'
+    post_id        VARCHAR(64)  NULL,
+    club_id        VARCHAR(30)  NOT NULL,
+    uploader_id    VARCHAR(30)  NULL,
+    storage_key    VARCHAR(255) NOT NULL,
+    thumbnail_key  VARCHAR(255) NULL,
+    alt_text       VARCHAR(300) NOT NULL DEFAULT '',
+    decorative     TINYINT(1)   NOT NULL DEFAULT 0,
+    width          INT          NULL,
+    height         INT          NULL,
+    mime           VARCHAR(80)  NOT NULL,
+    position       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    status         ENUM('pending', 'ready') NOT NULL DEFAULT 'pending',
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_post_media_post
+        FOREIGN KEY (post_id) REFERENCES posts(post_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_post_media_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_post_media_uploader
+        FOREIGN KEY (uploader_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    UNIQUE KEY uq_post_media_key (storage_key),
+    INDEX idx_post_media_post (post_id, position),
+    INDEX idx_post_media_pending (status, created_at)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- reports
+-- A member's flag on a post or comment. target_type/target_id is polymorphic
+-- like comments; club_id is denormalized so the officer queue is one indexed
+-- read. One row per reporter per target; reportCount is the number of open
+-- reports on that target, not duplicate rows by the same person.
+-- ----------------------------------------------------------------------------
+CREATE TABLE reports (
+    report_id    INT AUTO_INCREMENT PRIMARY KEY,
+    target_type  ENUM('post', 'comment', 'media') NOT NULL,
+    target_id    VARCHAR(64) NOT NULL,
+    club_id      VARCHAR(30) NOT NULL,
+    reporter_id  VARCHAR(30) NOT NULL,
+    reason       ENUM('spam', 'harassment', 'off_topic', 'other') NOT NULL,
+    note         VARCHAR(500) NULL,
+    status       ENUM('open', 'actioned', 'dismissed') NOT NULL DEFAULT 'open',
+    resolution   ENUM('hidden', 'removed', 'dismissed') NULL,
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at  DATETIME NULL,
+    resolved_by  VARCHAR(30) NULL,
+    CONSTRAINT fk_reports_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_reports_reporter
+        FOREIGN KEY (reporter_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_reports_resolver
+        FOREIGN KEY (resolved_by) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    UNIQUE KEY uq_report_once (reporter_id, target_type, target_id),
+    INDEX idx_reports_club_status (club_id, status, created_at),
+    INDEX idx_reports_target (target_type, target_id, status)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
 -- admin_requests
 -- Backs the "request admin access" flow: members ask a tier1 to promote
 -- them to a club's tier2 admin. request_id is auto-numbered because this
@@ -292,45 +540,59 @@ INSERT INTO categories (name) VALUES
     ('Community Service'),
     ('Social');
 
+-- Campuses (Phase 4)
+INSERT INTO campuses (campus_id, name, slug) VALUES
+    ('campus-01', 'Strathmore University', 'strathmore');
+
+INSERT INTO campus_email_domains (domain, campus_id) VALUES
+    ('strathmore.edu', 'campus-01'),
+    ('campus.edu', 'campus-01');
+
 -- Users (mockUsers.js)
-INSERT INTO users (user_id, name, email, role) VALUES
-    ('user-01', 'Amara Okafor',   'amara.okafor@campus.edu',   'tier1'),
-    ('user-02', 'Leo Fischer',    'leo.fischer@campus.edu',    'tier2'),
-    ('user-03', 'Priya Nair',     'priya.nair@campus.edu',     'tier2'),
-    ('user-04', 'Denis Mwangi',   'denis.mwangi@campus.edu',   'tier2'),
-    ('user-05', 'Sofia Ramirez',  'sofia.ramirez@campus.edu',  'member'),
-    ('user-06', 'Jamal Green',    'jamal.green@campus.edu',    'member'),
-    ('user-07', 'Yuki Tanaka',    'yuki.tanaka@campus.edu',    'member'),
-    ('user-08', 'Nadia Haddad',   'nadia.haddad@campus.edu',   'member');
+INSERT INTO users (user_id, name, email, role, campus_id) VALUES
+    ('user-01', 'Amara Okafor',   'amara.okafor@campus.edu',   'tier1',  'campus-01'),
+    ('user-02', 'Leo Fischer',    'leo.fischer@campus.edu',    'tier2',  'campus-01'),
+    ('user-03', 'Priya Nair',     'priya.nair@campus.edu',     'tier2',  'campus-01'),
+    ('user-04', 'Denis Mwangi',   'denis.mwangi@campus.edu',   'tier2',  'campus-01'),
+    ('user-05', 'Sofia Ramirez',  'sofia.ramirez@campus.edu',  'member', 'campus-01'),
+    ('user-06', 'Jamal Green',    'jamal.green@campus.edu',    'member', 'campus-01'),
+    ('user-07', 'Yuki Tanaka',    'yuki.tanaka@campus.edu',    'member', 'campus-01'),
+    ('user-08', 'Nadia Haddad',   'nadia.haddad@campus.edu',   'member', 'campus-01');
+
+-- Every seeded account has an active home-campus affiliation.
+INSERT INTO user_campus_affiliations
+    (user_id, campus_id, kind, status, requested_at, decided_at)
+SELECT user_id, campus_id, 'home', 'active', created_at, created_at
+FROM users;
 
 -- Clubs (mockData.js `clubs`)
-INSERT INTO clubs (club_id, name, category_id, description, logo_url, meeting_time, meeting_location) VALUES
-    ('club-01', 'Debate & Rhetoric Society',
+INSERT INTO clubs (club_id, campus_id, name, category_id, description, logo_url, meeting_time, meeting_location) VALUES
+    ('club-01', 'campus-01', 'Debate & Rhetoric Society',
         (SELECT category_id FROM categories WHERE name = 'Academic'),
         'Weekly parliamentary-style debates and coaching for regional and national tournaments.',
         '/images/clubs/club-01.jpg',
         'Tuesdays, 6:00 PM', 'Humanities Hall, Room 214'),
-    ('club-02', 'Lens Collective',
+    ('club-02', 'campus-01', 'Lens Collective',
         (SELECT category_id FROM categories WHERE name = 'Arts & Culture'),
         'A photography and film club for students who want to shoot, edit, and screen their work together.',
         '/images/clubs/club-02.jpg',
         'Wednesdays, 5:30 PM', 'Fine Arts Building, Studio 3'),
-    ('club-03', 'Trailblazers Running Club',
+    ('club-03', 'campus-01', 'Trailblazers Running Club',
         (SELECT category_id FROM categories WHERE name = 'Sports & Fitness'),
         'Casual and competitive group runs around campus and the river trail, all paces welcome.',
         '/images/clubs/club-03.jpg',
         'Mon/Thu, 6:30 AM', 'Meet at the Rec Center steps'),
-    ('club-04', 'Byte Club',
+    ('club-04', 'campus-01', 'Byte Club',
         (SELECT category_id FROM categories WHERE name = 'Technology'),
         'Hands-on workshops, hackathon prep, and project nights for anyone into building software.',
         '/images/clubs/club-04.jpg',
         'Thursdays, 7:00 PM', 'Engineering Building, Lab 108'),
-    ('club-05', 'Neighborhood Tutors',
+    ('club-05', 'campus-01', 'Neighborhood Tutors',
         (SELECT category_id FROM categories WHERE name = 'Community Service'),
         'Student-run tutoring for local middle schoolers in math and reading, transport provided.',
         '/images/clubs/club-05.jpg',
         'Saturdays, 10:00 AM', 'Vans depart from Student Union'),
-    ('club-06', 'Night Market Society',
+    ('club-06', 'campus-01', 'Night Market Society',
         (SELECT category_id FROM categories WHERE name = 'Social'),
         'Monthly themed hangouts, game nights, and pop-up food events for meeting people outside your major.',
         '/images/clubs/club-06.jpg',
@@ -460,9 +722,9 @@ INSERT INTO events (event_id, club_id, title, description, category_id, event_da
 INSERT IGNORE INTO categories (name) VALUES ('Agriculture');
 
 INSERT IGNORE INTO clubs
-    (club_id, name, category_id, description, logo_url, meeting_time, meeting_location)
+    (club_id, campus_id, name, category_id, description, logo_url, meeting_time, meeting_location)
 VALUES
-    ('club-07', 'Agri-Business & Farming Club',
+    ('club-07', 'campus-01', 'Agri-Business & Farming Club',
         (SELECT category_id FROM categories WHERE name = 'Agriculture'),
         'For students curious about farming, food systems and agri-business. We connect campus to real growers through AgroConnect, a marketplace where Kenyan farmers list produce and buyers discover them.',
         '/images/agri-club.svg',
@@ -584,3 +846,72 @@ WHERE email = 'sofia.ramirez@campus.edu';
 INSERT IGNORE INTO agro_interest (opportunity_id, user_id)
 SELECT 'agro-opp-04', user_id FROM users
 WHERE email = 'blujohn01@campus.edu';
+
+-- ---------------------------------------------------------------------------
+-- commitments (migration 013)
+--
+-- The club-scoped successor to agro_opportunities: a dated activity with a
+-- host and an optional cap. Signups past the cap wait in arrival order. The
+-- agro rows above are copied in so a fresh install matches an upgraded one;
+-- the agro tables stay for the retired API routes.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS commitments (
+    commitment_id VARCHAR(60)  PRIMARY KEY,
+    club_id       VARCHAR(30)  NOT NULL,
+    kind          VARCHAR(24)  NOT NULL DEFAULT 'activity',
+    title         VARCHAR(150) NOT NULL,
+    description   TEXT,
+    location      VARCHAR(150) NOT NULL,
+    county        VARCHAR(80)  NULL,
+    starts_at     DATETIME     NOT NULL,
+    capacity      INT          NULL,
+    host_name     VARCHAR(120) NULL,
+    source        VARCHAR(12)  NOT NULL DEFAULT 'admin',
+    audience      ENUM('campus', 'network', 'public') NOT NULL DEFAULT 'campus',
+    created_by    VARCHAR(30)  NULL,
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_commitments_club_start (club_id, starts_at),
+    CONSTRAINT fk_commitments_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_commitments_creator
+        FOREIGN KEY (created_by) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS commitment_signups (
+    signup_id        VARCHAR(80)  PRIMARY KEY,
+    commitment_id    VARCHAR(60)  NOT NULL,
+    user_id          VARCHAR(30)  NOT NULL,
+    name_snapshot    VARCHAR(120) NOT NULL,
+    email_snapshot   VARCHAR(160) NOT NULL,
+    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reminder_sent_at DATETIME     NULL,
+    attendance       ENUM("unknown", "attended", "no_show") NOT NULL DEFAULT "unknown",
+    UNIQUE KEY uq_commitment_user (commitment_id, user_id),
+    INDEX idx_commitment_signups_order (commitment_id, created_at, signup_id),
+    CONSTRAINT fk_commitment_signups_commitment
+        FOREIGN KEY (commitment_id) REFERENCES commitments(commitment_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_commitment_signups_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO commitments
+    (commitment_id, club_id, kind, title, description, location, county,
+     starts_at, capacity, host_name, source, created_at)
+SELECT
+    o.opportunity_id, 'club-07', o.kind, o.title, o.description, o.location,
+    o.county, o.starts_at, o.capacity, o.host_name, o.source, o.created_at
+FROM agro_opportunities o;
+
+INSERT IGNORE INTO commitment_signups
+    (signup_id, commitment_id, user_id, name_snapshot, email_snapshot, created_at)
+SELECT
+    CONCAT('cs-', i.opportunity_id, '-', i.user_id),
+    i.opportunity_id, i.user_id, u.name, u.email, i.created_at
+FROM agro_interest i
+JOIN users u ON u.user_id = i.user_id;

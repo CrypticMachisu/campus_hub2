@@ -12,14 +12,22 @@ import { authRouter } from "./routes/auth.js";
 import { usersRouter } from "./routes/users.js";
 import { adminRequestsRouter } from "./routes/adminRequests.js";
 import { clubsRouter } from "./routes/clubs.js";
+import { campusesRouter } from "./routes/campuses.js";
+import { campusAffiliationsRouter } from "./routes/campusAffiliations.js";
+import { clubFamiliesRouter } from "./routes/clubFamilies.js";
 import { eventsV2Router } from "./routes/eventsV2.js";
 import { signupsRouter } from "./routes/signups.js";
 import { commentsRouter } from "./routes/comments.js";
 import { announcementsRouter } from "./routes/announcements.js";
-import { partnerRouter } from "./routes/partner.js";
 import { agroRouter } from "./routes/agro.js";
+import { commitmentsRouter } from "./routes/commitments.js";
+import { notificationsRouter } from "./routes/notifications.js";
+import { postsRouter } from "./routes/posts.js";
+import { reportsRouter } from "./routes/reports.js";
+import { workspacePinsRouter } from "./routes/workspacePins.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { limiter } from "./middleware/apiGuards.js";
+import { crossUniversityEnabled } from "./features.js";
 
 export const v2Router = Router();
 
@@ -27,12 +35,27 @@ v2Router.use("/events", eventsV2Router);
 v2Router.use("/auth", authRouter);
 v2Router.use("/users", usersRouter);
 v2Router.use("/admin-requests", adminRequestsRouter);
+v2Router.use("/campuses", campusesRouter);
+// Phase 5 foundation. The schema is present, but the member affiliation
+// surface stays unmounted until the operator enables the flag and restarts.
+if (crossUniversityEnabled()) {
+  v2Router.use("/campus-affiliations", campusAffiliationsRouter);
+  v2Router.use("/club-families", clubFamiliesRouter);
+}
 v2Router.use("/clubs", clubsRouter);
 v2Router.use("/signups", signupsRouter);
 v2Router.use("/comments", commentsRouter);
 v2Router.use("/announcements", announcementsRouter);
-v2Router.use("/partner", partnerRouter);
 // New resource, so it ships in v2 only: v1 is frozen and a v1 caller must
 // never see a resource that was not there yesterday.
 v2Router.use("/agro", agroRouter);
+// Phase 2: commitments supersede agro opportunities for new clients. The agro
+// routes stay mounted so nothing breaks mid-migration, but no UI calls them.
+v2Router.use("/commitments", commitmentsRouter);
+v2Router.use("/notifications", notificationsRouter);
+v2Router.use("/posts", postsRouter);
+v2Router.use("/reports", reportsRouter);
+// New resource, so v2 only. Pins are club-wide editorial choices over the
+// merged workspace feed (announcements + top-level discussions).
+v2Router.use("/workspace-pins", workspacePinsRouter);
 v2Router.use("/admin", createAdminRouter(limiter));

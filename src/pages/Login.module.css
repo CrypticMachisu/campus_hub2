@@ -1,210 +1,148 @@
 .wrap {
-  padding-top: var(--space-xl);
-  padding-bottom: var(--space-xl);
-  max-width: 480px;
+  max-width: 720px;
+  padding-top: 2.2rem;
+  padding-bottom: 3rem;
+}
+
+.wrap h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  line-height: 0.92;
+  letter-spacing: -0.012em;
+  margin: 0 0 0.9rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 3px solid var(--ink);
 }
 
 .tabs {
-  display: flex;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-lg);
-  border-bottom: 1px solid var(--color-border);
+  display: inline-flex;
+  border: 1px solid var(--ink);
+  margin-bottom: 0.9rem;
 }
 
-.tab {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
+.tab,
+.tabActive {
+  min-height: 38px;
+  padding: 0 0.9rem;
+  border: 0;
   background: transparent;
-  border: none;
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
 }
 
 .tab:hover {
-  color: var(--color-text);
+  color: var(--ink);
 }
 
 .tabActive {
-  color: var(--color-primary-dark);
-  border-bottom-color: var(--color-primary);
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .blurb {
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-lg);
-}
-
-/* User/Admin login paths — decides the landing page and, on the
-   admin path, gates out accounts without admin rights. */
-.rolePath {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-lg);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-card-bg);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-lg);
-}
-
-.rolePathButtons {
-  display: flex;
-  gap: var(--space-xs);
-}
-
-.rolePathButton {
-  flex: 1;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 8px 14px;
-  background: var(--color-white);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  color: var(--color-text);
-}
-
-.rolePathButton:hover {
-  border-color: var(--color-primary);
-}
-
-.rolePathButtonActive {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-white);
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  max-width: 60ch;
+  margin: 0 0 1.1rem;
 }
 
 .rolePathHint {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0;
+  max-width: 62ch;
 }
 
-.demoPicker {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-lg);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-card-bg);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-lg);
-}
-
-.demoLabel {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
-}
-
-.demoButtons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-}
-
-.demoButton {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
-  padding: var(--space-xs) var(--space-md);
-  background: var(--color-white);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  font-size: 0.9rem;
-}
-
-.demoButton:hover {
-  border-color: var(--color-primary);
-}
-
-.demoRole {
-  font-weight: 600;
-}
-
-.demoName {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-}
-
+/* Form */
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
-  padding: var(--space-md);
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  gap: 0.35rem;
 }
 
 .label {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
+  color: var(--ink-2);
+  margin-top: 0.5rem;
 }
 
 .select {
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-white);
-  color: var(--color-text);
+  min-height: 44px;
+  padding: 0 0.7rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--card);
+  color: var(--ink);
 }
 
-.optional {
-  font-weight: normal;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--color-text-muted);
-}
-
-.error {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--color-danger);
-  margin: 0;
-}
-
-.submitButton {
-  align-self: flex-start;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-white);
-  background: var(--color-primary);
-  border: none;
-  border-radius: var(--radius);
-  padding: 10px 20px;
-  margin-top: var(--space-xs);
-}
-
-.submitButton:hover {
-  background: var(--color-primary-dark);
+.select:hover {
+  border-color: var(--ink-2);
 }
 
 .forgotLink {
   align-self: flex-start;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  text-decoration: underline;
+  font-size: 0.56rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
+  margin-top: 0.15rem;
 }
 
 .forgotLink:hover {
-  color: var(--color-primary-dark);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.error {
+  font-size: 0.82rem;
+  color: var(--danger);
+  border-left: 3px solid var(--danger);
+  padding-left: 0.5rem;
+  margin: 0.5rem 0 0;
+}
+
+.submitButton {
+  min-height: 44px;
+  margin-top: 0.8rem;
+  border: 1px solid var(--signal);
+  background: var(--signal);
+  color: var(--on-signal);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.submitButton:hover {
+  background: var(--signal-hover);
+  border-color: var(--signal-deep);
+}
+
+.submitButton:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.optional {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }

@@ -1,19 +1,31 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ClubsProvider, useClubs } from "./context/ClubsContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { canManageClub, clubsForUser } from "./utils/authStore";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Navbar from "./components/Navbar";
+import ConnectionStatus from "./components/ConnectionStatus";
 import Footer from "./components/Footer";
 import MemberShell from "./components/MemberShell";
+import SessionExpiryModal from "./components/SessionExpiryModal";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import ClubProfile from "./pages/ClubProfile";
 import EventDetail from "./pages/EventDetail";
+import CommitmentDetail from "./pages/CommitmentDetail";
+import PostDetail from "./pages/PostDetail";
 import MyEvents from "./pages/MyEvents";
 import Dashboard from "./pages/Dashboard";
+import CampusSettings from "./pages/CampusSettings";
+import FamilySettings from "./pages/FamilySettings";
+import CampusAccess from "./pages/CampusAccess";
+import Families from "./pages/Families";
+import FamilyProfile from "./pages/FamilyProfile";
+import Network from "./pages/Network";
+import { CROSS_UNIVERSITY_ENABLED } from "./utils/features";
 import ClubWorkspace from "./pages/ClubWorkspace";
 import NotFound from "./pages/NotFound";
 import styles from "./App.module.css";
@@ -37,7 +49,8 @@ function AppRoutes() {
     return (
       <div className={styles.splash} aria-busy="true">
         <p className={styles.splashBrand}>
-          Campus<span className={styles.splashAccent}>Hub</span>
+          kesho
+          <span className={styles.splashAccent}>.</span>
         </p>
         <p className={styles.splashNote}>Opening your workspace…</p>
       </div>
@@ -45,7 +58,8 @@ function AppRoutes() {
   }
 
   const myClubs = clubsForUser(user, clubs);
-  const isMemberView = Boolean(user) && user.role !== "tier1" && myClubs.length > 0;
+  const keepsPlatformChrome = Boolean(user) && ["tier1", "campus_admin"].includes(user.role);
+  const isMemberView = Boolean(user) && !keepsPlatformChrome && myClubs.length > 0;
 
   if (isMemberView) {
     const homeClubId = myClubs[0].id;
@@ -64,7 +78,18 @@ function AppRoutes() {
           <Route path="/discover" element={<Home />} />
           <Route path="/clubs/:clubId" element={<ClubProfile />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
+          <Route path="/commitments/:commitmentId" element={<CommitmentDetail />} />
+          <Route path="/posts/:postId" element={<PostDetail />} />
           <Route path="/my-events" element={<MyEvents />} />
+          {CROSS_UNIVERSITY_ENABLED && <Route path="/campus-access" element={<CampusAccess />} />}
+          {CROSS_UNIVERSITY_ENABLED && (
+            <>
+              <Route path="/families" element={<Families />} />
+              <Route path="/families/:familyId" element={<FamilyProfile />} />
+              <Route path="/network" element={<Network />} />
+              <Route path="/families/:familyId/chapters/:clubId" element={<FamilyProfile />} />
+            </>
+          )}
           <Route path="/dashboard/:clubId" element={<Dashboard />} />
           <Route
             path="/dashboard"
@@ -85,27 +110,51 @@ function AppRoutes() {
   return (
     <>
       <Navbar />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/" element={<Home />} />
-        <Route path="/discover" element={<Home />} />
-        <Route path="/clubs/:clubId" element={<ClubProfile />} />
-        <Route path="/events/:eventId" element={<EventDetail />} />
-        {/* Normally members get the member shell above. When the clubs request
+      <ConnectionStatus />
+      <div id="main" tabIndex={-1}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/discover" element={<Home />} />
+          <Route path="/clubs/:clubId" element={<ClubProfile />} />
+          <Route path="/events/:eventId" element={<EventDetail />} />
+          <Route path="/commitments/:commitmentId" element={<CommitmentDetail />} />
+          <Route path="/posts/:postId" element={<PostDetail />} />
+          {/* Normally members get the member shell above. When the clubs request
             fails there is no shell to host this page, so keep the route here
             as well; ClubWorkspace can then show its own retry gate instead of
             the URL falling through to NotFound. */}
-        <Route
-          path="/workspace/:clubId"
-          element={user && user.role !== "tier1" ? <ClubWorkspace /> : <Navigate to="/" replace />}
-        />
-        <Route path="/my-events" element={<MyEvents />} />
-        <Route path="/dashboard/:clubId" element={<Dashboard />} />
-        <Route path="/dashboard" element={<Navigate to="/dashboard/club-01" replace />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          <Route
+            path="/workspace/:clubId"
+            element={
+              user && !["tier1", "campus_admin"].includes(user.role) ? (
+                <ClubWorkspace />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route path="/my-events" element={<MyEvents />} />
+          {CROSS_UNIVERSITY_ENABLED && <Route path="/campus-access" element={<CampusAccess />} />}
+          {CROSS_UNIVERSITY_ENABLED && (
+            <>
+              <Route path="/families" element={<Families />} />
+              <Route path="/families/:familyId" element={<FamilyProfile />} />
+              <Route path="/network" element={<Network />} />
+              <Route path="/families/:familyId/chapters/:clubId" element={<FamilyProfile />} />
+            </>
+          )}
+          <Route path="/settings/campuses" element={<CampusSettings />} />
+          {CROSS_UNIVERSITY_ENABLED && (
+            <Route path="/settings/families" element={<FamilySettings />} />
+          )}
+          <Route path="/dashboard/:clubId" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Navigate to="/dashboard/club-01" replace />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
       <Footer />
     </>
   );
@@ -113,14 +162,21 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ClubsProvider>
-        <BrowserRouter>
-          <ErrorBoundary>
-            <AppRoutes />
-          </ErrorBoundary>
-        </BrowserRouter>
-      </ClubsProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ClubsProvider>
+          <BrowserRouter>
+            <ErrorBoundary
+              className={styles.boundary}
+              title="Kesho couldn't open this view"
+              message="The app hit an unexpected error. Try this view again; your account is still signed in."
+            >
+              <AppRoutes />
+            </ErrorBoundary>
+          </BrowserRouter>
+          <SessionExpiryModal />
+        </ClubsProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

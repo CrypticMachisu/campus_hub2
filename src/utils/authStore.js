@@ -56,38 +56,12 @@ export async function signup({ name, email, password }) {
 export async function getCurrentUser() {
   if (!getToken()) return null;
   try {
-    const { user } = await apiFetch("/auth/me");
+    const { user } = await apiFetch("/auth/me", { retryOnExpiry: false });
     return user;
   } catch {
     clearToken();
     return null;
   }
-}
-
-// Remembers, per account email, which login path was last used ("user" |
-// "admin") — the same data the login page writes so it can preselect the
-// right path next time. The Navbar reads it to tailor controls (e.g. the
-// "Go to dashboard" button for admins who chose the user path).
-const LOGIN_MODES_KEY = "campushub_login_paths";
-
-export function loadLoginPaths() {
-  try {
-    return JSON.parse(localStorage.getItem(LOGIN_MODES_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-/** For an admin (or any user) who signed in via the plain user path. */
-export function getRememberedLoginPath(email) {
-  if (!email) return null;
-  return loadLoginPaths()[email.trim().toLowerCase()] ?? null;
-}
-
-export function saveLoginPath(email, path) {
-  const paths = loadLoginPaths();
-  paths[email] = path;
-  localStorage.setItem(LOGIN_MODES_KEY, JSON.stringify(paths));
 }
 
 /**
@@ -96,13 +70,17 @@ export function saveLoginPath(email, path) {
  * links to show); the server independently re-checks this on every
  * mutating request, so this is a convenience, not a security boundary.
  * - tier1: can manage any club.
+ * - campus_admin: can manage every club on their campus (the API fills
+ *   adminForClubs with that campus's clubs).
  * - tier2: can manage only clubs listed in their adminForClubs.
  * - member or missing user: never.
  */
 export function canManageClub(user, clubId) {
   if (!user) return false;
   if (user.role === "tier1") return true;
-  if (user.role === "tier2") return user.adminForClubs.includes(clubId);
+  if (["tier2", "campus_admin"].includes(user.role)) {
+    return user.adminForClubs.includes(clubId);
+  }
   return false;
 }
 
@@ -114,7 +92,9 @@ export function isClubMember(user, clubId) {
 /**
  * Clubs that belong to this user's world: ones they joined plus ones they
  * admin. Tier 1 admins are excluded on purpose — they keep the platform-wide
- * view rather than being dropped into a single club's workspace.
+ * view rather than being dropped into a single club's workspace. Campus admins
+ * keep the platform chrome too, but their adminForClubs still lists every club
+ * on their campus for the desk.
  */
 export function clubsForUser(user, clubs) {
   if (!user || user.role === "tier1") return [];

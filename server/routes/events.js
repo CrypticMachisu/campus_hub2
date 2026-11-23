@@ -1,15 +1,20 @@
 import { pool } from "../db.js";
 import { rowToEvent } from "../rowMappers.js";
 import { findCategoryIdByName } from "../queries.js";
-import { requireAuth, canManageClub } from "../middleware/auth.js";
+import { requireAuth, optionalAuth, canManageClub } from "../middleware/auth.js";
+import { readCampusScope } from "../campus.js";
 import { recordAudit } from "../audit.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
+import { crossUniversityEnabled } from "../features.js";
 
 export const eventsRouter = createApiRouter();
 
 const EVENT_LIST_QUERY = `
-  SELECT e.*, cat.name AS category_name, COUNT(s.signup_id) AS signup_count
+  SELECT e.*, cat.name AS category_name, COUNT(s.signup_id) AS signup_count,
+         cl.name AS club_name, camp.name AS campus_name
   FROM events e
+  JOIN clubs cl ON cl.club_id = e.club_id
+  JOIN campuses camp ON camp.campus_id = cl.campus_id
   JOIN categories cat ON cat.category_id = e.category_id
   LEFT JOIN event_signups s ON s.event_id = e.event_id
 `;
@@ -63,13 +68,36 @@ export function parseStartTime(startTimeOrBody) {
 }
 
 /** Shared title/startTime/category/bringNote/capacity validation. Returns the first error string, or the cleaned fields. */
+const EVENT_AUDIENCES = new Set(["campus", "network", "public"]);
+
+/**
+ * Audience is deliberately conservative: campus is the default, network needs
+ * a family chapter and the cross-university flag, and public is not open yet.
+ */
+function validateEventAudience(value, club) {
+  const audience = value === undefined ? "campus" : String(value).trim().toLowerCase();
+  if (!EVENT_AUDIENCES.has(audience)) return { error: "Choose a valid event audience." };
+  if (audience === "public") {
+    return { error: "Public events aren't available yet." };
+  }
+  if (audience === "network") {
+    if (!crossUniversityEnabled()) {
+      return { error: "Network events aren't available here." };
+    }
+    if (!club?.family_id) {
+      return { error: "Only a club in a family can publish to the network." };
+    }
+  }
+  return { audience };
+}
+
 function validateEventFields(body) {
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title) return { error: "Title is required." };
   if (title.length > 150) return { error: "Title is too long." };
 
   const start = parseStartTime(body);
-  if (!start) return { error: "Invalid startTime." };
+  if (!start) return { error: "Choose a valid date and time." };
 
   const bringNote = typeof body.bringNote === "string" ? body.bringNote.trim().slice(0, 240) : "";
 
@@ -79,7 +107,7 @@ function validateEventFields(body) {
   if (body.capacity !== undefined && body.capacity !== null && body.capacity !== "") {
     const parsed = Number(body.capacity);
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
-      return { error: "capacity must be a whole number between 1 and 10000." };
+      return { error: "Capacity must be a whole number between 1 and 10,000." };
     }
     capacity = parsed;
   }
@@ -87,10 +115,31 @@ function validateEventFields(body) {
   return { title, start, bringNote, capacity };
 }
 
-/** GET /api/events — list all events. */
-eventsRouter.get("/", async (req, res) => {
+/** GET /api/events — local or network-visible events within the reader's scope. */
+eventsRouter.get("/", optionalAuth, async (req, res) => {
+  const scope = await readCampusScope(req);
+  if (scope.error) return res.status(scope.status).json({ error: scope.error });
+
+  const params = {};
+  const conditions = [];
+  if (scope.campusIds) {
+    const keys = scope.campusIds.map((campusId, index) => {
+      const key = `campusId${index}`;
+      params[key] = campusId;
+      return `:${key}`;
+    });
+    conditions.push(`cl.campus_id IN (${keys.join(", ")})`);
+    conditions.push("e.audience = 'network'");
+  } else if (scope.campusId) {
+    conditions.push("cl.campus_id = :campusId");
+    conditions.push("e.audience IN ('campus', 'network')");
+    params.campusId = scope.campusId;
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
   const [rows] = await pool.query(
-    `${EVENT_LIST_QUERY} GROUP BY e.event_id ORDER BY e.event_date, e.event_time`
+    `${EVENT_LIST_QUERY} ${where} GROUP BY e.event_id ORDER BY e.event_date, e.event_time`,
+    params
   );
   res.json({ events: rows.map(rowToEvent) });
 });
@@ -101,35 +150,39 @@ eventsRouter.get("/", async (req, res) => {
  */
 eventsRouter.post("/", requireAuth, async (req, res) => {
   const { clubId, description, location, category, imageUrl } = req.body;
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
 
   // Validate the club exists BEFORE the FK-constrained insert — tier1 can
   // "manage" any id, so a bad clubId used to explode at the DB level (and
   // crash the server back when async rejections were unhandled).
-  const [clubRows] = await pool.query("SELECT club_id FROM clubs WHERE club_id = :clubId", {
-    clubId,
-  });
+  const [clubRows] = await pool.query(
+    "SELECT club_id, family_id FROM clubs WHERE club_id = :clubId",
+    { clubId }
+  );
   if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
 
   if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const validation = validateEventFields(req.body);
   if (validation.error) return res.status(400).json({ error: validation.error });
   const { title, start, bringNote, capacity } = validation;
+  const audienceResult = validateEventAudience(req.body.audience, clubRows[0]);
+  if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+  const { audience } = audienceResult;
 
   const categoryId = await findCategoryIdByName(category);
-  if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
+  if (!categoryId) return res.status(400).json({ error: "Choose a category from the list." });
 
   const id = `custom-${Date.now()}`;
   await pool.query(
     `INSERT INTO events
       (event_id, club_id, title, description, category_id,
-       event_date, event_time, location, image_url, bring_note, capacity)
+       event_date, event_time, location, image_url, bring_note, capacity, audience)
      VALUES
       (:id, :clubId, :title, :description, :categoryId,
-       :date, :time, :location, :imageUrl, :bringNote, :capacity)`,
+       :date, :time, :location, :imageUrl, :bringNote, :capacity, :audience)`,
     {
       id,
       clubId,
@@ -142,6 +195,7 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
       imageUrl: imageUrl || null,
       bringNote: bringNote || null,
       capacity,
+      audience,
     }
   );
 
@@ -153,7 +207,7 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
     action: "event.create",
     targetType: "event",
     targetId: id,
-    detail: { clubId, title, capacity },
+    detail: { clubId, title, capacity, audience },
   });
   res.status(201).json({ event: rowToEvent(rows[0]) });
 });
@@ -172,11 +226,11 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
 
   // Seed events are read-only.
   if (!eventId.startsWith("custom-")) {
-    return res.status(403).json({ error: "Seed events are read-only." });
+    return res.status(403).json({ error: "Built-in events can't be edited or deleted here." });
   }
 
   if (!canManageClub(req.user, existing.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const { description, category, location, imageUrl } = req.body;
@@ -185,8 +239,19 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
   if (validation.error) return res.status(400).json({ error: validation.error });
   const { title, start, bringNote, capacity } = validation;
 
+  const [clubRows] = await pool.query(
+    "SELECT club_id, family_id FROM clubs WHERE club_id = :clubId",
+    { clubId: existing.club_id }
+  );
+  const audienceResult = validateEventAudience(
+    req.body.audience === undefined ? existing.audience : req.body.audience,
+    clubRows[0]
+  );
+  if (audienceResult.error) return res.status(400).json({ error: audienceResult.error });
+  const { audience } = audienceResult;
+
   const categoryId = await findCategoryIdByName(category);
-  if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
+  if (!categoryId) return res.status(400).json({ error: "Choose a category from the list." });
 
   await pool.query(
     `UPDATE events
@@ -198,7 +263,8 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
          location = :location,
          image_url = :imageUrl,
          bring_note = :bringNote,
-         capacity = :capacity
+         capacity = :capacity,
+         audience = :audience
      WHERE event_id = :id`,
     {
       id: eventId,
@@ -211,6 +277,7 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
       imageUrl: imageUrl || null,
       bringNote: bringNote || null,
       capacity,
+      audience,
     }
   );
 
@@ -222,7 +289,7 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
     action: "event.update",
     targetType: "event",
     targetId: eventId,
-    detail: { clubId: existing.club_id, title, capacity },
+    detail: { clubId: existing.club_id, title, capacity, audience },
   });
   res.json({ event: rowToEvent(rows[0]) });
 });
@@ -241,11 +308,11 @@ eventsRouter.delete("/:id", requireAuth, async (req, res) => {
 
   // Seed events are read-only.
   if (!eventId.startsWith("custom-")) {
-    return res.status(403).json({ error: "Seed events are read-only." });
+    return res.status(403).json({ error: "Built-in events can't be edited or deleted here." });
   }
 
   if (!canManageClub(req.user, existing.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   await pool.query("DELETE FROM events WHERE event_id = :id", { id: eventId });

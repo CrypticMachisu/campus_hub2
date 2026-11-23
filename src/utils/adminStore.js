@@ -16,7 +16,17 @@ export function promoteToClubAdmin(userId, clubId) {
   );
 }
 
-/** Pending admin requests — tier1 only. */
+/** Promotes a user to campus admin for their own campus — tier1 only. */
+export function promoteToCampusAdmin(userId) {
+  return apiFetch(`/users/${userId}/campus-admin`, { method: "POST" }).then((data) => data.user);
+}
+
+/** Removes campus-admin rights — tier1 only. */
+export function removeCampusAdmin(userId) {
+  return apiFetch(`/users/${userId}/campus-admin`, { method: "DELETE" }).then((data) => data.user);
+}
+
+/** Pending admin requests — tier1 and campus admins, scoped by the server. */
 export function getPendingAdminRequests() {
   return apiFetch("/admin-requests").then((data) => data.requests);
 }

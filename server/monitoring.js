@@ -35,6 +35,8 @@ function newRoute() {
 
 function monitor(req, res, next) {
   const start = process.hrtime.bigint();
+  const requestId = crypto.randomUUID();
+  res.setHeader("X-Request-Id", requestId);
 
   // Capture the path NOW, while this middleware runs first in the chain.
   // Express 4 mutates req.url while a mounted router processes (e.g.
@@ -49,6 +51,7 @@ function monitor(req, res, next) {
     console.log(
       JSON.stringify({
         time: new Date().toISOString(),
+        requestId,
         method: req.method,
         path: path, // captured at request start (see comment above)
         status: res.statusCode,

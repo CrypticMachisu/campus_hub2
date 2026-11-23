@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Study 01 — Signal, in motion</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./mockups.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/SplitText.min.js"></script>
+    <style>
+      .hero-01 {
+        min-height: 100svh;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding-block: 8.5rem 1.5rem;
+        border-bottom: 1px solid var(--ink);
+      }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: clamp(2rem, 7vw, 7rem);
+        align-items: end;
+      }
+      .hero-01 .display {
+        margin-top: 1rem;
+        font-size: clamp(4rem, 11.5vw, 10rem);
+        max-width: 11.5ch;
+      }
+      .line-mask {
+        display: block;
+        overflow: hidden;
+        padding-bottom: 0.06em;
+      }
+      .hero-01 .lede {
+        margin-top: 1.6rem;
+        max-width: 46ch;
+      }
+      .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 1.2rem;
+        margin-top: 1.8rem;
+      }
+      .issue-card {
+        border-top: 1px solid var(--ink);
+        padding-top: 0.8rem;
+        align-self: end;
+      }
+      .issue-card .issue-number {
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        letter-spacing: 0.12em;
+        color: var(--signal);
+      }
+      .issue-card dl {
+        margin: 1rem 0 0;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.4rem 1rem;
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+      .issue-card dt {
+        color: var(--muted);
+      }
+      .issue-card dd {
+        margin: 0;
+        text-align: right;
+      }
+      .issue-card .inside {
+        margin-top: 1.1rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid var(--rule);
+        color: var(--ink-2);
+        font-size: 0.85rem;
+      }
+      .issue-card .inside span {
+        display: block;
+        margin-top: 0.3rem;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 0.61rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .ticker {
+        margin-top: 2rem;
+        border-block: 1px solid var(--ink);
+        overflow: hidden;
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .ticker-track {
+        display: flex;
+        width: max-content;
+        gap: 0;
+        padding-block: 0.5rem;
+        font-family: var(--mono);
+        font-size: 0.64rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        will-change: transform;
+      }
+      .ticker-track span {
+        padding-inline: 1.4rem;
+      }
+      .ticker-track b {
+        color: var(--signal-deep);
+        font-weight: 400;
+      }
+
+      .chapters {
+        background: var(--paper);
+      }
+      .chapter-pin {
+        min-height: 100svh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
+        padding-block: 5rem 2rem;
+      }
+      .chapter-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      .chapter-head h2 {
+        margin: 0;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(2rem, 5vw, 4.6rem);
+        line-height: 0.9;
+        text-transform: uppercase;
+      }
+      .chapter-track {
+        display: flex;
+        gap: 1px;
+        width: max-content;
+        background: var(--rule);
+        border-block: 1px solid var(--rule);
+        will-change: transform;
+      }
+      .chapter-panel {
+        width: min(66vw, 560px);
+        min-height: 52vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: clamp(1.1rem, 2.5vw, 2rem);
+        background: var(--card);
+      }
+      .chapter-panel:nth-child(2n) {
+        background: var(--paper-2);
+      }
+      .chapter-index {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 0.63rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .chapter-index b {
+        color: var(--signal);
+        font-weight: 400;
+      }
+      .chapter-panel h3 {
+        margin: auto 0 1rem;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(2.6rem, 6vw, 5.6rem);
+        line-height: 0.86;
+        text-transform: uppercase;
+      }
+      .chapter-panel p {
+        max-width: 34ch;
+        color: var(--ink-2);
+        font-size: 0.92rem;
+      }
+      .chapter-panel .meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 1.4rem;
+        padding-top: 0.7rem;
+        border-top: 1px solid var(--rule);
+        font-family: var(--mono);
+        font-size: 0.61rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .chapter-panel .meta strong {
+        color: var(--signal);
+        font-weight: 400;
+      }
+
+      .week {
+        padding-block: clamp(4rem, 9vw, 8rem);
+      }
+      .week-grid {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        gap: clamp(2rem, 6vw, 6rem);
+        align-items: start;
+      }
+      .week-date {
+        position: sticky;
+        top: 6rem;
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        letter-spacing: 0.1em;
+        line-height: 1.7;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .week-date strong {
+        display: block;
+        margin-bottom: 0.6rem;
+        color: var(--ink);
+        font-family: var(--display);
+        font-size: 3.6rem;
+        font-weight: 400;
+        line-height: 0.8;
+      }
+      .event-list {
+        border-top: 1px solid var(--ink);
+      }
+      .event-row {
+        display: grid;
+        grid-template-columns: 90px minmax(0, 1fr) auto;
+        gap: 1.2rem;
+        align-items: baseline;
+        padding-block: 1.35rem;
+        border-bottom: 1px solid var(--rule);
+        transition:
+          background 180ms var(--ease),
+          padding-inline 180ms var(--ease);
+      }
+      .event-row:hover {
+        background: var(--tint);
+        padding-inline: 0.8rem;
+      }
+      .event-row time {
+        font-family: var(--mono);
+        font-size: 0.64rem;
+        letter-spacing: 0.06em;
+        color: var(--signal);
+      }
+      .event-row h3 {
+        margin: 0;
+        font-size: clamp(1.15rem, 2.1vw, 1.7rem);
+        letter-spacing: -0.025em;
+      }
+      .event-row p {
+        margin: 0.2rem 0 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+      .event-row .campus {
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .event-row .arrow {
+        display: inline-block;
+        margin-left: 0.45rem;
+        color: var(--signal);
+        transform: translateX(-2px);
+        opacity: 0;
+        transition:
+          transform 180ms var(--ease),
+          opacity 180ms var(--ease);
+      }
+      .event-row:hover .arrow {
+        transform: translateX(0);
+        opacity: 1;
+      }
+
+      .closing {
+        padding-block: clamp(4rem, 10vw, 9rem);
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .closing .display {
+        max-width: 20ch;
+        font-size: clamp(2.8rem, 8vw, 7rem);
+      }
+      .closing .display em {
+        color: var(--signal-deep);
+        font-style: normal;
+      }
+      .closing .close-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 3rem;
+        align-items: end;
+      }
+      .closing p {
+        max-width: 44ch;
+        color: color-mix(in srgb, var(--paper) 72%, transparent);
+      }
+      .closing .button {
+        border-color: var(--paper);
+        background: var(--paper);
+        color: var(--ink);
+      }
+      .closing .button:hover {
+        background: var(--signal);
+        border-color: var(--signal);
+        color: #fff;
+      }
+
+      @media (max-width: 900px) {
+        .hero-grid,
+        .closing .close-grid {
+          grid-template-columns: 1fr;
+        }
+        .issue-card {
+          max-width: 340px;
+        }
+        .week-grid {
+          grid-template-columns: 1fr;
+        }
+        .week-date {
+          position: static;
+          display: flex;
+          align-items: baseline;
+          gap: 1rem;
+        }
+        .week-date strong {
+          margin: 0;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .chapter-pin {
+          min-height: 0;
+          padding-block: 4rem;
+        }
+        .chapter-track {
+          width: auto;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+        }
+        .chapter-panel {
+          width: 82vw;
+          min-height: 360px;
+          scroll-snap-align: start;
+        }
+        .chapter-head {
+          align-items: start;
+          flex-direction: column;
+        }
+        .event-row {
+          grid-template-columns: 76px minmax(0, 1fr);
+        }
+        .event-row .campus {
+          grid-column: 2;
+        }
+      }
+    </style>
+  </head>
+  <body class="study study-01">
+    <a class="skip-link" href="#main">Skip to the edition</a>
+    <div class="scroll-progress" aria-hidden="true"></div>
+    <header class="study-bar">
+      <a class="study-brand" href="./index.html">kesho<span>.</span></a>
+      <span class="study-tag">Study 01 / Signal editorial</span>
+      <div class="study-actions">
+        <button class="chip-button" type="button" data-reduce-toggle aria-pressed="false">
+          Reduced motion
+        </button>
+        <a class="chip-button" href="./index.html">All studies</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero-01 container">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Campus daily edition · Thursday, 20 November</p>
+            <h1 class="display" data-headline>THE WEEK<br />LANDS<br />DIFFERENTLY.</h1>
+            <p class="lede">
+              Three campuses. Five families. One week of notices that actually ask something of you.
+              Read the edition, then decide where you show up.
+            </p>
+            <div class="hero-actions">
+              <a class="button" href="#chapters" data-magnetic>Read the week <span>↓</span></a>
+              <a class="mono" href="#week" style="font-size: 0.66rem; letter-spacing: 0.08em">
+                Or scan what is on →
+              </a>
+            </div>
+          </div>
+          <aside class="issue-card" aria-label="Issue details">
+            <span class="issue-number">ISSUE 041</span>
+            <dl>
+              <dt>Published</dt>
+              <dd>07:00</dd>
+              <dt>Campuses</dt>
+              <dd>03</dd>
+              <dt>Families</dt>
+              <dd>05</dd>
+              <dt>Notices</dt>
+              <dd>18</dd>
+            </dl>
+            <p class="inside">
+              Inside this edition
+              <span>Chapter strip / This week / The family table</span>
+            </p>
+          </aside>
+        </div>
+        <div class="ticker" aria-label="Campus ticker">
+          <div class="ticker-track" aria-hidden="true">
+            <span>Thursday 20 Nov</span><span><b>●</b> Design Society — 18:30, Kilimani</span
+            ><span><b>●</b> Debate Union — 19:00, Main Hall</span
+            ><span><b>●</b> Film Circle — 20:15, Screening Room</span
+            ><span><b>●</b> Volunteer Network — Saturday 09:00</span><span>Thursday 20 Nov</span
+            ><span><b>●</b> Design Society — 18:30, Kilimani</span
+            ><span><b>●</b> Debate Union — 19:00, Main Hall</span
+            ><span><b>●</b> Film Circle — 20:15, Screening Room</span
+            ><span><b>●</b> Volunteer Network — Saturday 09:00</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="chapters" id="chapters" aria-labelledby="chapters-title">
+        <div class="chapter-pin">
+          <div class="container chapter-head">
+            <h2 id="chapters-title">The chapter strip</h2>
+            <span class="eyebrow">Scroll sideways →</span>
+          </div>
+          <div class="chapter-track">
+            <article class="chapter-panel">
+              <div class="chapter-index"><span>Chapter 01</span><b>Nairobi</b></div>
+              <div>
+                <h3>Design<br />Society</h3>
+                <p>
+                  A shared identity, three campuses, one open studio night. The Nairobi chapter
+                  hosts this week.
+                </p>
+                <div class="meta"><span>18:30 · Kilimani</span><strong>12 going</strong></div>
+              </div>
+            </article>
+            <article class="chapter-panel">
+              <div class="chapter-index"><span>Chapter 02</span><b>Kisumu</b></div>
+              <div>
+                <h3>Debate<br />Union</h3>
+                <p>
+                  The cross-campus motion lands on Saturday. Local rosters stay local; the argument
+                  travels.
+                </p>
+                <div class="meta"><span>19:00 · Main Hall</span><strong>28 going</strong></div>
+              </div>
+            </article>
+            <article class="chapter-panel">
+              <div class="chapter-index"><span>Chapter 03</span><b>Mombasa</b></div>
+              <div>
+                <h3>Film<br />Circle</h3>
+                <p>
+                  A short programme curated by three chapters, screened once on each campus in the
+                  same week.
+                </p>
+                <div class="meta">
+                  <span>20:15 · Screening Room</span><strong>Only 6 seats</strong>
+                </div>
+              </div>
+            </article>
+            <article class="chapter-panel">
+              <div class="chapter-index"><span>Chapter 04</span><b>Network</b></div>
+              <div>
+                <h3>Volunteer<br />Network</h3>
+                <p>
+                  Saturday's clean-up is published to the network. Attendance is intent; the host
+                  campus keeps the roster.
+                </p>
+                <div class="meta"><span>Sat 09:00 · Meeting Point</span><strong>Open</strong></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="week container" id="week" aria-labelledby="week-title">
+        <div class="week-grid">
+          <aside class="week-date">
+            <strong>20<br />NOV</strong>
+            <span>Thursday<br />All times local</span>
+          </aside>
+          <div>
+            <div class="section-head">
+              <h2 id="week-title">This week</h2>
+              <span>04 notices</span>
+            </div>
+            <div class="event-list">
+              <a class="event-row" href="#chapters">
+                <time datetime="2026-11-20T18:30">18:30</time>
+                <div>
+                  <h3>Open studio: the shared mark<span class="arrow">→</span></h3>
+                  <p>Design Society · Bring one unfinished thing.</p>
+                </div>
+                <span class="campus">Nairobi</span>
+              </a>
+              <a class="event-row" href="#chapters">
+                <time datetime="2026-11-20T19:00">19:00</time>
+                <div>
+                  <h3>Motion: this house believes<span class="arrow">→</span></h3>
+                  <p>Debate Union · Cross-campus motion, local floor.</p>
+                </div>
+                <span class="campus">Kisumu</span>
+              </a>
+              <a class="event-row" href="#chapters">
+                <time datetime="2026-11-20T20:15">20:15</time>
+                <div>
+                  <h3>Three chapters, one reel<span class="arrow">→</span></h3>
+                  <p>Film Circle · Six seats left on the host campus.</p>
+                </div>
+                <span class="campus">Mombasa</span>
+              </a>
+              <a class="event-row" href="#chapters">
+                <time datetime="2026-11-22T09:00">09:00</time>
+                <div>
+                  <h3>Saturday clean-up<span class="arrow">→</span></h3>
+                  <p>Volunteer Network · Network event, campus roster.</p>
+                </div>
+                <span class="campus">Network</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="closing">
+        <div class="container close-grid">
+          <div>
+            <p class="eyebrow" style="color: var(--signal-deep)">The point</p>
+            <h2 class="display">Motion should make the <em>next decision</em> clearer.</h2>
+          </div>
+          <div>
+            <p>
+              Not a curtain over content. Not a scroll hijack. A short, readable sequence that says:
+              here is the week, here is where it happens, here is what you can join.
+            </p>
+            <a class="button" href="./02-network-orbit.html">Next study: network at night →</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="container footer">
+      <span>Kesho / study 01</span>
+      <a href="./index.html">All studies</a>
+    </footer>
+
+    <script>
+      const reduceQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      let reduceMotion = reduceQuery.matches;
+      const toggle = document.querySelector("[data-reduce-toggle]");
+      let ctx;
+      let activeSplit = null;
+
+      function build() {
+        if (!window.gsap) return;
+        if (ctx) ctx.revert();
+        if (activeSplit) {
+          activeSplit.revert();
+          activeSplit = null;
+        }
+        document.documentElement.style.scrollBehavior = "";
+        gsap.registerPlugin(ScrollTrigger, SplitText);
+
+        ctx = gsap.context(() => {
+          if (!reduceMotion) {
+            const split = new SplitText("[data-headline]", {
+              type: "lines",
+              linesClass: "split-line",
+            });
+            activeSplit = split;
+            split.lines.forEach((line) => {
+              const mask = document.createElement("span");
+              mask.className = "line-mask";
+              line.parentNode.insertBefore(mask, line);
+              mask.appendChild(line);
+            });
+
+            const intro = gsap.timeline({ defaults: { ease: "power3.out" } });
+            intro
+              .from(".hero-01 .eyebrow", { opacity: 0, y: 14, duration: 0.5 })
+              .from(
+                split.lines,
+                { yPercent: 112, duration: 1.05, stagger: 0.09, ease: "power4.out" },
+                "-=0.15"
+              )
+              .from(".hero-01 .lede", { opacity: 0, y: 24, duration: 0.7 }, "-=0.55")
+              .from(
+                ".hero-actions > *",
+                { opacity: 0, y: 16, duration: 0.55, stagger: 0.08 },
+                "-=0.4"
+              )
+              .from(".issue-card", { opacity: 0, y: 20, duration: 0.7 }, "-=0.5");
+
+            gsap.from(".ticker", { opacity: 0, duration: 0.5, delay: 0.4 });
+
+            const ticker = gsap.to(".ticker-track", {
+              xPercent: -50,
+              duration: 28,
+              ease: "none",
+              repeat: -1,
+            });
+            const tickerEl = document.querySelector(".ticker");
+            tickerEl.addEventListener("mouseenter", () => ticker.pause());
+            tickerEl.addEventListener("mouseleave", () => ticker.play());
+            tickerEl.addEventListener("focusin", () => ticker.pause());
+            tickerEl.addEventListener("focusout", () => ticker.play());
+
+            const track = document.querySelector(".chapter-track");
+            const distance = () => Math.max(0, track.scrollWidth - window.innerWidth + 80);
+            gsap.to(track, {
+              x: () => -distance(),
+              ease: "none",
+              scrollTrigger: {
+                trigger: ".chapters",
+                start: "top top",
+                end: () => `+=${distance()}`,
+                pin: ".chapter-pin",
+                scrub: 1,
+                invalidateOnRefresh: true,
+                anticipatePin: 1,
+              },
+            });
+
+            gsap.from(".chapter-panel", {
+              opacity: 0,
+              y: 50,
+              duration: 0.8,
+              stagger: 0.1,
+              ease: "power2.out",
+              scrollTrigger: { trigger: ".chapters", start: "top 75%" },
+            });
+
+            gsap.utils.toArray(".event-row").forEach((row) => {
+              gsap.from(row, {
+                opacity: 0,
+                y: 28,
+                duration: 0.65,
+                ease: "power2.out",
+                scrollTrigger: { trigger: row, start: "top 88%" },
+              });
+            });
+
+            gsap.from(".closing .display", {
+              opacity: 0,
+              y: 45,
+              duration: 0.9,
+              ease: "power3.out",
+              scrollTrigger: { trigger: ".closing", start: "top 70%" },
+            });
+
+            const magnetic = document.querySelector("[data-magnetic]");
+            const moveX = gsap.quickTo(magnetic, "x", { duration: 0.35, ease: "power3" });
+            const moveY = gsap.quickTo(magnetic, "y", { duration: 0.35, ease: "power3" });
+            magnetic.addEventListener("mousemove", (event) => {
+              const rect = magnetic.getBoundingClientRect();
+              moveX((event.clientX - rect.left - rect.width / 2) * 0.18);
+              moveY((event.clientY - rect.top - rect.height / 2) * 0.28);
+            });
+            magnetic.addEventListener("mouseleave", () => {
+              moveX(0);
+              moveY(0);
+            });
+
+            gsap.to(".scroll-progress", {
+              scaleX: 1,
+              ease: "none",
+              scrollTrigger: {
+                trigger: document.body,
+                start: "top top",
+                end: "bottom bottom",
+                scrub: true,
+              },
+            });
+          } else {
+            gsap.set(".chapter-track", { clearProps: "transform" });
+          }
+        });
+
+        if (window.ScrollTrigger) ScrollTrigger.refresh();
+
+        updateToggle();
+      }
+
+      function updateToggle() {
+        toggle.setAttribute("aria-pressed", String(reduceMotion));
+        toggle.textContent = reduceMotion ? "Motion on" : "Reduced motion";
+      }
+
+      toggle.addEventListener("click", () => {
+        reduceMotion = !reduceMotion;
+        if (reduceMotion) {
+          if (ctx) ctx.revert();
+          ctx = null;
+          if (activeSplit) {
+            activeSplit.revert();
+            activeSplit = null;
+          }
+          document.querySelectorAll("[style*='transform']").forEach((el) => {
+            if (el.classList.contains("chapter-track") || el.classList.contains("ticker-track")) {
+              el.style.transform = "";
+            }
+          });
+        } else {
+          build();
+        }
+        updateToggle();
+      });
+
+      build();
+      reduceQuery.addEventListener("change", () => {
+        reduceMotion = reduceQuery.matches;
+        build();
+      });
+
+      window.addEventListener("load", () => {
+        if (window.ScrollTrigger) ScrollTrigger.refresh();
+      });
+    </script>
+  </body>
+</html>

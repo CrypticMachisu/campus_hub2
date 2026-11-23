@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { getAllEvents } from "../utils/eventsStore";
 import { useAuth } from "../context/AuthContext";
@@ -9,6 +9,7 @@ import { formatEventDate, isPastEvent } from "../utils/dateTime";
 import CommentSection from "../components/CommentSection";
 import ErrorState from "../components/ErrorState";
 import { SkeletonGroup, EventDetailSkeleton } from "../components/Skeleton";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./EventDetail.module.css";
 
 /** Builds and downloads a one-event .ics file (no dependency needed). */
@@ -53,6 +54,9 @@ function downloadIcs(event, clubName) {
 
 export default function EventDetail() {
   const { eventId } = useParams();
+  const [searchParams] = useSearchParams();
+  const scope = searchParams.get("scope") === "network" ? "network" : "local";
+  const isNetwork = scope === "network";
   const { user } = useAuth();
   const { clubs } = useClubs();
 
@@ -68,13 +72,18 @@ export default function EventDetail() {
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
 
+  usePageMetadata({
+    title: event?.title || "Event",
+    description: event?.description || "View event details and RSVP on Kesho.",
+  });
+
   useEffect(() => {
     let cancelled = false;
     setPageLoading(true);
     setLoadError("");
     setImageFailed(false);
 
-    getAllEvents()
+    getAllEvents({ scope })
       .then((events) => {
         if (!cancelled) setEvent(events.find((candidate) => candidate.id === eventId) || null);
       })
@@ -88,7 +97,7 @@ export default function EventDetail() {
     return () => {
       cancelled = true;
     };
-  }, [eventId, reloadKey]);
+  }, [eventId, reloadKey, scope]);
 
   useEffect(() => {
     if (!user || !event) {
@@ -175,14 +184,14 @@ export default function EventDetail() {
   function primaryLabel() {
     if (past) return "This event has passed";
     if (signupLoading) return "Checking your RSVP…";
-    if (signup) return waitlisted ? "Leave waitlist" : "Cancel my RSVP";
-    return full ? "Join the waitlist" : "I'm going";
+    if (signup) return waitlisted ? "Leave waitlist" : "Cancel RSVP";
+    return full ? "Join waitlist" : "RSVP";
   }
 
   return (
     <div className={styles.page}>
-      <Link to="/discover" className={styles.back}>
-        ← Discovery
+      <Link to={isNetwork ? "/network" : "/discover"} className={styles.back}>
+        ← {isNetwork ? "My network" : "This week"}
       </Link>
 
       {pageLoading ? (
@@ -199,8 +208,8 @@ export default function EventDetail() {
         <div className={styles.missing}>
           <h1>Event not found</h1>
           <p>It may have been removed, or the link may be out of date.</p>
-          <Link to="/discover" className={styles.missingLink}>
-            Back to discovery
+          <Link to={isNetwork ? "/network" : "/discover"} className={styles.missingLink}>
+            {isNetwork ? "Back to My network" : "Back to this week"}
           </Link>
         </div>
       ) : (
@@ -229,9 +238,14 @@ export default function EventDetail() {
                   <Link to={`/clubs/${club.id}`} className={styles.clubLink}>
                     {club.name}
                   </Link>
+                ) : event.clubName ? (
+                  <Link to={`/clubs/${event.clubId}`} className={styles.clubLink}>
+                    {event.clubName}
+                  </Link>
                 ) : (
                   "Campus event"
                 )}
+                {event.campusName ? ` · ${event.campusName}` : ""}
               </p>
 
               <h1>{event.title}</h1>
@@ -245,6 +259,9 @@ export default function EventDetail() {
                     <span aria-hidden="true">·</span>
                     <span>{event.location}</span>
                   </>
+                )}
+                {event.audience === "network" && (
+                  <span className={styles.networkBadge}>Network</span>
                 )}
               </p>
 
@@ -270,7 +287,7 @@ export default function EventDetail() {
                     ? "This event has ended"
                     : full
                       ? "Waitlist only"
-                      : "Save your spot"}
+                      : "RSVP"}
               </h2>
 
               {capacity != null ? (
@@ -318,7 +335,7 @@ export default function EventDetail() {
               <button
                 type="button"
                 className={styles.secondaryAction}
-                onClick={() => downloadIcs(event, club?.name)}
+                onClick={() => downloadIcs(event, club?.name || event.clubName)}
               >
                 Add to calendar
               </button>
@@ -345,7 +362,14 @@ export default function EventDetail() {
 
               <section className={styles.section} aria-labelledby="discussion-title">
                 <h2 id="discussion-title">Questions &amp; discussion</h2>
-                <CommentSection targetType="event" targetId={event.id} showHeading={false} />
+                {isNetwork ? (
+                  <p className={styles.networkBoundary}>
+                    This event is shared across the club network. You can RSVP here; its discussion
+                    and attendee roster stay on {event.campusName || "the host campus"}.
+                  </p>
+                ) : (
+                  <CommentSection targetType="event" targetId={event.id} showHeading={false} />
+                )}
               </section>
             </div>
           </div>
