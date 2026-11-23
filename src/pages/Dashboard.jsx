@@ -9,6 +9,7 @@ import { CROSS_UNIVERSITY_ENABLED } from "../utils/features";
 import { getSignupsByEvent } from "../utils/storage";
 import { getAnnouncements, saveAnnouncement } from "../utils/dashboardStorage";
 import ClubPostsDesk from "../components/ClubPostsDesk";
+import ErrorBoundary from "../components/ErrorBoundary";
 import Tier1ReportQueue from "../components/Tier1ReportQueue";
 import { formatDateTime, formatEventDate } from "../utils/dateTime";
 import {
@@ -33,14 +34,14 @@ import {
   removeCampusAdmin,
 } from "../utils/adminStore";
 import { canManageClub } from "../utils/authStore";
+import { EVENT_IMAGE_FALLBACK } from "../utils/images";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import { SkeletonGroup, SkeletonListRow, CardStackSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
 import styles from "./Dashboard.module.css";
 
-const FALLBACK_IMAGE = "https://placehold.co/600x300";
-
 const ROLE_LABELS = {
-  tier1: "Tier 1",
+  tier1: "Platform admin",
   campus_admin: "Campus admin",
   tier2: "Club admin",
   member: "Member",
@@ -90,6 +91,13 @@ export default function Dashboard() {
   const [announcementText, setAnnouncementText] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [saveMessage, setSaveMessage] = useState("");
+
+  usePageMetadata({
+    title: club ? `${club.name} club desk` : "Club desk",
+    description: club
+      ? `Manage ${club.name}'s events, commitments, announcements, and posts.`
+      : "Manage a club on Kesho.",
+  });
 
   async function refreshEvents() {
     setAllEvents(await getAllEvents());
@@ -234,7 +242,7 @@ export default function Dashboard() {
         time: form.time || "12:00",
         location,
         category: form.category,
-        imageUrl: imageUrl || FALLBACK_IMAGE,
+        imageUrl: imageUrl || EVENT_IMAGE_FALLBACK,
         bringNote: form.bringNote.trim(),
         capacity,
         audience: form.audience || "campus",
@@ -373,7 +381,7 @@ export default function Dashboard() {
                       </button>
                     </span>
                   ) : (
-                    <span className={styles.readOnlyBadge}>Seed event · read-only</span>
+                    <span className={styles.readOnlyBadge}>Example event · read-only</span>
                   )}
                 </li>
               );
@@ -494,9 +502,10 @@ export default function Dashboard() {
               <input
                 type="url"
                 value={form.imageUrl}
-                placeholder={FALLBACK_IMAGE}
+                placeholder="https://…"
                 onChange={(e) => handleFormChange("imageUrl", e.target.value)}
               />
+              <span className={styles.optional}>Leave blank to use the Kesho fallback.</span>
             </label>
 
             <div className={styles.formActions}>
@@ -535,16 +544,17 @@ export default function Dashboard() {
         {/* 5. Announcements ----------------------------------------------- */}
         <section className={`${styles.section} ${styles.announcementsSection}`}>
           <h2>Announcements</h2>
+          <p className={styles.optional}>Updates for club members in the workspace.</p>
           <form className={styles.announcementForm} onSubmit={handlePostAnnouncement}>
             <textarea
               value={announcementText}
               onChange={(e) => setAnnouncementText(e.target.value)}
               aria-label="Announcement text"
-              placeholder="Post an update to club members…"
+              placeholder="Write an announcement for club members…"
               rows={2}
             />
             <button type="submit" className={styles.primaryButton}>
-              Post
+              Publish announcement
             </button>
           </form>
           <ul className={styles.announcementList}>
@@ -565,7 +575,14 @@ export default function Dashboard() {
         {/* 6. Posts — the club page's dispatches and report queue ------------ */}
         <section className={`${styles.section} ${styles.postsSection}`}>
           <h2>Posts</h2>
-          <ClubPostsDesk clubId={club.id} canPublishToNetwork={Boolean(club.familyId)} />
+          <p className={styles.optional}>Public updates on the club page.</p>
+          <ErrorBoundary
+            title="The posts desk didn't render"
+            resetKey={club.id}
+            message="The rest of the desk is still available. Try this section again."
+          >
+            <ClubPostsDesk clubId={club.id} canPublishToNetwork={Boolean(club.familyId)} />
+          </ErrorBoundary>
         </section>
 
         {/* 7. Playbook — the club-specific bits members see ------------------- */}
@@ -1457,7 +1474,7 @@ function AdminManagementSection({ clubId }) {
 
   async function handleApprove(requestId) {
     await approveAdminRequest(requestId);
-    setMessage("Request approved — that user is now a tier 2 admin for this club.");
+    setMessage("Request approved — that user is now a club admin.");
     await refresh();
   }
 
@@ -1471,7 +1488,7 @@ function AdminManagementSection({ clubId }) {
     e.preventDefault();
     if (!selectedUserId) return;
     await promoteToClubAdmin(selectedUserId, clubId);
-    setMessage("Promoted to tier 2 admin for this club.");
+    setMessage("Promoted to club admin.");
     setSelectedUserId("");
     await refresh();
   }
@@ -1503,7 +1520,7 @@ function AdminManagementSection({ clubId }) {
 
   return (
     <section className={styles.section}>
-      <h2>Admin Management</h2>
+      <h2>Admin management</h2>
       {message && <div className={styles.toast}>{message}</div>}
 
       <h3>Current admins for this club</h3>
@@ -1513,7 +1530,7 @@ function AdminManagementSection({ clubId }) {
         </SkeletonGroup>
       )}
       {!loading && currentAdmins.length === 0 && (
-        <p className={styles.emptyState}>No tier 2 admins for this club yet.</p>
+        <p className={styles.emptyState}>No club admins for this club yet.</p>
       )}
       <ul className={styles.eventList}>
         {currentAdmins.map((u) => (
@@ -1575,7 +1592,7 @@ function AdminManagementSection({ clubId }) {
         </label>
         <div className={styles.formActions}>
           <button type="submit" className={styles.primaryButton} disabled={!selectedUserId}>
-            Promote to Tier 2 Admin
+            Make club admin
           </button>
         </div>
       </form>
@@ -1584,8 +1601,8 @@ function AdminManagementSection({ clubId }) {
         <>
           <h3>Campus administration</h3>
           <p className={styles.emptyState}>
-            A campus admin manages every club on their campus. Tier 1 remains the only platform-wide
-            role.
+            A campus admin manages every club on their campus. Platform admins can manage every
+            campus.
           </p>
           {campusAdmins.length === 0 && <p className={styles.emptyState}>No campus admins yet.</p>}
           <ul className={styles.eventList}>
@@ -1710,7 +1727,7 @@ function ClubFocusSection({ club, className = "" }) {
           <input
             type="text"
             value={form.rsvpLabel}
-            placeholder="I'm going"
+            placeholder="RSVP"
             maxLength={40}
             onChange={(e) => handleChange("rsvpLabel", e.target.value)}
           />

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { resetPassword } from "../utils/authStore";
 import PasswordField from "../components/PasswordField";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./Login.module.css";
 
 export default function ResetPassword() {
@@ -13,6 +14,11 @@ export default function ResetPassword() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+
+  usePageMetadata({
+    title: "Set a new password",
+    description: "Choose a new password for your Kesho account.",
+  });
 
   async function handleSubmit(e) {
     e.preventDefault();

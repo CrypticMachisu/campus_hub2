@@ -202,3 +202,5 @@ shadow and gradient to look finished, the hierarchy is wrong.
 
 For deeper motion or audit work, pair with `elite-accessibility` or
 `elite-gsap` only when needed; the system above is the default.
+
+Before adding a visual dependency, read `kesho-library-evaluation`.

@@ -20,8 +20,8 @@ const DEFAULT_FOCUS = {
 
 export const CATEGORY_PLAYBOOKS = {
   Academic: {
-    rsvpLabel: "I'll be there",
-    cancelLabel: "Can't make it",
+    rsvpLabel: "RSVP",
+    cancelLabel: "Cancel RSVP",
     bringNote: "Bring your case notes — prep starts 10 minutes before the round.",
     focus: {
       kicker: "This week's brief",
@@ -36,8 +36,8 @@ export const CATEGORY_PLAYBOOKS = {
     },
   },
   "Arts & Culture": {
-    rsvpLabel: "I'm in",
-    cancelLabel: "Sitting this out",
+    rsvpLabel: "RSVP",
+    cancelLabel: "Cancel RSVP",
     bringNote: "Bring a camera or a phone — there's always something worth shooting.",
     focus: {
       kicker: "This week's prompt",
@@ -48,8 +48,8 @@ export const CATEGORY_PLAYBOOKS = {
     },
   },
   "Sports & Fitness": {
-    rsvpLabel: "I'm running",
-    cancelLabel: "Sitting this out",
+    rsvpLabel: "RSVP",
+    cancelLabel: "Cancel RSVP",
     bringNote: "Meet five minutes early — groups leave on the dot.",
     focus: {
       kicker: "Pace groups",
@@ -60,8 +60,8 @@ export const CATEGORY_PLAYBOOKS = {
     },
   },
   Technology: {
-    rsvpLabel: "I'll be there",
-    cancelLabel: "Can't make it",
+    rsvpLabel: "RSVP",
+    cancelLabel: "Cancel RSVP",
     bringNote: "Bring a laptop and charger — project nights are hands-on.",
     focus: {
       kicker: "Demo night",
@@ -76,8 +76,8 @@ export const CATEGORY_PLAYBOOKS = {
     },
   },
   "Community Service": {
-    rsvpLabel: "I'm volunteering",
-    cancelLabel: "Can't make it",
+    rsvpLabel: "RSVP",
+    cancelLabel: "Cancel RSVP",
     bringNote: "Closed shoes and a water bottle. Transport leaves from the Student Union.",
     focus: {
       kicker: "Saturday shift",
@@ -92,8 +92,8 @@ export const CATEGORY_PLAYBOOKS = {
     },
   },
   Agriculture: {
-    rsvpLabel: "I'll be there",
-    cancelLabel: "Can't make it",
+    rsvpLabel: "RSVP",
+    cancelLabel: "Cancel RSVP",
     bringNote: "Field days need closed shoes — some plots are muddy.",
     focus: {
       kicker: "Market day",
@@ -108,8 +108,8 @@ export const CATEGORY_PLAYBOOKS = {
     },
   },
   Social: {
-    rsvpLabel: "I'm coming",
-    cancelLabel: "Can't make it",
+    rsvpLabel: "RSVP",
+    cancelLabel: "Cancel RSVP",
     bringNote: "Bring something to share if you can — there's always a table for it.",
     focus: {
       kicker: "Bring-a-thing",
@@ -123,8 +123,8 @@ export const CATEGORY_PLAYBOOKS = {
 
 /** Clubs whose category has no playbook yet still get usable copy. */
 export const DEFAULT_PLAYBOOK = {
-  rsvpLabel: "I'm going",
-  cancelLabel: "Can't make it",
+  rsvpLabel: "RSVP",
+  cancelLabel: "Cancel RSVP",
   bringNote: "",
   focus: DEFAULT_FOCUS,
 };

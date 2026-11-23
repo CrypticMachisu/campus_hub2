@@ -49,8 +49,8 @@
   display: grid;
   place-items: center;
   background:
-    repeating-linear-gradient(105deg, rgba(14, 15, 12, 0.16) 0 1px, transparent 1px 13px),
-    linear-gradient(170deg, #d3ccb9, #b0a78f);
+    repeating-linear-gradient(105deg, var(--photo-line) 0 1px, transparent 1px 13px),
+    linear-gradient(170deg, var(--photo-start), var(--photo-end));
 }
 
 .imageFallback span {
@@ -58,7 +58,7 @@
   font-size: 0.6rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(14, 15, 12, 0.6);
+  color: var(--photo-ink);
 }
 
 .category {
@@ -66,7 +66,7 @@
   top: 14px;
   left: 14px;
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   font-family: var(--font-mono);
   font-size: 0.52rem;
   letter-spacing: 0.1em;
@@ -94,7 +94,7 @@
 .networkBadge {
   padding: 0.18rem 0.4rem;
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   font-size: 0.52rem;
   letter-spacing: 0.08em;
 }
@@ -237,11 +237,11 @@
   font-weight: 600;
   border: 1px solid var(--signal);
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
 }
 
 .primaryAction:hover {
-  background: var(--signal-deep);
+  background: var(--signal-hover);
   border-color: var(--signal-deep);
 }
 
@@ -283,7 +283,7 @@
 
 .actionError {
   font-size: 0.8rem;
-  color: #a3200f;
+  color: var(--danger);
   margin: 0.5rem 0 0;
 }
 
@@ -311,6 +311,14 @@
   font-size: 0.98rem;
   color: var(--ink-2);
   max-width: 68ch;
+}
+
+.networkBoundary {
+  max-width: 68ch;
+  padding: 0.85rem 1rem;
+  border-left: 4px solid var(--signal);
+  background: var(--tint);
+  color: var(--ink-2);
 }
 
 /* Missing / errors */

@@ -131,15 +131,15 @@
 }
 
 .active {
-  border-color: #3e6b43;
-  color: #2d5a34;
-  background: #e8f1e7;
+  border-color: var(--success-border);
+  color: var(--success);
+  background: var(--success-bg);
 }
 
 .pending {
-  border-color: #9b6b14;
-  color: #76500d;
-  background: #fbf0d5;
+  border-color: var(--warning-border);
+  color: var(--warning);
+  background: var(--warning-bg);
 }
 
 .empty {
@@ -241,11 +241,11 @@
 .primary {
   border-color: var(--signal-deep);
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--signal-deep);
+  background: var(--signal-hover);
 }
 
 .quietButton {

@@ -48,7 +48,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem;
-  border-left: 3px solid #a3200f;
+  border-left: 3px solid var(--danger);
   padding: 0.5rem 0.7rem;
   margin: 0.8rem 0 0;
   font-size: 0.82rem;
@@ -345,8 +345,8 @@
 }
 
 .cancelButton:hover {
-  border-color: #a3200f;
-  color: #a3200f;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .cancelButton:disabled {
@@ -383,14 +383,14 @@
   min-height: 42px;
   padding: 0 0.9rem;
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   border: 1px solid var(--signal);
   font-size: 0.82rem;
   font-weight: 600;
 }
 
 .emptyLink:hover {
-  background: var(--signal-deep);
+  background: var(--signal-hover);
   border-color: var(--signal-deep);
 }
 

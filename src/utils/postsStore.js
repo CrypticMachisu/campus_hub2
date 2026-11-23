@@ -12,8 +12,9 @@ export async function getManagedPosts(clubId) {
   return apiFetch(`/posts/manage?clubId=${encodeURIComponent(clubId)}`);
 }
 
-export async function getPost(postId) {
-  return (await apiFetch(`/posts/${encodeURIComponent(postId)}`)).post;
+export async function getPost(postId, { scope = "local" } = {}) {
+  const query = scope === "network" ? "?scope=network" : "";
+  return (await apiFetch(`/posts/${encodeURIComponent(postId)}${query}`)).post;
 }
 
 /** Reserve a photo and receive a short-lived direct upload URL. */
@@ -45,10 +46,10 @@ export async function uploadPhoto(upload, file) {
       body: file,
     });
   } catch {
-    throw new Error("The photo upload couldn't reach storage. Check your connection.");
+    throw new Error("The photo didn't upload. Check your connection and try again.");
   }
   if (!response.ok) {
-    throw new Error("Storage rejected the photo upload. Try again.");
+    throw new Error("The photo didn't upload. Try again.");
   }
 }
 

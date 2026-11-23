@@ -48,7 +48,7 @@ adminRequestsRouter.get("/", requireAuth, requireCampusAdmin, async (req, res) =
  */
 adminRequestsRouter.post("/", requireAuth, async (req, res) => {
   const { clubId } = req.body;
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
 
   const [clubRows] = await pool.query(
     "SELECT club_id, campus_id FROM clubs WHERE club_id = :clubId",

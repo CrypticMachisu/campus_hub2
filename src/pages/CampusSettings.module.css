@@ -151,11 +151,11 @@
 .primary {
   border-color: var(--signal-deep);
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--signal-deep);
+  background: var(--signal-hover);
 }
 
 .quiet {

@@ -32,7 +32,7 @@ tags:
   - name: Events
     description: Events hosted by clubs.
   - name: Admin
-    description: Tier1-only operational dashboard.
+    description: Platform-admin operational dashboard.
   - name: Agro
     description: >
       Member-only activities for the Agri-Business & Farming club. Every
@@ -347,7 +347,7 @@ paths:
       tags: [Clubs]
       operationId: createClub
       summary: Create a club
-      description: Only tier1 users can create clubs.
+      description: Only platform admins can create clubs.
       security:
         - apiKeyAuth: []
           bearerAuth: []
@@ -386,17 +386,17 @@ paths:
                     error: Club name is required.
                 unknownCategory:
                   value:
-                    error: "Unknown category: Cooking"
+                    error: "Choose a category from the list."
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          description: Signed in, but not a tier1 user.
+          description: Signed in, but not a platform admin.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
               example:
-                error: Tier 1 admin access required.
+                error: Platform admin access required.
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -495,7 +495,7 @@ paths:
                     error: Title is required.
                 unknownCategory:
                   value:
-                    error: "Unknown category: Cooking"
+                    error: "Choose a category from the list."
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -558,7 +558,7 @@ paths:
                     error: Title is required.
                 unknownCategory:
                   value:
-                    error: "Unknown category: Cooking"
+                    error: "Choose a category from the list."
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -711,7 +711,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
               example:
-                error: kind must be one of farm_visit, tree_planting, harvest, volunteering.
+                error: Choose a valid opportunity type.
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -914,7 +914,7 @@ paths:
       operationId: getAdminDashboard
       summary: Per-key rate-limit status and last-IP tracking
       description: >
-        Tier1-only operational view of the live rate limiter. One row per
+        Platform-admin operational view of the live rate limiter. One row per
         consumer that has sent traffic this process, plus every configured
         key that has not been used yet. Each key appears only as its
         fingerprint (a hashed keyId and a masked tail) — the raw key is
@@ -1024,7 +1024,7 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            error: "You don't have admin access to that club."
+            error: "You need club admin access to do that."
     EventForbidden:
       description: The event is a built-in event, or the caller does not manage its club.
       content:
@@ -1034,10 +1034,10 @@ components:
           examples:
             seedEvent:
               value:
-                error: Seed events are read-only.
+                error: Built-in events can't be edited or deleted here.
             noClubAccess:
               value:
-                error: "You don't have admin access to that club."
+                error: "You need club admin access to do that."
     EventNotFound:
       description: No event has that ID.
       content:
@@ -1047,13 +1047,13 @@ components:
           example:
             error: Event not found.
     AdminForbidden:
-      description: The bearer token is valid but its account is not a tier1 admin.
+      description: The bearer token is valid but its account is not a platform admin.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            error: Tier 1 admin access required.
+            error: Platform admin access required.
 
   schemas:
     Error:

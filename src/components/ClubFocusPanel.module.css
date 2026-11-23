@@ -89,7 +89,7 @@
 }
 
 .link:hover {
-  background: rgba(193, 67, 46, 0.06);
+  background: var(--signal-soft);
 }
 
 .footnote {

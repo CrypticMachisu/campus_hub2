@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kesho UX Lab — Direction C: Quiet Operations</title>
+    <link rel="icon" type="image/svg+xml" href="../public/favicon.svg" />
+    <link rel="stylesheet" href="lab.css" />
+  </head>
+  <body class="theme-c">
+    <a class="visually-hidden" href="#main">Skip to content</a>
+
+    <div class="app">
+      <aside class="rail" aria-label="Mock member navigation">
+        <div class="brand">kesho<span>.</span></div>
+        <p class="rail-kicker">Member workspace</p>
+
+        <p class="rail-label">My clubs</p>
+        <a class="rail-club is-active" href="#main"><b>AF</b> Agri-Business &amp; Farming Club</a>
+        <a class="rail-club" href="#main"><b>DR</b> Debate &amp; Rhetoric Society</a>
+
+        <p class="rail-label">Workspace</p>
+        <a class="rail-link" href="#main">This week's edition</a>
+        <a class="rail-link" href="#main">My commitments</a>
+        <a class="rail-link" href="#main">Club discussion</a>
+        <a class="rail-link" href="#main">Members</a>
+
+        <div class="rail-user">
+          <strong>Sofia Ramirez</strong>
+          <span>sofia.ramirez@campus.edu</span>
+          <a class="rail-link" href="index.html">UX lab index</a>
+        </div>
+      </aside>
+
+      <main class="main" id="main">
+        <div class="lab-head">
+          <span><strong>Direction C</strong> · Quiet Operations</span>
+          <span>
+            Alt-click Optimistic to test rollback ·
+            <a href="index.html">All directions</a>
+          </span>
+        </div>
+
+        <header class="workspace-head">
+          <div class="club-mark" aria-hidden="true">AF</div>
+          <div>
+            <p class="eyebrow">Agriculture · Member</p>
+            <h1>Agri-Business &amp; Farming Club</h1>
+            <p class="workspace-meta">Thursdays, 5:00 PM / Science Block, Room 105</p>
+          </div>
+          <div class="workspace-actions">
+            <button class="btn btn-primary" type="button" id="post-update">Post an update</button>
+            <a class="text-link" href="#main">Public page</a>
+          </div>
+        </header>
+
+        <p class="visually-hidden" role="status" id="ws-status">Workspace ready</p>
+
+        <section class="metrics" aria-label="Club at a glance">
+          <div class="metric">
+            <span>Next event</span>
+            <b>Fri 20</b>
+          </div>
+          <div class="metric">
+            <span>Members</span>
+            <b>42</b>
+          </div>
+          <div class="metric">
+            <span>Unread</span>
+            <b>3</b>
+          </div>
+        </section>
+
+        <div class="workspace-grid">
+          <div class="workspace-column">
+            <section class="workspace-section" id="next-section" aria-busy="false">
+              <div class="section-head">
+                <h2>Next event</h2>
+                <span class="section-note" id="next-state">Live</span>
+              </div>
+
+              <div id="next-content">
+                <div class="next-event">
+                  <div>
+                    <p class="activity-kind">Byte Club · Fri 20 Nov · 19:00</p>
+                    <h3>Hackathon Kickoff Workshop</h3>
+                    <p>Engineering Building, Lab 108 · 34 of 60 going</p>
+                  </div>
+                  <button class="btn btn-primary" type="button" id="rsvp" aria-pressed="false">
+                    I'm going <span class="mono">34/60</span>
+                  </button>
+                </div>
+              </div>
+
+              <div id="next-skeleton" class="ws-skeleton is-hidden" role="status" aria-live="polite">
+                <span class="visually-hidden">Loading the next event</span>
+                <div class="ws-skeleton-next" aria-hidden="true">
+                  <div class="ws-skeleton-copy">
+                    <span class="sk-line ws-sk-kind"></span>
+                    <span class="sk-line ws-sk-title"></span>
+                    <span class="sk-line ws-sk-meta"></span>
+                  </div>
+                  <span class="sk-chip ws-sk-cta"></span>
+                </div>
+              </div>
+            </section>
+
+            <section class="workspace-section" id="activity-section" aria-busy="false">
+              <div class="section-head">
+                <h2>Club feed</h2>
+                <span class="section-note" id="activity-count">3 items</span>
+              </div>
+
+              <div id="activity-content">
+                <ul class="activity-list" id="activity-list">
+                  <li class="activity-item" data-activity="1">
+                    <p class="activity-kind">Announcement</p>
+                    <p class="activity-text">
+                      Saturday's farm visit is confirmed. Meet at the main gate at 8:30.
+                    </p>
+                    <time class="activity-time" datetime="2026-11-20T08:10">2h ago</time>
+                    <button class="pin-button" type="button" aria-label="Pin announcement">Pin</button>
+                  </li>
+                  <li class="activity-item" data-activity="2">
+                    <p class="activity-kind">Discussion · Amara Okafor</p>
+                    <p class="activity-text">
+                      The agri-business pitch night needs two more judges. Reply here if you know
+                      someone.
+                    </p>
+                    <time class="activity-time" datetime="2026-11-19T17:40">Yesterday</time>
+                    <button class="pin-button" type="button" aria-label="Pin discussion">Pin</button>
+                  </li>
+                  <li class="activity-item" data-activity="3">
+                    <p class="activity-kind">Announcement</p>
+                    <p class="activity-text">
+                      New reading list in the resource folder: soil health and smallholder finance.
+                    </p>
+                    <time class="activity-time" datetime="2026-11-18T11:20">2d ago</time>
+                    <button class="pin-button" type="button" aria-label="Pin resource post">Pin</button>
+                  </li>
+                </ul>
+              </div>
+
+              <div id="activity-skeleton" class="ws-skeleton is-hidden" role="status" aria-live="polite">
+                <span class="visually-hidden">Loading the club feed</span>
+                <div aria-hidden="true">
+                  <span class="ws-skeleton-card">
+                    <span class="sk-line ws-sk-kind"></span>
+                    <span class="sk-line ws-sk-text"></span>
+                    <span class="sk-line ws-sk-time"></span>
+                  </span>
+                  <span class="ws-skeleton-card">
+                    <span class="sk-line ws-sk-kind"></span>
+                    <span class="sk-line ws-sk-text"></span>
+                    <span class="sk-line ws-sk-time"></span>
+                  </span>
+                  <span class="ws-skeleton-card">
+                    <span class="sk-line ws-sk-kind"></span>
+                    <span class="sk-line ws-sk-text"></span>
+                    <span class="sk-line ws-sk-time"></span>
+                  </span>
+                </div>
+              </div>
+
+              <div id="activity-empty" class="inline-empty is-hidden">
+                <p>No announcements yet. The feed is quiet, but the club isn't.</p>
+                <button class="btn" type="button" id="empty-cta">Post the first update</button>
+              </div>
+
+              <div id="activity-error" class="inline-error is-hidden" role="alert">
+                <p>The club feed didn't load. The agenda and roster are unaffected.</p>
+                <button class="btn" type="button" id="feed-retry">Retry the feed</button>
+              </div>
+            </section>
+
+            <section class="workspace-section" aria-labelledby="commitments-heading">
+              <div class="section-head">
+                <h2 id="commitments-heading">Upcoming commitments</h2>
+                <span class="section-note">2 active</span>
+              </div>
+              <ul class="activity-list">
+                <li class="activity-item">
+                  <p class="activity-kind">Farm visit · Sat 21 Nov</p>
+                  <p class="activity-text">Meet at the main gate · 4 members going</p>
+                  <span class="activity-time">Read the notice</span>
+                </li>
+                <li class="activity-item">
+                  <p class="activity-kind">Pitch night · Thu 26 Nov</p>
+                  <p class="activity-text">Business School 2 · Judges still needed</p>
+                  <span class="activity-time">Read the notice</span>
+                </li>
+              </ul>
+            </section>
+          </div>
+
+          <div class="workspace-column">
+            <section class="workspace-section" id="roster-section" aria-busy="false">
+              <div class="section-head">
+                <h2>Members</h2>
+                <button class="text-link" type="button" id="export-roster">Export roster</button>
+              </div>
+
+              <div id="roster-content">
+                <ul class="roster">
+                  <li>
+                    <span class="avatar" aria-hidden="true">SR</span>
+                    <span class="roster-name">Sofia Ramirez<span>sofia.ramirez@campus.edu</span></span>
+                    <span class="role-tag">You</span>
+                  </li>
+                  <li>
+                    <span class="avatar" aria-hidden="true">AO</span>
+                    <span class="roster-name">Amara Okafor<span>amara.okafor@campus.edu</span></span>
+                    <span class="role-tag">Admin</span>
+                  </li>
+                  <li>
+                    <span class="avatar" aria-hidden="true">DM</span>
+                    <span class="roster-name">David Mwangi<span>david.mwangi@campus.edu</span></span>
+                  </li>
+                  <li>
+                    <span class="avatar" aria-hidden="true">NJ</span>
+                    <span class="roster-name">Njeri Kamau<span>njeri.kamau@campus.edu</span></span>
+                  </li>
+                  <li>
+                    <span class="avatar" aria-hidden="true">TK</span>
+                    <span class="roster-name">Tobi Kimani<span>tobi.kimani@campus.edu</span></span>
+                  </li>
+                </ul>
+              </div>
+
+              <div id="roster-skeleton" class="ws-skeleton is-hidden" role="status" aria-live="polite">
+                <span class="visually-hidden">Loading the member roster</span>
+                <div aria-hidden="true">
+                  <span class="ws-skeleton-person">
+                    <span class="sk-avatar"></span>
+                    <span class="ws-skeleton-person-copy">
+                      <span class="sk-line ws-sk-name"></span>
+                      <span class="sk-line ws-sk-email"></span>
+                    </span>
+                  </span>
+                  <span class="ws-skeleton-person">
+                    <span class="sk-avatar"></span>
+                    <span class="ws-skeleton-person-copy">
+                      <span class="sk-line ws-sk-name"></span>
+                      <span class="sk-line ws-sk-email"></span>
+                    </span>
+                  </span>
+                  <span class="ws-skeleton-person">
+                    <span class="sk-avatar"></span>
+                    <span class="ws-skeleton-person-copy">
+                      <span class="sk-line ws-sk-name"></span>
+                      <span class="sk-line ws-sk-email"></span>
+                    </span>
+                  </span>
+                  <span class="ws-skeleton-person">
+                    <span class="sk-avatar"></span>
+                    <span class="ws-skeleton-person-copy">
+                      <span class="sk-line ws-sk-name"></span>
+                      <span class="sk-line ws-sk-email"></span>
+                    </span>
+                  </span>
+                  <span class="ws-skeleton-person">
+                    <span class="sk-avatar"></span>
+                    <span class="ws-skeleton-person-copy">
+                      <span class="sk-line ws-sk-name"></span>
+                      <span class="sk-line ws-sk-email"></span>
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <div class="progress-card is-hidden" id="export-progress">
+                <div class="progress-card-head">
+                  <span>Roster export</span>
+                  <span id="export-percent">0%</span>
+                </div>
+                <div
+                  class="progress-track"
+                  role="progressbar"
+                  aria-label="Roster export progress"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="0"
+                >
+                  <div class="progress-fill" id="export-fill"></div>
+                </div>
+                <p class="progress-step" id="export-step">Packing the member list…</p>
+              </div>
+            </section>
+
+            <section class="workspace-section" aria-labelledby="membership-heading">
+              <div class="section-head">
+                <h2 id="membership-heading">Membership</h2>
+              </div>
+              <p class="workspace-meta">
+                You're part of this club, so updates and events appear here first.
+              </p>
+              <button class="btn" type="button" style="margin-top: 0.7rem">Leave club</button>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="simbar" role="region" aria-label="Loading simulation controls">
+      <span class="sim-label">Simulate</span>
+      <div class="sim-actions">
+        <button type="button" data-sim="cold">Cold load <small>1.8s</small></button>
+        <button type="button" data-sim="warm">Warm cache <small>&lt;100ms</small></button>
+        <button type="button" data-sim="optimistic">Optimistic / Flip</button>
+        <button type="button" data-sim="state">Empty / Error</button>
+      </div>
+      <output class="sim-status" id="sim-status" aria-live="polite">Ready · sections live</output>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="vendor/gsap.min.js"></script>
+    <script src="vendor/Flip.min.js"></script>
+    <script src="lab.js"></script>
+    <script>
+      (() => {
+        const L = window.UXLab;
+        const { $, $$, wait } = L;
+        const nextSection = $("#next-section");
+        const activitySection = $("#activity-section");
+        const rosterSection = $("#roster-section");
+        const nextContent = $("#next-content");
+        const nextSkeleton = $("#next-skeleton");
+        const activityContent = $("#activity-content");
+        const activitySkeleton = $("#activity-skeleton");
+        const activityEmpty = $("#activity-empty");
+        const activityError = $("#activity-error");
+        const rosterContent = $("#roster-content");
+        const rosterSkeleton = $("#roster-skeleton");
+        const activityCount = $("#activity-count");
+        const activityList = $("#activity-list");
+        const cacheState = $("#next-state");
+        const rsvp = $("#rsvp");
+        const exportButton = $("#export-roster");
+        const exportProgress = $("#export-progress");
+        const exportFill = $("#export-fill");
+        const exportPercent = $("#export-percent");
+        const exportStep = $("#export-step");
+        const exportTrack = $(".progress-track");
+
+        let run = 0;
+        let joined = false;
+        let sectionMode = 0;
+        let exportTimer;
+        let exporting = false;
+        let heightsLocked = false;
+        const wideLayout = window.matchMedia("(min-width: 981px)");
+        const plateSections = [nextSection, activitySection, rosterSection];
+
+        const originalActivityOrder = $$(".activity-item", activityList);
+
+        function freezePlateHeights() {
+          if (!wideLayout.matches || heightsLocked) return;
+          plateSections.forEach((section) => {
+            section.style.minHeight = `${Math.ceil(section.getBoundingClientRect().height)}px`;
+          });
+          heightsLocked = true;
+        }
+
+        function clearPlateHeights() {
+          if (!heightsLocked) return;
+          plateSections.forEach((section) => {
+            section.style.minHeight = "";
+          });
+          heightsLocked = false;
+        }
+
+        function cancelRuns() {
+          clearPlateHeights();
+          run += 1;
+          clearTimeout(exportTimer);
+          clearInterval(exportTimer);
+          if (window.gsap) window.gsap.killTweensOf([nextContent, activityContent, rosterContent]);
+        }
+
+        function getActivityItems() {
+          return $$(".activity-item", activityList);
+        }
+
+        function exportBusy() {
+          if (!exporting) return false;
+          L.setStatus("Roster export is still running · wait for 100%");
+          L.toast("The roster export is still running.");
+          return true;
+        }
+
+        function updateActivityLabel() {
+          const pinned = getActivityItems().filter((item) =>
+            item.classList.contains("is-pinned")
+          ).length;
+          const total = getActivityItems().length;
+          activityCount.textContent = pinned
+            ? `${total} items · ${pinned} pinned`
+            : `${total} items`;
+        }
+
+        function setJoined(next) {
+          joined = next;
+          rsvp.innerHTML = next
+            ? 'Going ✓ <span class="mono">35/60</span>'
+            : 'I\'m going <span class="mono">34/60</span>';
+          rsvp.setAttribute("aria-pressed", String(next));
+        }
+
+        function resetSection(section, content, skeleton) {
+          section.setAttribute("aria-busy", "true");
+          L.hide(content);
+          L.show(skeleton);
+          if (window.gsap) window.gsap.set(skeleton, { opacity: 1 });
+        }
+
+        function finishSection(section, content, skeleton) {
+          section.setAttribute("aria-busy", "false");
+          L.hide(skeleton);
+          L.show(content);
+          L.fadeIn(content, { y: 6, duration: 0.2 });
+        }
+
+        function resetAllSections() {
+          sectionMode = 0;
+          L.hide(activityEmpty);
+          L.hide(activityError);
+          L.hide(activitySkeleton);
+          L.hide(nextSkeleton);
+          L.hide(rosterSkeleton);
+          L.show(nextContent);
+          L.show(activityContent);
+          L.show(rosterContent);
+          nextSection.setAttribute("aria-busy", "false");
+          activitySection.setAttribute("aria-busy", "false");
+          rosterSection.setAttribute("aria-busy", "false");
+          cacheState.textContent = "Live";
+        }
+
+        async function coldLoad() {
+          if (exportBusy()) return;
+          cancelRuns();
+          const token = run;
+          resetAllSections();
+          setJoined(false);
+          freezePlateHeights();
+          plateSections.forEach((section) => {
+            section.setAttribute("aria-busy", "true");
+          });
+          [nextContent, activityContent, rosterContent].forEach(L.hide);
+          [nextSkeleton, activitySkeleton, rosterSkeleton].forEach((skeleton) => {
+            L.show(skeleton);
+            if (window.gsap) window.gsap.set(skeleton, { opacity: 1 });
+          });
+          cacheState.textContent = "Loading";
+          L.setStatus("Cold workspace · header and metrics immediate · plates at 600/1080/1520");
+
+          await wait(600);
+          if (token !== run) return;
+          finishSection(nextSection, nextContent, nextSkeleton);
+          cacheState.textContent = "Live";
+          L.setStatus("Plate 01 · next event live · feed and roster still settling");
+
+          await wait(480);
+          if (token !== run) return;
+          finishSection(activitySection, activityContent, activitySkeleton);
+          L.setStatus("Plate 02 · feed live · roster still settling");
+
+          await wait(440);
+          if (token !== run) return;
+          finishSection(rosterSection, rosterContent, rosterSkeleton);
+          clearPlateHeights();
+          L.setStatus("Plate 03 · roster live · frames released");
+
+          await wait(280);
+          if (token !== run) return;
+          L.setStatus("Cold 1.8s · three plates held, one frame");
+          L.toast("Workspace hydrated in plate order. The header and sections never moved.");
+        }
+
+        function warmLoad() {
+          if (exportBusy()) return;
+          cancelRuns();
+          const token = run;
+          resetAllSections();
+          setJoined(false);
+          L.fadeIn(nextContent, { y: 0, duration: 0.12 });
+          cacheState.textContent = "Cached";
+          L.setStatus("Warm cache · sections visible <100ms · revalidating");
+          L.toast("Cached workspace rendered immediately. No skeleton.");
+
+          exportTimer = setTimeout(() => {
+            if (token !== run) return;
+            cacheState.textContent = "Synced";
+            L.pulse(cacheState, 0.9);
+            L.setStatus("Stale-while-revalidate · roster refreshed silently");
+            L.toast("Background refresh finished. Nothing flashed.");
+          }, 700);
+        }
+
+        function pinActivity(button, event) {
+          if (exportBusy()) return;
+          cancelRuns();
+          if (activityContent.classList.contains("is-hidden")) {
+            L.hide(activityEmpty);
+            L.hide(activityError);
+            L.show(activityContent);
+            sectionMode = 0;
+          }
+          const items = getActivityItems();
+          const target =
+            (items[1] && !items[1].classList.contains("is-pinned") ? items[1] : null) ||
+            items.slice(1).find((item) => !item.classList.contains("is-pinned")) ||
+            items.find((item) => !item.classList.contains("is-pinned"));
+          if (!target) {
+            L.setStatus("Optimistic pin · every item is already pinned");
+            L.toast("Everything is pinned. Unpin one to test again.");
+            return;
+          }
+          const willFail = Boolean(event.altKey);
+          const start = window.Flip ? window.Flip.getState(items) : null;
+          const previousOrder = items.map((item) => item.dataset.activity);
+          const pin = target.querySelector(".pin-button");
+          target.classList.add("is-pinned");
+          pin.textContent = "Unpin";
+          activityList.prepend(target);
+          updateActivityLabel();
+
+          if (window.Flip && start) {
+            window.Flip.from(start, {
+              targets: getActivityItems(),
+              duration: L.canMove() ? 0.4 : 0.01,
+              ease: "power2.out",
+              absolute: false,
+            });
+          }
+          L.pulse(button, 0.96);
+          cacheState.textContent = "Syncing";
+          L.setStatus(
+            willFail
+              ? "Optimistic pin · simulating rejected write"
+              : "Optimistic pin · second item moved to top at 0ms"
+          );
+
+          setTimeout(() => {
+            if (!willFail) {
+              cacheState.textContent = "Live";
+              L.setStatus("Pin synced · order saved in background");
+              L.toast("Pinned at the top. Saved in the background.");
+              return;
+            }
+            const rollbackStart = window.Flip ? window.Flip.getState(getActivityItems()) : null;
+            target.classList.remove("is-pinned");
+            pin.textContent = "Pin";
+            previousOrder.forEach((id) => {
+              const item = getActivityItems().find((node) => node.dataset.activity === id);
+              if (item) activityList.appendChild(item);
+            });
+            updateActivityLabel();
+            if (window.Flip && rollbackStart) {
+              window.Flip.from(rollbackStart, {
+                targets: getActivityItems(),
+                duration: L.canMove() ? 0.35 : 0.01,
+                ease: "power2.out",
+                absolute: false,
+              });
+            }
+            cacheState.textContent = "Live";
+            L.setStatus("Write rejected · pin rolled back");
+            L.toast("Couldn't pin that. The previous order was restored.", "error");
+          }, 900);
+        }
+
+        function cycleActivityState() {
+          if (exportBusy()) return;
+          cancelRuns();
+          sectionMode = sectionMode === 2 ? 0 : sectionMode + 1;
+          L.hide(activitySkeleton);
+          L.hide(activityContent);
+          L.hide(activityEmpty);
+          L.hide(activityError);
+          activitySection.setAttribute("aria-busy", "false");
+          if (sectionMode === 1) {
+            L.show(activityEmpty);
+            L.fadeIn(activityEmpty, { y: 6, duration: 0.2 });
+            L.setStatus("Boundary state · feed empty, rest of workspace intact");
+          } else if (sectionMode === 2) {
+            L.show(activityError);
+            L.fadeIn(activityError, { y: 6, duration: 0.2 });
+            L.setStatus("Boundary state · feed error, agenda and roster intact");
+          } else {
+            L.show(activityContent);
+            L.fadeIn(activityContent, { y: 6, duration: 0.2 });
+            L.setStatus("Feed recovered");
+          }
+        }
+
+        function runExport() {
+          if (exporting) return;
+          exporting = true;
+          cancelRuns();
+          L.show(exportProgress);
+          exportProgress.classList.remove("is-hidden");
+          exportFill.style.transform = "scaleX(0)";
+          exportPercent.textContent = "0%";
+          exportStep.textContent = "Packing the member list…";
+          exportTrack.setAttribute("aria-valuenow", "0");
+          const restore = L.spinButton(exportButton, "Preparing");
+          let value = 0;
+
+          exportTimer = setInterval(() => {
+            value = Math.min(100, value + 4);
+            exportFill.style.transform = `scaleX(${value / 100})`;
+            exportPercent.textContent = `${value}%`;
+            exportTrack.setAttribute("aria-valuenow", String(value));
+            exportStep.textContent =
+              value < 35
+                ? "Packing the member list…"
+                : value < 80
+                  ? "Checking roles and emails…"
+                  : "Sealing the CSV…";
+            if (value >= 100) {
+              clearInterval(exportTimer);
+              exporting = false;
+              exportStep.textContent = "Download ready · roster-2026-11-20.csv";
+              restore();
+              L.setStatus("Long task complete · determinate progress, width locked");
+              L.toast("Roster ready. The button never changed width.");
+            }
+          }, 170);
+        }
+
+        $("#post-update").addEventListener("click", async () => {
+          const restore = L.spinButton($("#post-update"), "Posting");
+          L.setStatus("Inline write · locked-width spinner");
+          await wait(900);
+          restore();
+          L.setStatus("Post published · optimistic UI would appear at 0ms");
+          L.toast("Update posted. The feed would show it immediately.");
+        });
+
+        $("#empty-cta").addEventListener("click", () => {
+          L.hide(activityEmpty);
+          L.show(activityContent);
+          L.fadeIn(activityContent, { y: 6, duration: 0.2 });
+          sectionMode = 0;
+          L.setStatus("Empty CTA · composer hand-off");
+          L.toast("A composer would open here.");
+        });
+
+        $("#feed-retry").addEventListener("click", async () => {
+          const token = ++run;
+          L.hide(activityError);
+          L.show(activitySkeleton);
+          activitySection.setAttribute("aria-busy", "true");
+          L.setStatus("Feed retry · only this boundary is loading");
+          await wait(750);
+          if (token !== run) return;
+          finishSection(activitySection, activityContent, activitySkeleton);
+          sectionMode = 0;
+          L.setStatus("Feed recovered · other sections never moved");
+        });
+
+        rsvp.addEventListener("click", async () => {
+          setJoined(!joined);
+          L.pulse(rsvp, 0.97);
+          L.setStatus(joined ? "RSVP optimistic · 34 → 35" : "RSVP cancelled");
+          await wait(600);
+          L.toast(joined ? "You're going. RSVP saved." : "RSVP cancelled.");
+        });
+
+        exportButton.addEventListener("click", runExport);
+
+        activityList.addEventListener("click", (event) => {
+          const pin = event.target.closest(".pin-button");
+          if (!pin) return;
+          const item = pin.closest(".activity-item");
+          if (item.classList.contains("is-pinned")) {
+            const start = window.Flip ? window.Flip.getState(getActivityItems()) : null;
+            item.classList.remove("is-pinned");
+            pin.textContent = "Pin";
+            updateActivityLabel();
+            if (window.Flip && start) {
+              window.Flip.from(start, {
+                targets: getActivityItems(),
+                duration: L.canMove() ? 0.32 : 0.01,
+                absolute: false,
+              });
+            }
+            L.setStatus("Pin removed optimistically");
+            L.toast("Unpinned.");
+            return;
+          }
+          pinActivity(pin, { altKey: event.altKey });
+        });
+
+        L.bindSim((name, button, event) => {
+          if (name === "cold") coldLoad();
+          if (name === "warm") warmLoad();
+          if (name === "optimistic") pinActivity(button, event);
+          if (name === "state") cycleActivityState();
+        });
+
+        updateActivityLabel();
+      })();
+    </script>
+  </body>
+</html>

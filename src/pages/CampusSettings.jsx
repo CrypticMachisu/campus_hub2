@@ -8,6 +8,7 @@ import {
   removeCampusDomain,
   updateCampus,
 } from "../utils/campusesStore";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./CampusSettings.module.css";
 
 function slugify(value) {
@@ -30,6 +31,11 @@ function domainList(value) {
 }
 
 export default function CampusSettings() {
+  usePageMetadata({
+    title: "Campus settings",
+    description: "Manage campus names, URLs, and email domains.",
+  });
+
   const { user, loading: authLoading } = useAuth();
   const [campuses, setCampuses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +111,7 @@ export default function CampusSettings() {
           <h1>Campus settings</h1>
         </header>
         <p className={styles.notice}>
-          Tier 1 admin access is required. <Link to="/">Return to the edition</Link>.
+          Platform admin access is required. <Link to="/">Return to the edition</Link>.
         </p>
       </main>
     );

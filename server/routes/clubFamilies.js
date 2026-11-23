@@ -4,13 +4,22 @@
 //
 // A family is shared identity; a chapter is still a normal clubs row. Network
 // audiences and cross-campus participation remain later slices.
+import sharp from "sharp";
+
 import { pool } from "../db.js";
 import { requireAuth, requireTier1 } from "../middleware/auth.js";
 import { recordAudit } from "../audit.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
 import { campusExists } from "../campus.js";
+import { notifyUsers } from "../notify.js";
+import { mediaStorage, storageConfigFromEnv } from "../storage.js";
 
 export const clubFamiliesRouter = createApiRouter();
+
+function localDateOnly(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
 function cleanName(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -66,6 +75,34 @@ async function loadFamily(familyId, { withAdmins = false } = {}) {
     { familyId }
   );
 
+  // Only network-published events belong on the public family page; a campus
+  // event would leak local activity merely by naming its date.
+  const [eventRows] = await pool.query(
+    `SELECT e.event_id, e.club_id, e.title, e.event_date, e.event_time
+     FROM events e
+     JOIN clubs c ON c.club_id = e.club_id
+     WHERE c.family_id = :familyId
+       AND e.audience = 'network'
+       AND e.event_date >= CURDATE()
+     ORDER BY e.event_date, e.event_time, e.event_id`,
+    { familyId }
+  );
+  const nextEventByClub = new Map();
+  for (const event of eventRows) {
+    if (!nextEventByClub.has(event.club_id)) {
+      const date =
+        event.event_date instanceof Date
+          ? localDateOnly(event.event_date)
+          : String(event.event_date).split("T")[0];
+      nextEventByClub.set(event.club_id, {
+        id: event.event_id,
+        title: event.title,
+        date,
+        time: String(event.event_time || "").slice(0, 5),
+      });
+    }
+  }
+
   const family = familyRows[0];
   const result = {
     id: family.family_id,
@@ -85,10 +122,44 @@ async function loadFamily(familyId, { withAdmins = false } = {}) {
       meetingLocation: chapter.meeting_location || "",
       campusId: chapter.campus_id,
       campusName: chapter.campus_name,
+      nextEvent: nextEventByClub.get(chapter.club_id) || null,
     })),
   };
 
   if (withAdmins) {
+    const [identityRows] = await pool.query(
+      `SELECT actor_name, detail, created_at
+       FROM audit_log
+       WHERE action = 'club_family.update' AND target_id = :familyId
+       ORDER BY audit_id DESC LIMIT 1`,
+      { familyId }
+    );
+    const [moveRows] = await pool.query(
+      `SELECT actor_name, detail, created_at
+       FROM audit_log
+       WHERE action = 'club_family.chapter.move'
+         AND (target_id = :familyId
+              OR JSON_UNQUOTE(JSON_EXTRACT(detail, '$.fromFamilyId')) = :familyId)
+       ORDER BY audit_id DESC LIMIT 1`,
+      { familyId }
+    );
+    const auditEntry = (row) => {
+      if (!row) return null;
+      let detail = {};
+      try {
+        detail = typeof row.detail === "string" ? JSON.parse(row.detail) : row.detail || {};
+      } catch {
+        detail = {};
+      }
+      return {
+        actorName: row.actor_name || "Unknown editor",
+        at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+        detail,
+      };
+    };
+    result.lastIdentityChange = auditEntry(identityRows[0]);
+    result.lastChapterMove = auditEntry(moveRows[0]);
+
     const [adminRows] = await pool.query(
       `SELECT a.user_id, a.role, u.name, u.email
        FROM club_family_admins a
@@ -293,6 +364,69 @@ clubFamiliesRouter.patch("/:id", requireAuth, async (req, res) => {
   res.json({ family: await loadFamily(family.id, { withAdmins: true }) });
 });
 
+/**
+ * POST /club-families/:id/mark — save a cropped square family mark.
+ * The browser crops and resizes first; the API normalizes and writes one stable
+ * object per family. A public bucket URL keeps the stored URL under the column
+ * limit and usable from an <img> without an API key.
+ */
+clubFamiliesRouter.post("/:id/mark", requireAuth, async (req, res) => {
+  const family = await loadFamily(req.params.id);
+  if (!family) return res.status(404).json({ error: "Club family not found." });
+  if (!(await canEditFamily(req.user, family.id))) {
+    return res.status(403).json({ error: "Family editor access required." });
+  }
+  if (!mediaStorage.enabled || !storageConfigFromEnv().publicBaseUrl) {
+    return res.status(503).json({
+      error: "Mark uploads need object storage with a public base URL. Use a mark URL instead.",
+    });
+  }
+
+  const dataUrl = typeof req.body?.dataUrl === "string" ? req.body.dataUrl : "";
+  const match = dataUrl.match(/^data:image\/(jpeg|png|webp);base64,(.+)$/i);
+  if (!match) return res.status(400).json({ error: "Choose a JPEG, PNG or WebP image." });
+
+  let buffer;
+  try {
+    buffer = Buffer.from(match[2], "base64");
+  } catch {
+    return res.status(400).json({ error: "That image could not be read." });
+  }
+  if (buffer.length === 0 || buffer.length > 4 * 1024 * 1024) {
+    return res.status(400).json({ error: "Use an image under 4 MB." });
+  }
+
+  let output;
+  try {
+    output = await sharp(buffer)
+      .rotate()
+      .resize(256, 256, { fit: "cover" })
+      .webp({ quality: 82 })
+      .toBuffer();
+  } catch {
+    return res.status(400).json({ error: "That image could not be processed." });
+  }
+
+  const key = `family-marks/${family.id}.webp`;
+  await mediaStorage.putObject(key, output, "image/webp");
+  const logoUrl = await mediaStorage.getUrl(key);
+  if (!logoUrl || logoUrl.length > 500) {
+    return res.status(500).json({ error: "The public mark URL is too long to store." });
+  }
+
+  await pool.query("UPDATE club_families SET logo_url = :logoUrl WHERE family_id = :id", {
+    logoUrl,
+    id: family.id,
+  });
+  await recordAudit(req, {
+    action: "club_family.update",
+    targetType: "club_family",
+    targetId: family.id,
+    detail: { from: { logoUrl: family.logoUrl }, to: { logoUrl } },
+  });
+  res.json({ family: await loadFamily(family.id, { withAdmins: true }) });
+});
+
 /** POST /club-families/:id/admins — tier 1: delegate identity editing. */
 clubFamiliesRouter.post("/:id/admins", requireAuth, requireTier1, async (req, res) => {
   const family = await loadFamily(req.params.id);
@@ -309,7 +443,7 @@ clubFamiliesRouter.post("/:id/admins", requireAuth, requireTier1, async (req, re
   const target = userRows[0];
   if (!target) return res.status(404).json({ error: "No account uses that email." });
   if (target.role === "tier1") {
-    return res.status(400).json({ error: "Tier 1 already manages every family." });
+    return res.status(400).json({ error: "Platform admins already manage every club family." });
   }
 
   await pool.query(
@@ -318,6 +452,16 @@ clubFamiliesRouter.post("/:id/admins", requireAuth, requireTier1, async (req, re
      ON DUPLICATE KEY UPDATE role = VALUES(role)`,
     { familyId: family.id, userId: target.user_id, role }
   );
+  try {
+    await notifyUsers([target.user_id], {
+      kind: "family_admin",
+      title: `You can now edit ${family.name}`,
+      body: `A platform admin made you a family ${role}. Open family settings to review the shared identity.`,
+      link: "/settings/families",
+    });
+  } catch (err) {
+    console.error("family admin notice failed:", err.message);
+  }
   await recordAudit(req, {
     action: "club_family.admin.add",
     targetType: "club_family",
@@ -487,7 +631,7 @@ clubFamiliesRouter.post(
         toFamilyName: target.name,
       },
     });
-    res.json({ family: await loadFamily(target.id) });
+    res.json({ family: await loadFamily(target.id, { withAdmins: true }) });
   }
 );
 

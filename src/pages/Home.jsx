@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { CATEGORIES } from "../utils/clubsStore";
 import { useClubs } from "../context/ClubsContext";
@@ -11,6 +11,9 @@ import { getCampuses } from "../utils/campusesStore";
 import { isPastEvent } from "../utils/dateTime";
 import { SkeletonGroup, ClubSkeletonCard, EventSkeletonCard } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
+import { useUrlState } from "../hooks/useUrlState";
+import { usePageMetadata } from "../hooks/usePageMetadata";
+import { useDiscoverMotion } from "../motion/useDiscoverMotion";
 import styles from "./Home.module.css";
 
 /**
@@ -57,6 +60,13 @@ function dayStamp(isoDate) {
 }
 
 export default function Home() {
+  usePageMetadata({
+    title: "This week",
+    description:
+      "Find clubs and events across your campus, RSVP, and keep every commitment in one place.",
+  });
+
+  const pageRef = useRef(null);
   const { clubs, loading: clubsLoading, error: clubsError, refresh: refreshClubs } = useClubs();
   const { user } = useAuth();
   const hasNoClub =
@@ -68,11 +78,12 @@ export default function Home() {
   const [eventsError, setEventsError] = useState("");
   const [eventsReloadKey, setEventsReloadKey] = useState(0);
   const [campuses, setCampuses] = useState([]);
-  const [campusFilter, setCampusFilter] = useState("");
-
-  const [category, setCategory] = useState("All");
-  const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState("clubs");
+  const [campusFilter, setCampusFilter] = useUrlState("campus", "");
+  const [categoryParam, setCategory] = useUrlState("category", "All");
+  const category = CATEGORIES.includes(categoryParam) ? categoryParam : "All";
+  const [search, setSearch] = useUrlState("q", "");
+  const [viewParam, setViewMode] = useUrlState("view", "clubs");
+  const viewMode = viewParam === "events" ? "events" : "clubs";
   const [wirePaused, setWirePaused] = useState(false);
   const [leadImageFailed, setLeadImageFailed] = useState(false);
   const [mySignups, setMySignups] = useState([]);
@@ -211,7 +222,9 @@ export default function Home() {
   const bulletins = filteredEvents.length > 0 ? filteredEvents : [];
   const loading = clubsLoading || eventsLoading;
 
-  const commitments = [
+  useDiscoverMotion(pageRef, { ready: !loading });
+
+  const allCommitments = [
     ...mySignups
       .map((signup) => upcomingEvents.find((event) => event.id === signup.eventId))
       .filter(Boolean)
@@ -219,33 +232,36 @@ export default function Home() {
     ...myCommitments
       .filter((commitment) => commitment.date >= todayIso)
       .map((commitment) => ({ ...commitment, type: "commitment" })),
-  ]
-    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
-    .slice(0, 3);
+  ].sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+  const commitments = allCommitments.slice(0, 3);
 
   const clubName = (clubId) => clubs.find((club) => club.id === clubId)?.name || "Campus event";
   const selectedCampus = campuses.find((campus) => campus.id === campusFilter);
   const editionCampus =
     user?.role === "tier1"
       ? selectedCampus?.name || "All campuses"
-      : user?.campusName || "Main campus";
+      : user?.campusName || "All campuses";
 
   function handleCategory(next) {
-    setCategory(next);
+    setCategory(next, { replace: false });
   }
 
   function showFeed(next) {
-    setViewMode(next);
+    setViewMode(next, { replace: false });
   }
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} ref={pageRef}>
+      <div className={styles.progress} data-discover="progress" aria-hidden="true" />
       <header className={styles.intro}>
-        <p className={`eyebrow ${styles.kicker}`}>
-          Nairobi · {editionCampus} · {shortDate(todayIso)} · Standalone edition
+        <p className={`eyebrow ${styles.kicker}`} data-discover="kicker">
+          <span className={styles.liveDot} aria-hidden="true" />
+          {editionCampus} · {shortDate(todayIso)}
         </p>
-        <h1 className={styles.pageTitle}>This week.</h1>
-        <p className={styles.deck}>
+        <h1 className={`${styles.pageTitle} ${styles.titleClip}`} data-discover="title">
+          This week.
+        </h1>
+        <p className={styles.deck} data-discover="deck">
           What is happening on campus, edited down to what you can actually show up for. Pick
           something, and it becomes a commitment rather than a bookmark.
         </p>
@@ -255,7 +271,7 @@ export default function Home() {
             <select
               id="discovery-campus"
               value={campusFilter}
-              onChange={(e) => setCampusFilter(e.target.value)}
+              onChange={(e) => setCampusFilter(e.target.value, { replace: false })}
             >
               <option value="">All campuses</option>
               {campuses.map((campus) => (
@@ -265,7 +281,7 @@ export default function Home() {
               ))}
             </select>
             <span className={styles.campusNote}>
-              Tier 1 view. Filters this edition&apos;s clubs and events only.
+              Platform admin view. Filters this edition&apos;s clubs and events only.
             </span>
           </div>
         )}
@@ -299,25 +315,25 @@ export default function Home() {
           />
         </div>
       ) : lead ? (
-        <section className={styles.lead} aria-labelledby="lead-title">
+        <section className={styles.lead} aria-labelledby="lead-title" data-discover="lead">
           <div className={styles.leadCopy}>
-            <p className={styles.dateline}>
+            <p className={styles.dateline} data-discover="dateline">
               {leadClub?.name || "Campus"} · {shortDate(lead.date)} · {lead.time}
             </p>
-            <h2 id="lead-title" className={styles.headline}>
+            <h2 id="lead-title" className={styles.headline} data-discover="lead-title">
               {lead.title}
             </h2>
-            <p className={styles.standfirst}>
+            <p className={styles.standfirst} data-discover="standfirst">
               {lead.description || "The host hasn't added a description yet."}
             </p>
-            <p className={styles.byline}>
+            <p className={styles.byline} data-discover="byline">
               {lead.location}
               {lead.bringNote ? ` · Bring ${lead.bringNote}` : ""}
             </p>
 
-            <div className={styles.leadActions}>
+            <div className={styles.leadActions} data-discover="actions">
               <Link to={`/events/${lead.id}`} className={styles.primaryAction}>
-                Read the notice
+                View event
               </Link>
               <button
                 type="button"
@@ -328,7 +344,7 @@ export default function Home() {
               </button>
             </div>
 
-            <dl className={styles.facts}>
+            <dl className={styles.facts} data-discover="facts">
               <div>
                 <dt>Date</dt>
                 <dd>
@@ -344,10 +360,12 @@ export default function Home() {
                 </dd>
               </div>
               <div>
-                <dt>Going</dt>
+                <dt>Spots taken</dt>
                 <dd>
-                  {lead.capacity != null ? `${lead.signupCount ?? 0}/${lead.capacity}` : "—"}
-                  <small>{lead.capacity != null ? "spots taken" : "no limit set"}</small>
+                  {lead.capacity != null
+                    ? `${Math.min(lead.signupCount ?? 0, lead.capacity)}/${lead.capacity}`
+                    : "—"}
+                  <small>{lead.capacity != null ? "of capacity" : "no limit set"}</small>
                 </dd>
               </div>
               <div>
@@ -357,7 +375,7 @@ export default function Home() {
             </dl>
           </div>
 
-          <figure className={styles.leadArt}>
+          <figure className={styles.leadArt} data-discover="art">
             {lead.imageUrl && !leadImageFailed ? (
               <img
                 src={lead.imageUrl}
@@ -370,7 +388,7 @@ export default function Home() {
                 <span>Photograph</span>
               </div>
             )}
-            <span className={styles.stamp} aria-hidden="true">
+            <span className={styles.stamp} aria-hidden="true" data-discover="stamp">
               {leadStamp.day}
               <small>{leadStamp.month}</small>
             </span>
@@ -380,7 +398,7 @@ export default function Home() {
           </figure>
         </section>
       ) : (
-        <section className={styles.quietWeek} aria-labelledby="quiet-title">
+        <section className={styles.quietWeek} aria-labelledby="quiet-title" data-discover="quiet">
           <p className="eyebrow">The edition</p>
           <h2 id="quiet-title" className={styles.headline}>
             Nothing on this week.
@@ -396,7 +414,10 @@ export default function Home() {
       )}
 
       {wireItems.length > 0 && (
-        <div className={`${styles.wire} ${wirePaused ? styles.wirePaused : ""}`}>
+        <div
+          className={`${styles.wire} ${wirePaused ? styles.wirePaused : ""}`}
+          data-discover="wire"
+        >
           <span className={styles.wireLabel}>Wire</span>
           <div className={styles.wireViewport}>
             <div className={styles.wireTrack}>
@@ -504,7 +525,7 @@ export default function Home() {
             ) : filteredClubs.length > 0 ? (
               <ol className={styles.clubList}>
                 {filteredClubs.map((club, index) => (
-                  <li key={club.id}>
+                  <li key={club.id} data-motion="card">
                     <Link to={`/clubs/${club.id}`} className={styles.clubRow}>
                       <span className={styles.rowNum}>{String(index + 1).padStart(2, "0")}</span>
                       <span className={styles.rowBody}>
@@ -512,7 +533,9 @@ export default function Home() {
                         <span className={styles.rowMeta}>
                           {club.category} · {club.meetingTime} · {club.meetingLocation}
                         </span>
-                        <span className={styles.rowDeck}>{club.description}</span>
+                        <span className={styles.rowDeck} title={club.description}>
+                          {club.description}
+                        </span>
                       </span>
                       <span className={styles.rowArrow} aria-hidden="true">
                         →
@@ -539,7 +562,7 @@ export default function Home() {
           ) : bulletins.length > 0 ? (
             <ol className={styles.bulletinList}>
               {bulletins.map((event, index) => (
-                <li key={event.id}>
+                <li key={event.id} data-motion="card">
                   <Link to={`/events/${event.id}`} className={styles.bulletinRow}>
                     <span className={styles.rowNum}>{String(index + 1).padStart(2, "0")}</span>
                     <span className={styles.rowBody}>
@@ -575,7 +598,7 @@ export default function Home() {
           <section>
             <h2 className={styles.railHead}>
               <span>On campus</span>
-              <span>{thisWeek.length} this week</span>
+              <span>{thisWeek.length} in the next 7 days</span>
             </h2>
             {thisWeek.length > 0 ? (
               <ol className={styles.agenda}>
@@ -601,7 +624,7 @@ export default function Home() {
           <section>
             <h2 className={styles.railHead}>
               <span>Your commitments</span>
-              <span>{commitments.length}</span>
+              <span>{allCommitments.length}</span>
             </h2>
             {user ? (
               commitments.length > 0 ? (
@@ -634,11 +657,19 @@ export default function Home() {
                 </ul>
               ) : (
                 <p className={styles.railEmpty}>
-                  Nothing yet. Join a club commitment or open an event and choose “I&apos;m going”
-                  to put it here.
+                  Nothing yet. Commit to a club activity or open an event and choose “RSVP” to put
+                  it here.
                 </p>
               )
-            ) : (
+            ) : null}
+            {user && allCommitments.length > commitments.length && (
+              <p className={styles.railMore}>
+                <Link to="/my-events" className={styles.inlineLink}>
+                  View all commitments
+                </Link>
+              </p>
+            )}
+            {!user && (
               <p className={styles.railEmpty}>
                 <Link to="/login" className={styles.inlineLink}>
                   Log in

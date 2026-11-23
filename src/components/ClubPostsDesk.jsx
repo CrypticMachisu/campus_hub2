@@ -19,6 +19,7 @@ import {
   revokePhotoDraft,
 } from "../utils/photoFiles";
 import { getReports, resolveReport } from "../utils/reportsStore";
+import useUnsavedChanges from "../hooks/useUnsavedChanges";
 import PostPhotoAltEditor from "./PostPhotoAltEditor";
 import PostPhotoPicker from "./PostPhotoPicker";
 import styles from "./ClubPostsDesk.module.css";
@@ -61,6 +62,11 @@ export default function ClubPostsDesk({ clubId, canPublishToNetwork = false }) {
   const [mediaEnabled, setMediaEnabled] = useState(false);
   const [savingLabel, setSavingLabel] = useState("");
   const photosRef = useRef(photos);
+
+  useUnsavedChanges(
+    Boolean(draft.trim() || photos.length),
+    "You have an unpublished post. Leave this desk and discard it?"
+  );
 
   useEffect(() => {
     photosRef.current = photos;
@@ -333,7 +339,7 @@ export default function ClubPostsDesk({ clubId, canPublishToNetwork = false }) {
       );
       setNotice(
         updated.pinned
-          ? "Pinned as the club's standing notice."
+          ? "Pinned to the top of the club page."
           : "Post unpinned. It is back in date order."
       );
     } catch (err) {

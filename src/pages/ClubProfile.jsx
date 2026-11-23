@@ -12,9 +12,11 @@ import { joinClub } from "../utils/membershipStore";
 import { requestClubAdmin } from "../utils/adminStore";
 import { SkeletonGroup, ClubProfileSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
+import ErrorBoundary from "../components/ErrorBoundary";
 import AgriClubSpotlight, { AGRI_CLUB_ID } from "../components/AgriClubSpotlight";
 import CommitmentsSection from "../components/CommitmentsSection";
 import ClubFeed from "../components/ClubFeed";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./ClubProfile.module.css";
 
 export default function ClubProfile() {
@@ -33,6 +35,11 @@ export default function ClubProfile() {
   const [events, setEvents] = useState([]);
   const [eventsError, setEventsError] = useState("");
   const [eventsReloadKey, setEventsReloadKey] = useState(0);
+
+  usePageMetadata({
+    title: profileClub?.name || "Club",
+    description: profileClub?.description || "View a campus club's events and updates.",
+  });
 
   // A club opened from My network is not in the local club context. Fetch its
   // identity through the network scope; the server still decides eligibility.
@@ -155,10 +162,10 @@ export default function ClubProfile() {
 
         <div className={styles.metaInfo}>
           <p>
-            <strong>Meeting Interval:</strong> {profileClub.meetingTime}
+            <strong>Meets:</strong> {profileClub.meetingTime}
           </p>
           <p>
-            <strong>Location Spot:</strong> {profileClub.meetingLocation}
+            <strong>Where:</strong> {profileClub.meetingLocation}
           </p>
         </div>
 
@@ -172,10 +179,19 @@ export default function ClubProfile() {
       </header>
 
       {isRemote && (
-        <p className={styles.remoteNote}>
-          <strong>Read-only network view.</strong> Network-published events and commitments appear
-          in My network. Posts and membership stay on {profileClub.campusName}.
-        </p>
+        <div className={styles.remoteNote}>
+          <p>
+            <strong>Read-only network view.</strong> This club shares selected events, commitments
+            and posts with My network. Its membership, rosters and discussions stay on{" "}
+            {profileClub.campusName}.
+          </p>
+          <Link
+            to={`/campus-access?campus=${encodeURIComponent(profileClub.campusId)}`}
+            className={styles.requestAccess}
+          >
+            Request access to {profileClub.campusName} <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       )}
 
       {!isRemote && user && !["tier1", "campus_admin"].includes(user.role) && (
@@ -196,8 +212,8 @@ export default function ClubProfile() {
         {isRemote ? (
           <div className={styles.emptyEventsBox}>
             <p>
-              Network-published events and commitments are listed in My network. Campus-only
-              activity, posts and membership remain on {profileClub.campusName}.
+              Network events, commitments and posts are listed in My network. Campus-only activity,
+              club membership and discussions remain on {profileClub.campusName}.
             </p>
           </div>
         ) : eventsError ? (
@@ -229,7 +245,13 @@ export default function ClubProfile() {
 
       {/* The club's own dispatches, with comments at each permalink. */}
       {!isRemote && (
-        <ClubFeed clubId={profileClub.id} canPublishToNetwork={Boolean(profileClub.familyId)} />
+        <ErrorBoundary
+          title="The club posts didn't render"
+          resetKey={profileClub.id}
+          message="The rest of the club page is still available. Try this section again."
+        >
+          <ClubFeed clubId={profileClub.id} canPublishToNetwork={Boolean(profileClub.familyId)} />
+        </ErrorBoundary>
       )}
 
       {!isRemote && (
@@ -292,7 +314,9 @@ function MembershipBar({ club }) {
       >
         {status === "joining" ? "Joining…" : `Join ${club.name}`}
       </button>
-      <p className={styles.joinHint}>Joining swaps this discovery feed for your club workspace.</p>
+      <p className={styles.joinHint}>
+        Join this club to see its events and updates in your workspace.
+      </p>
       {status === "error" && <p className={styles.error}>{error}</p>}
     </div>
   );
@@ -309,7 +333,7 @@ function AdminRequestButton({ clubId }) {
     try {
       await requestClubAdmin(clubId);
       setStatus("sent");
-      setMessage("Request sent — a tier 1 admin will review it.");
+      setMessage("Request sent — a platform admin will review it.");
     } catch (err) {
       setStatus("error");
       setMessage(err.message);

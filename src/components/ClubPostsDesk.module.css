@@ -10,7 +10,7 @@
   gap: 0.5rem;
   padding: 0.8rem;
   border: 1px dashed var(--color-border);
-  background: rgba(255, 255, 255, 0.24);
+  background: var(--field-bg-soft);
 }
 
 .composerLabel {
@@ -29,7 +29,7 @@
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.44);
+  background: var(--field-bg);
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 0.82rem;
@@ -41,9 +41,9 @@
   width: 100%;
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--color-border);
-  border-bottom: 2px solid #c8b78f;
+  border-bottom: 2px solid var(--rule-strong);
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.44);
+  background: var(--field-bg);
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 0.86rem;
@@ -77,7 +77,7 @@
 }
 
 .primaryButton:hover:not(:disabled) {
-  background: var(--color-primary-dark);
+  background: var(--signal-hover);
 }
 
 .primaryButton:disabled {
@@ -249,11 +249,11 @@
 }
 
 .hidden {
-  color: #8a6317;
+  color: var(--gold);
 }
 
 .removed {
-  color: #a3200f;
+  color: var(--danger);
 }
 
 .actions {
@@ -285,7 +285,7 @@
 }
 
 .danger {
-  color: #a3200f;
+  color: var(--danger);
 }
 
 .reportBlock {
@@ -316,7 +316,7 @@
   padding: 0.65rem 0.7rem;
   border: 1px solid var(--color-border);
   border-left: 3px solid var(--color-primary);
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--field-bg-mid);
 }
 
 .reportHead {

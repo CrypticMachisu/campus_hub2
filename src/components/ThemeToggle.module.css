@@ -1,0 +1,46 @@
+.group {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.toggle:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.toggle span:first-child {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.reset {
+  min-width: 34px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.reset:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}

@@ -22,6 +22,46 @@
   margin: 0 0 0.6rem;
 }
 
+.titleClip {
+  overflow: hidden;
+  padding-bottom: 0.08em;
+}
+
+.liveDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.42rem;
+  border-radius: 50%;
+  background: var(--signal);
+  vertical-align: 0.12em;
+  animation: livePulse 2.6s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: var(--z-progress);
+  height: 3px;
+  width: 100%;
+  background: var(--signal);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
 .deck {
   max-width: 62ch;
   font-size: 1.05rem;
@@ -193,14 +233,14 @@
   font-weight: 600;
   border: 1px solid var(--signal);
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   transition:
     background 0.18s var(--ease),
     border-color 0.18s var(--ease);
 }
 
 .primaryAction:hover {
-  background: var(--signal-deep);
+  background: var(--signal-hover);
   border-color: var(--signal-deep);
 }
 
@@ -287,8 +327,8 @@
   place-items: end start;
   padding: 0.6rem;
   background:
-    repeating-linear-gradient(105deg, rgba(14, 15, 12, 0.16) 0 1px, transparent 1px 13px),
-    linear-gradient(170deg, #d3ccb9, #b0a78f);
+    repeating-linear-gradient(105deg, var(--photo-line) 0 1px, transparent 1px 13px),
+    linear-gradient(170deg, var(--photo-start), var(--photo-end));
 }
 
 .leadImageFallback span {
@@ -296,7 +336,7 @@
   font-size: 0.5rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(14, 15, 12, 0.55);
+  color: var(--photo-ink);
 }
 
 .stamp {
@@ -304,7 +344,7 @@
   top: 16px;
   right: 16px;
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   font-family: var(--font-display);
   font-size: 1.65rem;
   line-height: 1;
@@ -339,8 +379,8 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: stretch;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--wire-bg);
+  color: var(--wire-text);
   overflow: hidden;
   margin: 0.4rem 0 0;
 }
@@ -349,7 +389,7 @@
   display: flex;
   align-items: center;
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   padding: 0 0.8rem;
   font-family: var(--font-mono);
   font-size: 0.58rem;
@@ -358,7 +398,7 @@
   min-width: 4.15rem;
   justify-content: center;
   position: relative;
-  z-index: 1;
+  z-index: var(--z-raised);
 }
 
 .wireViewport {
@@ -403,7 +443,7 @@
 }
 
 .wireWhere {
-  color: #b8b3a2;
+  color: var(--wire-muted);
 }
 
 .wireToggle {
@@ -412,8 +452,8 @@
   min-height: 44px;
   background: transparent;
   border: 0;
-  border-left: 1px solid #3a3c31;
-  color: var(--paper);
+  border-left: 1px solid var(--wire-rule);
+  color: var(--wire-text);
   font-family: var(--font-mono);
   font-size: 0.55rem;
   letter-spacing: 0.08em;
@@ -422,7 +462,8 @@
 }
 
 .wireToggle:hover {
-  background: #24261e;
+  background: var(--wire-hover);
+  color: var(--wire-hover-text);
 }
 
 /* Controls */
@@ -595,7 +636,7 @@
 .bulletinRow:focus-visible .rowMeta,
 .bulletinRow:focus-visible .rowNum,
 .bulletinRow:focus-visible .rowSpots {
-  color: #d8d3c2;
+  color: var(--wire-hover-text);
 }
 
 .rowNum {
@@ -793,6 +834,11 @@
   margin-top: 0.15rem;
 }
 
+.railMore {
+  margin: -0.8rem 0 1.2rem;
+  font-size: 0.8rem;
+}
+
 .inlineLink {
   border-bottom: 1px solid var(--signal);
   color: var(--signal-deep);
@@ -935,6 +981,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .liveDot {
+    animation: none;
+    opacity: 0.75;
+  }
+
+  .progress {
+    display: none;
+  }
+
   .wireTrack {
     animation: none;
     white-space: normal;

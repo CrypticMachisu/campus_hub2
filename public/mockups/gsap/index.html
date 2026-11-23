@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kesho motion studies</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./mockups.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to studies</a>
+    <div class="scroll-progress" aria-hidden="true"></div>
+    <header class="study-bar">
+      <a class="study-brand" href="./index.html">kesho<span>.</span></a>
+      <span class="study-tag">Motion studies / GSAP 3.13</span>
+      <div class="study-actions">
+        <a class="chip-button" href="../../index.html">Back to app</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="container gallery-hero">
+        <p class="eyebrow">Standalone studies — not app routes</p>
+        <h1 class="display" data-split>Three ways to move a campus paper.</h1>
+        <p class="lede">
+          Same Signal palette, three motion grammars. Each study is a working page with its own
+          reduced-motion toggle. The recommendation is in
+          <span class="mono">docs/standalone/gsap-integration.md</span>.
+        </p>
+      </section>
+
+      <section class="container" aria-labelledby="studies-title">
+        <div class="section-head">
+          <h2 id="studies-title">The studies</h2>
+          <span>01—03</span>
+        </div>
+        <div class="gallery-grid">
+          <a class="study-card" href="./01-signal-editorial.html">
+            <span class="number">01 / EDITORIAL</span>
+            <h2>Signal, in motion</h2>
+            <p class="study-card-meta">
+              A scroll-driven campus edition. SplitText headline, pinned chapter strip and a
+              magnetic call to action.
+            </p>
+            <span class="study-card-foot"><span>Scroll narrative</span><span>Open →</span></span>
+          </a>
+          <a class="study-card" href="./02-network-orbit.html">
+            <span class="number">02 / NETWORK</span>
+            <h2>Network at night</h2>
+            <p class="study-card-meta">
+              A dark constellation of campuses and families. SVG lines draw as the story pins, with
+              a notice travelling between chapters.
+            </p>
+            <span class="study-card-foot"><span>Data story</span><span>Open →</span></span>
+          </a>
+          <a class="study-card" href="./03-day-sheet.html">
+            <span class="number">03 / DAY SHEET</span>
+            <h2>Make room for this</h2>
+            <p class="study-card-meta">
+              A kinetic day sheet. Flip-filter the cards, drag the agenda strip and scan what is
+              actually on.
+            </p>
+            <span class="study-card-foot"><span>Interaction</span><span>Open →</span></span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="container footer">
+      <span>Kesho / Signal system</span>
+      <span>Built for review, not production</span>
+    </footer>
+
+    <script>
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduce && window.gsap) {
+        gsap.registerPlugin(ScrollTrigger);
+        gsap.from(".gallery-hero .eyebrow", { opacity: 0, y: 12, duration: 0.5 });
+        gsap.from(".gallery-hero .display", {
+          opacity: 0,
+          y: 40,
+          duration: 0.9,
+          delay: 0.1,
+          ease: "power3.out",
+        });
+        gsap.from(".gallery-hero .lede", {
+          opacity: 0,
+          y: 20,
+          duration: 0.7,
+          delay: 0.25,
+        });
+        gsap.from(".study-card", {
+          opacity: 0,
+          y: 30,
+          duration: 0.6,
+          stagger: 0.1,
+          delay: 0.35,
+          ease: "power2.out",
+        });
+        gsap.to(".scroll-progress", {
+          scaleX: 1,
+          ease: "none",
+          scrollTrigger: {
+            trigger: document.body,
+            start: "top top",
+            end: "bottom bottom",
+            scrub: true,
+          },
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Kesho campus edition</title>
+  <desc id="desc">A paper-toned editorial placeholder with the Kesho wordmark and Campus edition.</desc>
+  <rect width="1200" height="675" fill="#f3eee2"/>
+  <g stroke="#1b1b1b" stroke-width="1" opacity="0.1">
+    <path d="M0 135h1200M0 270h1200M0 405h1200M0 540h1200"/>
+    <path d="M150 0v675M300 0v675M450 0v675M600 0v675M750 0v675M900 0v675M1050 0v675"/>
+  </g>
+  <rect x="64" y="64" width="1072" height="547" fill="none" stroke="#1b1b1b" stroke-width="2"/>
+  <text x="104" y="154" fill="#1b1b1b" font-family="Georgia, 'Times New Roman', serif" font-size="34" letter-spacing="6">KESHO</text>
+  <circle cx="1090" cy="144" r="14" fill="#e0452f"/>
+  <path d="M104 190h992" stroke="#1b1b1b" stroke-width="2"/>
+  <text x="104" y="400" fill="#1b1b1b" font-family="Georgia, 'Times New Roman', serif" font-size="94">Campus edition</text>
+  <text x="104" y="458" fill="#5b574d" font-family="'Courier New', monospace" font-size="23" letter-spacing="5">THIS WEEK ON CAMPUS</text>
+  <rect x="104" y="500" width="76" height="8" fill="#e0452f"/>
+</svg>

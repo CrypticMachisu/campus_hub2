@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useClubs } from "../context/ClubsContext";
 import { getCampuses } from "../utils/campusesStore";
+import { formatDateTime } from "../utils/dateTime";
 import {
   addFamilyAdmin,
   createFamily,
@@ -12,8 +13,52 @@ import {
   removeFamilyAdmin,
   unlinkFamilyChapter,
   updateFamily,
+  uploadFamilyMark,
 } from "../utils/clubFamiliesStore";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./FamilySettings.module.css";
+
+/** Center-crop a chosen image to a 256px square and return a data URL. */
+function squareImageDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("image/")) {
+      reject(new Error("Choose a JPEG, PNG or WebP image."));
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const side = Math.min(image.naturalWidth, image.naturalHeight);
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext("2d");
+        context.drawImage(
+          image,
+          (image.naturalWidth - side) / 2,
+          (image.naturalHeight - side) / 2,
+          side,
+          side,
+          0,
+          0,
+          256,
+          256
+        );
+        resolve(canvas.toDataURL("image/jpeg", 0.86));
+      } catch (err) {
+        reject(err);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("That image could not be read."));
+    };
+    image.src = objectUrl;
+  });
+}
 
 function slugify(value) {
   return value
@@ -24,6 +69,11 @@ function slugify(value) {
 }
 
 export default function FamilySettings() {
+  usePageMetadata({
+    title: "Family settings",
+    description: "Manage shared club-family identity and chapters.",
+  });
+
   const { user, loading: authLoading } = useAuth();
   const { clubs, refresh: refreshClubs } = useClubs();
   const [families, setFamilies] = useState([]);
@@ -118,7 +168,8 @@ export default function FamilySettings() {
           <h1>Club families</h1>
         </header>
         <p className={styles.notice}>
-          Tier 1 or family editor access is required. <Link to="/">Return to the edition</Link>.
+          Platform admin or family editor access is required.{" "}
+          <Link to="/">Return to the edition</Link>.
         </p>
       </main>
     );
@@ -133,8 +184,8 @@ export default function FamilySettings() {
           A family is the shared identity for a club with chapters on more than one campus. It owns
           the name, mark and URL; each chapter keeps its own officers, members and activity.
           {isTier1
-            ? " Tier 1 controls the chapter list and can delegate identity editing below."
-            : " You can edit the shared identity, but the chapter list stays with tier 1."}
+            ? " Platform admins control the chapter list and can delegate identity editing below."
+            : " You can edit the shared identity, but the chapter list stays with platform admins."}
         </p>
       </header>
 
@@ -283,6 +334,8 @@ function FamilyCard({ family, families, clubs, isTier1, onChanged }) {
   const [slug, setSlug] = useState(family.slug);
   const [description, setDescription] = useState(family.description || "");
   const [logoUrl, setLogoUrl] = useState(family.logoUrl || "");
+  const [markPreview, setMarkPreview] = useState("");
+  const [markBusy, setMarkBusy] = useState(false);
   const [clubId, setClubId] = useState("");
   const [moveClubId, setMoveClubId] = useState("");
   const [moveTargetId, setMoveTargetId] = useState("");
@@ -299,6 +352,7 @@ function FamilyCard({ family, families, clubs, isTier1, onChanged }) {
     setSlug(family.slug);
     setDescription(family.description || "");
     setLogoUrl(family.logoUrl || "");
+    setMarkPreview("");
     setEditing(true);
     setError("");
   }
@@ -308,13 +362,40 @@ function FamilyCard({ family, families, clubs, isTier1, onChanged }) {
     setError("");
     setBusy("details");
     try {
-      const updated = await updateFamily(family.id, { name, slug, description, logoUrl });
+      let nextLogoUrl = logoUrl;
+      if (markPreview) {
+        setMarkBusy(true);
+        const marked = await uploadFamilyMark(family.id, markPreview);
+        nextLogoUrl = marked.logoUrl;
+        setLogoUrl(nextLogoUrl);
+        setMarkPreview("");
+      }
+      const updated = await updateFamily(family.id, {
+        name,
+        slug,
+        description,
+        logoUrl: nextLogoUrl,
+      });
       setEditing(false);
       await onChanged(updated, `${updated.name} was updated.`);
     } catch (err) {
       setError(err.message);
     } finally {
+      setMarkBusy(false);
       setBusy("");
+    }
+  }
+
+  async function handleMarkFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setError("");
+    try {
+      setMarkPreview(await squareImageDataUrl(file));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      event.target.value = "";
     }
   }
 
@@ -406,6 +487,25 @@ function FamilyCard({ family, families, clubs, isTier1, onChanged }) {
         </div>
       </div>
       {family.description && <p className={styles.description}>{family.description}</p>}
+      {(family.lastIdentityChange || family.lastChapterMove) && (
+        <div className={styles.auditBlock}>
+          {family.lastIdentityChange && (
+            <p>
+              <span>Last identity edit</span>
+              {family.lastIdentityChange.actorName} · {formatDateTime(family.lastIdentityChange.at)}
+            </p>
+          )}
+          {family.lastChapterMove && (
+            <p>
+              <span>Last chapter move</span>
+              {family.lastChapterMove.detail.clubName || "A chapter"} from{" "}
+              {family.lastChapterMove.detail.fromFamilyName || "another family"} to{" "}
+              {family.lastChapterMove.detail.toFamilyName || family.name} ·{" "}
+              {family.lastChapterMove.actorName} · {formatDateTime(family.lastChapterMove.at)}
+            </p>
+          )}
+        </div>
+      )}
       <div className={styles.chapterBlock}>
         <h4>Chapters</h4>
         {family.chapters.length === 0 ? (
@@ -477,16 +577,39 @@ function FamilyCard({ family, families, clubs, isTier1, onChanged }) {
             <input
               type="url"
               value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
+              onChange={(e) => {
+                setLogoUrl(e.target.value);
+                setMarkPreview("");
+              }}
               placeholder="https://…/family-mark.png"
               maxLength={500}
             />
           </label>
+          <label className={styles.field}>
+            Or upload and crop a square mark
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleMarkFile} />
+            <span className={styles.hint}>
+              The image is center-cropped to 256 × 256. Upload needs object storage; the URL field
+              stays available as a fallback.
+            </span>
+          </label>
+          {markPreview && (
+            <div className={styles.markPreview}>
+              <img src={markPreview} alt="Preview of the cropped family mark" />
+              <button
+                type="button"
+                className={`${styles.button} ${styles.quiet}`}
+                onClick={() => setMarkPreview("")}
+              >
+                Clear preview
+              </button>
+            </div>
+          )}
           <div className={styles.actions}>
             <button
               type="submit"
               className={`${styles.button} ${styles.primary}`}
-              disabled={busy === "details"}
+              disabled={busy === "details" || markBusy}
             >
               {busy === "details" ? "Saving…" : "Save changes"}
             </button>

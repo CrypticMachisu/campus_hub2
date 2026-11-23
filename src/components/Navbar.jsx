@@ -1,10 +1,12 @@
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useClubs } from "../context/ClubsContext";
-import { canManageClub, getRememberedLoginPath } from "../utils/authStore";
+import { canManageClub } from "../utils/authStore";
 import { CROSS_UNIVERSITY_ENABLED } from "../utils/features";
 import { getPendingAdminRequests } from "../utils/adminStore";
+import { getCampusAffiliationRequests } from "../utils/campusAffiliationsStore";
+import ThemeToggle from "./ThemeToggle";
 import styles from "./Navbar.module.css";
 
 function linkClass({ isActive }) {
@@ -12,7 +14,7 @@ function linkClass({ isActive }) {
 }
 
 const ROLE_LABELS = {
-  tier1: "Tier 1",
+  tier1: "Platform admin",
   campus_admin: "Campus admin",
   tier2: "Club admin",
   member: "Member",
@@ -37,13 +39,9 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const { clubs } = useClubs();
   const location = useLocation();
-  const navigate = useNavigate();
   const dashboardClubId = firstManageableClubId(user, clubs);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
-
-  // Admins who signed in through the ordinary consumer flow (the login
-  // page's "user path") get an explicit button to jump to the desk.
-  const loggedViaUserPath = Boolean(user) && getRememberedLoginPath(user.email) === "user";
+  const [pendingAffiliationCount, setPendingAffiliationCount] = useState(0);
 
   // Tier1 and campus admins. Re-checks on every navigation (rather than
   // polling) so the badge stays fresh after approving/denying a request on the
@@ -61,6 +59,19 @@ export default function Navbar() {
       .catch(() => {
         if (!cancelled) setPendingRequestCount(0);
       });
+
+    if (CROSS_UNIVERSITY_ENABLED && user?.role === "campus_admin") {
+      getCampusAffiliationRequests({ status: "pending" })
+        .then((requests) => {
+          if (!cancelled) setPendingAffiliationCount(requests.length);
+        })
+        .catch(() => {
+          if (!cancelled) setPendingAffiliationCount(0);
+        });
+    } else {
+      setPendingAffiliationCount(0);
+    }
+
     return () => {
       cancelled = true;
     };
@@ -73,11 +84,9 @@ export default function Navbar() {
       </a>
       <div className={styles.edition}>
         <div className={`container ${styles.editionInner}`}>
-          <span>Vol. 01 · {user?.campusName || "Strathmore University"}</span>
+          <span>{user?.campusName || "All campuses"}</span>
           <span className={styles.editionDate}>{editionDate()}</span>
-          <span className={styles.live}>
-            <i aria-hidden="true" /> Campus live
-          </span>
+          <span className={styles.live}>Campus edition</span>
         </div>
       </div>
 
@@ -111,6 +120,9 @@ export default function Navbar() {
           {CROSS_UNIVERSITY_ENABLED && user && (
             <NavLink to="/campus-access" className={linkClass}>
               Campus access
+              {user.role === "campus_admin" && pendingAffiliationCount > 0 && (
+                <span className={styles.badge}>{pendingAffiliationCount}</span>
+              )}
             </NavLink>
           )}
           {dashboardClubId && (
@@ -135,25 +147,12 @@ export default function Navbar() {
         </nav>
 
         <div className={styles.tools}>
+          <ThemeToggle />
           {user ? (
             <>
               <span className={styles.userInfo}>
                 {user.name} · {ROLE_LABELS[user.role]}
               </span>
-              {dashboardClubId && loggedViaUserPath && (
-                <button
-                  type="button"
-                  className={styles.deskButton}
-                  onClick={() => navigate(`/dashboard/${dashboardClubId}`)}
-                >
-                  Open the desk
-                  {pendingRequestCount > 0 && (
-                    <span className={`${styles.badge} ${styles.buttonBadge}`}>
-                      {pendingRequestCount}
-                    </span>
-                  )}
-                </button>
-              )}
               <button type="button" className={styles.logoutButton} onClick={logout}>
                 Log out
               </button>

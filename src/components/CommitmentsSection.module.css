@@ -138,14 +138,14 @@
   padding: 0 0.75rem;
   border: 1px solid var(--signal);
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   font-size: 0.76rem;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .primaryButton:hover {
-  background: var(--signal-deep);
+  background: var(--signal-hover);
   border-color: var(--signal-deep);
 }
 
@@ -223,15 +223,15 @@
 }
 
 .removeButton:hover {
-  color: #a3200f;
+  color: var(--danger);
 }
 
 .dangerButton {
   min-height: 28px;
   padding: 0 0.45rem;
-  border: 1px solid #a3200f;
-  background: #a3200f;
-  color: #fff;
+  border: 1px solid var(--danger);
+  background: var(--danger);
+  color: var(--on-danger);
   font-family: var(--font-mono);
   font-size: 0.5rem;
   letter-spacing: 0.05em;
@@ -309,7 +309,7 @@
   font-size: 0.84rem;
   border: 1px solid var(--rule);
   border-radius: 2px;
-  background: #fff;
+  background: var(--card);
   width: 100%;
 }
 
@@ -319,7 +319,7 @@
 }
 
 .error {
-  color: #a3200f;
+  color: var(--danger);
   font-size: 0.8rem;
   margin: 0;
 }

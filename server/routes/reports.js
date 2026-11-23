@@ -205,10 +205,10 @@ reportsRouter.get("/", requireAuth, async (req, res) => {
 
   if (clubId) {
     if (!canManageClub(req.user, clubId)) {
-      return res.status(403).json({ error: "You don't have admin access to that club." });
+      return res.status(403).json({ error: "You need club admin access to do that." });
     }
   } else if (!["tier1", "campus_admin"].includes(req.user.role)) {
-    return res.status(400).json({ error: "clubId is required." });
+    return res.status(400).json({ error: "Choose a club first." });
   }
 
   const where = ["r.status = 'open'"];
@@ -263,7 +263,7 @@ reportsRouter.patch("/:id/resolve", requireAuth, async (req, res) => {
   const report = rows[0];
   if (!report) return res.status(404).json({ error: "Report not found." });
   if (!canManageClub(req.user, report.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const action = typeof req.body?.action === "string" ? req.body.action : "";

@@ -10,9 +10,11 @@ import { crossUniversityEnabled } from "../features.js";
 export const eventsRouter = createApiRouter();
 
 const EVENT_LIST_QUERY = `
-  SELECT e.*, cat.name AS category_name, COUNT(s.signup_id) AS signup_count
+  SELECT e.*, cat.name AS category_name, COUNT(s.signup_id) AS signup_count,
+         cl.name AS club_name, camp.name AS campus_name
   FROM events e
   JOIN clubs cl ON cl.club_id = e.club_id
+  JOIN campuses camp ON camp.campus_id = cl.campus_id
   JOIN categories cat ON cat.category_id = e.category_id
   LEFT JOIN event_signups s ON s.event_id = e.event_id
 `;
@@ -74,13 +76,13 @@ const EVENT_AUDIENCES = new Set(["campus", "network", "public"]);
  */
 function validateEventAudience(value, club) {
   const audience = value === undefined ? "campus" : String(value).trim().toLowerCase();
-  if (!EVENT_AUDIENCES.has(audience)) return { error: "Unknown event audience." };
+  if (!EVENT_AUDIENCES.has(audience)) return { error: "Choose a valid event audience." };
   if (audience === "public") {
-    return { error: "Public events are not available yet." };
+    return { error: "Public events aren't available yet." };
   }
   if (audience === "network") {
     if (!crossUniversityEnabled()) {
-      return { error: "Network events are not enabled." };
+      return { error: "Network events aren't available here." };
     }
     if (!club?.family_id) {
       return { error: "Only a club in a family can publish to the network." };
@@ -95,7 +97,7 @@ function validateEventFields(body) {
   if (title.length > 150) return { error: "Title is too long." };
 
   const start = parseStartTime(body);
-  if (!start) return { error: "Invalid startTime." };
+  if (!start) return { error: "Choose a valid date and time." };
 
   const bringNote = typeof body.bringNote === "string" ? body.bringNote.trim().slice(0, 240) : "";
 
@@ -105,7 +107,7 @@ function validateEventFields(body) {
   if (body.capacity !== undefined && body.capacity !== null && body.capacity !== "") {
     const parsed = Number(body.capacity);
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
-      return { error: "capacity must be a whole number between 1 and 10000." };
+      return { error: "Capacity must be a whole number between 1 and 10,000." };
     }
     capacity = parsed;
   }
@@ -148,7 +150,7 @@ eventsRouter.get("/", optionalAuth, async (req, res) => {
  */
 eventsRouter.post("/", requireAuth, async (req, res) => {
   const { clubId, description, location, category, imageUrl } = req.body;
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
 
   // Validate the club exists BEFORE the FK-constrained insert — tier1 can
   // "manage" any id, so a bad clubId used to explode at the DB level (and
@@ -160,7 +162,7 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
   if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
 
   if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const validation = validateEventFields(req.body);
@@ -171,7 +173,7 @@ eventsRouter.post("/", requireAuth, async (req, res) => {
   const { audience } = audienceResult;
 
   const categoryId = await findCategoryIdByName(category);
-  if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
+  if (!categoryId) return res.status(400).json({ error: "Choose a category from the list." });
 
   const id = `custom-${Date.now()}`;
   await pool.query(
@@ -224,11 +226,11 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
 
   // Seed events are read-only.
   if (!eventId.startsWith("custom-")) {
-    return res.status(403).json({ error: "Seed events are read-only." });
+    return res.status(403).json({ error: "Built-in events can't be edited or deleted here." });
   }
 
   if (!canManageClub(req.user, existing.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const { description, category, location, imageUrl } = req.body;
@@ -249,7 +251,7 @@ eventsRouter.put("/:id", requireAuth, async (req, res) => {
   const { audience } = audienceResult;
 
   const categoryId = await findCategoryIdByName(category);
-  if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
+  if (!categoryId) return res.status(400).json({ error: "Choose a category from the list." });
 
   await pool.query(
     `UPDATE events
@@ -306,11 +308,11 @@ eventsRouter.delete("/:id", requireAuth, async (req, res) => {
 
   // Seed events are read-only.
   if (!eventId.startsWith("custom-")) {
-    return res.status(403).json({ error: "Seed events are read-only." });
+    return res.status(403).json({ error: "Built-in events can't be edited or deleted here." });
   }
 
   if (!canManageClub(req.user, existing.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   await pool.query("DELETE FROM events WHERE event_id = :id", { id: eventId });

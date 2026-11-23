@@ -56,38 +56,12 @@ export async function signup({ name, email, password }) {
 export async function getCurrentUser() {
   if (!getToken()) return null;
   try {
-    const { user } = await apiFetch("/auth/me");
+    const { user } = await apiFetch("/auth/me", { retryOnExpiry: false });
     return user;
   } catch {
     clearToken();
     return null;
   }
-}
-
-// Remembers, per account email, which login path was last used ("user" |
-// "admin") — the same data the login page writes so it can preselect the
-// right path next time. The Navbar reads it to tailor controls (e.g. the
-// "Go to dashboard" button for admins who chose the user path).
-const LOGIN_MODES_KEY = "campushub_login_paths";
-
-export function loadLoginPaths() {
-  try {
-    return JSON.parse(localStorage.getItem(LOGIN_MODES_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-/** For an admin (or any user) who signed in via the plain user path. */
-export function getRememberedLoginPath(email) {
-  if (!email) return null;
-  return loadLoginPaths()[email.trim().toLowerCase()] ?? null;
-}
-
-export function saveLoginPath(email, path) {
-  const paths = loadLoginPaths();
-  paths[email] = path;
-  localStorage.setItem(LOGIN_MODES_KEY, JSON.stringify(paths));
 }
 
 /**

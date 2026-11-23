@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { getPost } from "../utils/postsStore";
 import { useAuth } from "../context/AuthContext";
 import CommentSection from "../components/CommentSection";
@@ -7,6 +7,7 @@ import PostPhotos from "../components/PostPhotos";
 import ReportButton from "../components/ReportButton";
 import ErrorState from "../components/ErrorState";
 import { SkeletonGroup } from "../components/Skeleton";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./PostDetail.module.css";
 
 function formatPostTime(value) {
@@ -29,18 +30,25 @@ function formatPostTime(value) {
  */
 export default function PostDetail() {
   const { postId } = useParams();
+  const [searchParams] = useSearchParams();
+  const scope = searchParams.get("scope") === "network" ? "network" : "local";
   const { user } = useAuth();
   const [post, setPost] = useState(null);
   const [status, setStatus] = useState("loading"); // loading | ok | error | missing
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
+  usePageMetadata({
+    title: post ? `Post from ${post.clubName}` : "Post",
+    description: post?.body || "Read a post from a campus club on Kesho.",
+  });
+
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
     setError("");
 
-    getPost(postId)
+    getPost(postId, { scope })
       .then((result) => {
         if (cancelled) return;
         setPost(result);
@@ -59,7 +67,7 @@ export default function PostDetail() {
     return () => {
       cancelled = true;
     };
-  }, [postId, reloadKey]);
+  }, [postId, reloadKey, scope]);
 
   if (status === "loading") {
     return (
@@ -76,14 +84,14 @@ export default function PostDetail() {
   if (status === "missing") {
     return (
       <div className={styles.page}>
-        <p className={styles.eyebrow}>Kesho · Dispatch</p>
+        <p className={styles.eyebrow}>Kesho · Post</p>
         <h1 className={styles.title}>Post not found.</h1>
         <p className={styles.prose}>
           This update may have been removed, or the link is out of date. The club page lists what is
           still public.
         </p>
-        <Link to="/discover" className={styles.backLink}>
-          Back to this week
+        <Link to={scope === "network" ? "/network" : "/discover"} className={styles.backLink}>
+          {scope === "network" ? "Back to My network" : "Back to this week"}
         </Link>
       </div>
     );
@@ -108,12 +116,21 @@ export default function PostDetail() {
       <nav className={styles.breadcrumb} aria-label="Breadcrumb">
         <Link to={`/clubs/${post.clubId}`}>{post.clubName}</Link>
         <span aria-hidden="true"> / </span>
-        <span aria-current="page">Dispatch</span>
+        <span aria-current="page">Post</span>
+        {scope === "network" && post.campusName && (
+          <>
+            <span aria-hidden="true"> / </span>
+            <span>{post.campusName}</span>
+          </>
+        )}
       </nav>
 
       <article className={styles.post}>
         <header>
-          <p className={styles.eyebrow}>{post.clubName} · Dispatch</p>
+          <p className={styles.eyebrow}>
+            {post.clubName} · Post
+            {scope === "network" && post.campusName ? ` · ${post.campusName}` : ""}
+          </p>
           <h1 className={styles.title}>From {post.clubName}</h1>
           <p className={styles.byline}>
             By {post.authorName} ·{" "}
@@ -140,11 +157,18 @@ export default function PostDetail() {
           <span className={styles.commentCount}>
             {post.commentCount === 1 ? "1 comment" : `${post.commentCount} comments`}
           </span>
-          {user && !post.canManage && <ReportButton targetType="post" targetId={post.id} />}
+          {scope !== "network" && user && !post.canManage && (
+            <ReportButton targetType="post" targetId={post.id} />
+          )}
         </footer>
       </article>
 
-      {published ? (
+      {scope === "network" ? (
+        <p className={styles.hiddenNote}>
+          This post is shared across the club network. Its discussion stays on{" "}
+          {post.campusName || "the host campus"}.
+        </p>
+      ) : published ? (
         <section className={styles.discussion} aria-label="Post discussion">
           <CommentSection targetType="post" targetId={post.id} />
         </section>

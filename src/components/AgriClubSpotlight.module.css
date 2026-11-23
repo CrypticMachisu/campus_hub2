@@ -1,8 +1,8 @@
 .spotlight {
   margin: var(--space-lg, 2rem) 0;
   padding: var(--space-lg, 2rem);
-  background: var(--color-secondary-light, #e3ede9);
-  border: 1px dashed var(--color-secondary, #2f6e64);
+  background: var(--color-secondary-light);
+  border: 1px dashed var(--color-secondary);
   border-radius: var(--radius-lg, 10px);
 }
 .pitch h2 {
@@ -22,13 +22,13 @@
   text-decoration: none;
 }
 .primary {
-  background: var(--color-primary, #c1432e);
-  color: var(--color-white, #fff);
+  background: var(--color-primary);
+  color: var(--color-white);
 }
 .primary:hover {
-  background: var(--color-primary-dark, #8f2e1d);
+  background: var(--signal-hover);
 }
 .secondary {
-  border: 1px solid var(--color-secondary, #2f6e64);
-  color: var(--color-secondary, #2f6e64);
+  border: 1px solid var(--color-secondary);
+  color: var(--color-secondary);
 }

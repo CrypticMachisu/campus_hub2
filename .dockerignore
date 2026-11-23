@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+dist
+backups
+server
+e2e
+test-results
+playwright-report
+.ux-mockups
+docs
+.env
+.env.*
+!.env.example
+*.log

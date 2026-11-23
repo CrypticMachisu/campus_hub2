@@ -24,7 +24,7 @@ function findClash(goingEvents) {
 
 const TABS = [
   { id: "upcoming", label: "Upcoming" },
-  { id: "going", label: "Going" },
+  { id: "going", label: "My RSVPs" },
   { id: "past", label: "Past" },
 ];
 
@@ -106,7 +106,7 @@ export default function ClubAgenda({ events, signupFor, pendingIds, onToggle }) 
               {tab === "upcoming"
                 ? "This club hasn't scheduled anything new. Announcements will show up in the feed."
                 : tab === "going"
-                  ? "Tap RSVP on an upcoming event and it will appear here, with a calendar download."
+                  ? "Choose RSVP on an upcoming event and it will appear here, with a calendar download."
                   : "Once events happen they move here, along with whether you were signed up."}
             </p>
           </div>
@@ -123,8 +123,8 @@ export default function ClubAgenda({ events, signupFor, pendingIds, onToggle }) 
               // Past capacity the action becomes a waitlist join, not a refusal.
               let rsvpText = "RSVP";
               if (pending) rsvpText = "Saving…";
-              else if (signup) rsvpText = signup.waitlisted ? "Waitlisted" : "Going";
-              else if (full) rsvpText = "Waitlist";
+              else if (signup) rsvpText = signup.waitlisted ? "Leave waitlist" : "Cancel RSVP";
+              else if (full) rsvpText = "Join waitlist";
 
               return (
                 <li key={event.id} className={styles.item}>
@@ -157,7 +157,11 @@ export default function ClubAgenda({ events, signupFor, pendingIds, onToggle }) 
                         </button>
                       ) : (
                         <span className={styles.pastStatus}>
-                          {signup ? "You were going" : "Ended"}
+                          {signup
+                            ? signup.waitlisted
+                              ? "On the waitlist"
+                              : "You were going"
+                            : "Ended"}
                         </span>
                       )}
 

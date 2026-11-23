@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getMyCampusAffiliations } from "../utils/campusAffiliationsStore";
@@ -10,6 +10,10 @@ import { formatEventDate } from "../utils/dateTime";
 import ClubCard from "../components/ClubCard";
 import { SkeletonGroup } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
+import { useUrlState } from "../hooks/useUrlState";
+import { usePageMetadata } from "../hooks/usePageMetadata";
+import { useFlipLayout } from "../motion/useFlipLayout";
+import { usePageMotion } from "../motion/usePageMotion";
 import styles from "./Network.module.css";
 
 const KIND_LABELS = {
@@ -22,6 +26,13 @@ const KIND_LABELS = {
 };
 
 export default function Network() {
+  usePageMetadata({
+    title: "My network",
+    description: "Clubs, events, commitments, and posts shared across your campuses.",
+  });
+
+  const pageRef = useRef(null);
+  const resultsRef = useRef(null);
   const { user, loading: authLoading } = useAuth();
   const [affiliations, setAffiliations] = useState([]);
   const [clubs, setClubs] = useState([]);
@@ -30,8 +41,12 @@ export default function Network() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useUrlState("q", "");
+  const [categoryParam, setCategory] = useUrlState("category", "All");
+  const category = CATEGORIES.includes(categoryParam) ? categoryParam : "All";
+  const [familyFilter, setFamilyFilter] = useUrlState("family", "all");
+  const [chaptersParam, setChaptersOnly] = useUrlState("chapters", "0");
+  const chaptersOnly = chaptersParam === "1";
 
   const load = useCallback(async () => {
     setError("");
@@ -98,17 +113,27 @@ export default function Network() {
     return meta;
   }, [activeAffiliations, homeCampusId, user?.campusName]);
 
+  const familyOptions = useMemo(() => {
+    const options = new Map();
+    for (const club of clubs) {
+      if (club.familyId) options.set(club.familyId, club.familyName || "Club family");
+    }
+    return [...options.entries()].sort(([, a], [, b]) => a.localeCompare(b));
+  }, [clubs]);
+
   const visibleClubs = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return clubs.filter((club) => {
       if (category !== "All" && club.category !== category) return false;
+      if (familyFilter !== "all" && club.familyId !== familyFilter) return false;
+      if (chaptersOnly && !club.familyId) return false;
       if (!needle) return true;
       return [club.name, club.description, club.category, ...(club.tags || [])]
         .join(" ")
         .toLowerCase()
         .includes(needle);
     });
-  }, [clubs, category, search]);
+  }, [clubs, category, search, familyFilter, chaptersOnly]);
 
   const networkEvents = useMemo(
     () =>
@@ -131,6 +156,19 @@ export default function Network() {
     );
   }, [campusMeta, visibleClubs]);
 
+  usePageMotion(pageRef, { ready: !authLoading && !loading });
+  const captureClubFlip = useFlipLayout(pageRef, { stageRef: resultsRef });
+
+  function handleFamilyFilter(value) {
+    captureClubFlip();
+    setFamilyFilter(value, { replace: false });
+  }
+
+  function handleChaptersOnly(value) {
+    captureClubFlip();
+    setChaptersOnly(value ? "1" : "0", { replace: false });
+  }
+
   if (authLoading) {
     return (
       <main className={styles.page}>
@@ -144,10 +182,10 @@ export default function Network() {
       <main className={styles.page}>
         <header className={styles.header}>
           <p className={styles.eyebrow}>My network</p>
-          <h1>Sign in to see your network.</h1>
+          <h1>Log in to see your network.</h1>
           <p className={styles.lede}>
             Network discovery is built from approved campus affiliations.{" "}
-            <Link to="/login">Sign in</Link> to continue.
+            <Link to="/login">Log in</Link> to continue.
           </p>
         </header>
       </main>
@@ -161,8 +199,8 @@ export default function Network() {
           <p className={styles.eyebrow}>My network</p>
           <h1>Network discovery is for members.</h1>
           <p className={styles.lede}>
-            Tier 1 already has the campus edition switcher. <Link to="/">Return to this week</Link>{" "}
-            to browse any campus.
+            Platform admins already have the campus edition switcher.{" "}
+            <Link to="/">Return to this week</Link> to browse any campus.
           </p>
         </header>
       </main>
@@ -170,14 +208,14 @@ export default function Network() {
   }
 
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
+    <main className={styles.page} ref={pageRef}>
+      <header className={styles.header} data-motion="header">
         <p className={styles.eyebrow}>My network</p>
         <h1>Clubs across your campuses.</h1>
         <p className={styles.lede}>
-          This directory follows your approved affiliations. It shares club identity, events,
-          commitments and notices explicitly published to the network. Membership and discussion
-          stay with each campus chapter.
+          Clubs across the campuses you can access. This directory shows the events, commitments and
+          posts they share with your network. Club membership, rosters and discussions stay with
+          each campus chapter.
         </p>
         {activeAffiliations.length > 0 && (
           <div className={styles.scopeNotice} role="status">
@@ -211,7 +249,7 @@ export default function Network() {
         <section className={styles.empty} aria-labelledby="network-empty-heading">
           <h2 id="network-empty-heading">Your network starts with an approved campus.</h2>
           <p>
-            You are currently scoped to {user?.campusName || "your home campus"}. Request another
+            You are currently seeing {user?.campusName || "your home campus"}. Request another
             campus to see its clubs here.
           </p>
           <Link to="/campus-access" className={styles.primaryLink}>
@@ -240,7 +278,7 @@ export default function Network() {
               <div className={styles.sectionHead}>
                 <div>
                   <p className={styles.sectionKicker}>Opted into the network</p>
-                  <h2 id="network-posts-heading">Network notices</h2>
+                  <h2 id="network-posts-heading">Network posts</h2>
                 </div>
                 <span>{posts.length} published</span>
               </div>
@@ -256,8 +294,15 @@ export default function Network() {
                       </p>
                       <p className={styles.postBody}>{post.body}</p>
                       <p className={styles.eventNote}>
-                        Network-visible. Comments stay on the host campus.
+                        Shared with your network. Comments stay on the host campus.
                       </p>
+                      <Link
+                        to={`/posts/${post.id}?scope=network`}
+                        className={styles.postLink}
+                        aria-label={`Read the post from ${host?.name || post.clubName}`}
+                      >
+                        Read the post <span aria-hidden="true">→</span>
+                      </Link>
                     </li>
                   );
                 })}
@@ -302,7 +347,7 @@ export default function Network() {
                         {commitment.capacity == null
                           ? `${commitment.signupCount} committed`
                           : `${Math.min(commitment.signupCount, commitment.capacity)} of ${commitment.capacity} places`}
-                        {" · Read the notice to join; the roster stays with the host campus."}
+                        {" · Open to commit; the roster stays with the host campus."}
                       </p>
                     </div>
                   </li>
@@ -328,14 +373,17 @@ export default function Network() {
                       <p className={styles.eventDate}>
                         {formatEventDate(event.date)} · <span className="mono">{event.time}</span>
                       </p>
-                      <h3>{event.title}</h3>
+                      <h3>
+                        <Link to={`/events/${event.id}?scope=network`}>{event.title}</Link>
+                      </h3>
                       <p className={styles.eventMeta}>
                         {host?.name || "Club event"}
                         {host?.campusName ? ` · ${host.campusName}` : ""}
                         {event.location ? ` · ${event.location}` : ""}
                       </p>
                       <p className={styles.eventNote}>
-                        Network-visible. RSVP and discussion stay on the host campus.
+                        Shared with your network. RSVP on the event page; discussion stays on the
+                        host campus.
                       </p>
                     </li>
                   );
@@ -356,7 +404,10 @@ export default function Network() {
             </label>
             <label className={styles.categoryField}>
               Category
-              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+              <select
+                value={category}
+                onChange={(event) => setCategory(event.target.value, { replace: false })}
+              >
                 <option value="All">All categories</option>
                 {CATEGORIES.map((item) => (
                   <option key={item} value={item}>
@@ -365,40 +416,69 @@ export default function Network() {
                 ))}
               </select>
             </label>
+            <label className={styles.categoryField}>
+              Family
+              <select
+                value={familyFilter}
+                onChange={(event) => handleFamilyFilter(event.target.value)}
+              >
+                <option value="all">All families</option>
+                {familyOptions.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.chaptersOnly}>
+              <input
+                type="checkbox"
+                checked={chaptersOnly}
+                onChange={(event) => handleChaptersOnly(event.target.checked)}
+              />
+              Chapters only
+            </label>
           </section>
 
-          {grouped.length === 0 ? (
-            <p className={styles.noResults}>No clubs match those filters.</p>
-          ) : (
-            grouped.map(([campusId, campusClubs]) => {
-              const campus = campusMeta.get(campusId);
-              return (
-                <section key={campusId} className={styles.campusSection}>
-                  <div className={styles.sectionHead}>
-                    <div>
-                      <p className={styles.sectionKicker}>
-                        {KIND_LABELS[campus?.kind] || "Affiliated"}
-                      </p>
-                      <h2>{campus?.name || "Campus"}</h2>
+          <div className={styles.resultsStage} ref={resultsRef}>
+            {visibleClubs.length === 0 && (
+              <p className={styles.emptyFilter}>
+                No network clubs match those filters. Clear the search or family filter.
+              </p>
+            )}
+
+            {grouped.length === 0 ? (
+              <p className={styles.noResults}>No clubs match those filters.</p>
+            ) : (
+              grouped.map(([campusId, campusClubs]) => {
+                const campus = campusMeta.get(campusId);
+                return (
+                  <section key={campusId} className={styles.campusSection}>
+                    <div className={styles.sectionHead}>
+                      <div>
+                        <p className={styles.sectionKicker}>
+                          {KIND_LABELS[campus?.kind] || "Affiliated"}
+                        </p>
+                        <h2>{campus?.name || "Campus"}</h2>
+                      </div>
+                      <span>
+                        {campusClubs.length} {campusClubs.length === 1 ? "club" : "clubs"}
+                      </span>
                     </div>
-                    <span>
-                      {campusClubs.length} {campusClubs.length === 1 ? "club" : "clubs"}
-                    </span>
-                  </div>
-                  <div className={styles.grid}>
-                    {campusClubs.map((club) => (
-                      <ClubCard key={club.id} club={club} />
-                    ))}
-                  </div>
-                </section>
-              );
-            })
-          )}
+                    <div className={styles.grid}>
+                      {campusClubs.map((club) => (
+                        <ClubCard key={club.id} club={club} />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })
+            )}
+          </div>
 
           <aside className={styles.boundaryNote}>
-            <strong>Read-only network view.</strong> Opening a club shows its identity and campus.
-            Only events deliberately marked “My club network” travel here; posts, commitments and
-            membership remain on the host campus.
+            <strong>What travels.</strong> Network events, commitments and posts appear here when a
+            club shares them. Club membership, rosters and discussions stay with the host campus.
           </aside>
         </>
       )}

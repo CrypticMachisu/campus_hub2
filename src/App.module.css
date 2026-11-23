@@ -1,5 +1,11 @@
 /* App-level loading state shown while the session and club list resolve. */
 
+.boundary {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1.625rem;
+}
+
 .splash {
   min-height: 100dvh;
   display: grid;

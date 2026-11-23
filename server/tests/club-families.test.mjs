@@ -99,6 +99,10 @@ test(
           await pool.query("DELETE FROM audit_log WHERE target_id IN (?)", [commitmentIds]);
           await pool.query("DELETE FROM commitments WHERE commitment_id IN (?)", [commitmentIds]);
         }
+        await pool.query(
+          "DELETE FROM notifications WHERE user_id = ? AND kind = 'family_admin' AND title LIKE ?",
+          [member.user.id, `%${stamp}%`]
+        );
         await pool.query("DELETE FROM clubs WHERE club_id IN (?, ?, ?)", [clubA1, clubA2, clubB1]);
         await pool.query("DELETE FROM user_campus_affiliations WHERE campus_id IN (?, ?)", [
           campusA,
@@ -294,6 +298,8 @@ test(
     assert.equal(renamed.family.name, `Family One Renamed ${stamp}`);
     assert.equal(renamed.family.description, "Updated shared identity.");
     assert.equal(renamed.family.logoUrl, "https://example.com/family-mark-v2.png");
+    assert.equal(renamed.family.lastIdentityChange.actorName, tier1.user.name);
+    assert.equal(renamed.family.lastIdentityChange.detail.to.name, renamed.family.name);
 
     assert.equal(
       (
@@ -320,6 +326,8 @@ test(
       );
       assert.ok(moved.family.chapters.some((chapter) => chapter.id === clubB1));
       assert.ok(moved.family.chapters.some((chapter) => chapter.id === clubA2));
+      assert.equal(moved.family.lastChapterMove.detail.clubName, "Family Chapter B1");
+      assert.equal(moved.family.lastChapterMove.actorName, tier1.user.name);
 
       const afterMove = await expectJson(
         await api("/v2/club-families/manage", { token: tier1.token }),
@@ -539,6 +547,14 @@ test(
       networkEventV2.events.find((event) => event.id === networkEvent.event.id)?.startTime,
       "2030-09-12T10:00:00+03:00"
     );
+    const familyWithEvent = await expectJson(
+      await api(`/v2/club-families/${second.family.id}`),
+      200,
+      "family next event"
+    );
+    const teaserChapter = familyWithEvent.family.chapters.find((chapter) => chapter.id === clubB1);
+    assert.equal(teaserChapter.nextEvent?.id, networkEvent.event.id);
+    assert.equal(teaserChapter.nextEvent?.date, "2030-09-12");
 
     const campusEvent = await expectJson(
       await api("/events", {
@@ -569,6 +585,31 @@ test(
     const networkEventIds = networkEvents.events.map((event) => event.id);
     assert.ok(networkEventIds.includes(networkEvent.event.id));
     assert.ok(!networkEventIds.includes(campusEvent.event.id));
+
+    assert.equal(
+      (
+        await api("/signups", {
+          method: "POST",
+          token: member.token,
+          body: { eventId: networkEvent.event.id },
+        })
+      ).status,
+      201
+    );
+    assert.equal(
+      (
+        await api("/signups", {
+          method: "POST",
+          token: member.token,
+          body: { eventId: campusEvent.event.id },
+        })
+      ).status,
+      403
+    );
+    assert.equal(
+      (await api(`/signups/event/${networkEvent.event.id}`, { token: member.token })).status,
+      403
+    );
 
     const campusBEvents = await expectJson(
       await api(`/events?campusId=${campusB}`, { token: tier1.token }),
@@ -841,6 +882,12 @@ test(
       "appoint family editor"
     );
     assert.ok(withAdmin.family.admins.some((admin) => admin.email === member.user.email));
+    const [familyNotices] = await pool.query(
+      "SELECT title FROM notifications WHERE user_id = ? AND kind = 'family_admin' AND title LIKE ?",
+      [member.user.id, `%${stamp}%`]
+    );
+    assert.equal(familyNotices.length, 1);
+    assert.match(familyNotices[0].title, /You can now edit/);
 
     const adminManage = await expectJson(
       await api("/v2/club-families/manage", { token: member.token }),

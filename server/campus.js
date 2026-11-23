@@ -133,14 +133,14 @@ export async function readCampusScope(req) {
     typeof req.query.scope === "string" ? req.query.scope.trim().toLowerCase() : "";
 
   if (requestedScope && !["local", "network"].includes(requestedScope)) {
-    return { error: "Unknown discovery scope.", status: 400 };
+    return { error: "Choose a valid discovery view.", status: 400 };
   }
   if (requestedScope === "network") {
     if (requested) {
       return { error: "Choose a campus or the network scope, not both.", status: 400 };
     }
     if (!crossUniversityEnabled()) {
-      return { error: "Network discovery is not enabled.", status: 404 };
+      return { error: "Network discovery isn't available here.", status: 404 };
     }
     if (!req.user) {
       return { error: "Sign in to browse your network.", status: 401 };

@@ -3,7 +3,15 @@ import styles from "./PasswordField.module.css";
 
 // Reusable password input with a Show/Hide toggle. Used on Login,
 // Forgot Password, and Reset Password.
-export default function PasswordField({ id, value, onChange, autoComplete, minLength, required }) {
+export default function PasswordField({
+  id,
+  value,
+  onChange,
+  autoComplete,
+  minLength,
+  required,
+  autoFocus,
+}) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -17,6 +25,7 @@ export default function PasswordField({ id, value, onChange, autoComplete, minLe
         autoComplete={autoComplete}
         minLength={minLength}
         required={required}
+        autoFocus={autoFocus}
       />
       <button
         type="button"

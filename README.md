@@ -353,7 +353,7 @@ curl -X POST http://localhost:5000/api/clubs \
 
 Response `201`: `{ "club": { ... } }`, where the club has the same fields as in the list above and a generated `id` starting with `club-`.
 
-Using a token from a non-tier1 account (for example one from `register`) returns `403` with `{"error":"Tier 1 admin access required."}`.
+Using a token from a non-tier1 account (for example one from `register`) returns `403` with `{"error":"Platform admin access required."}`.
 
 ### List events
 
@@ -569,22 +569,22 @@ Unexpected server failure (`500`):
 
 ### Other error messages
 
-| Status | `error` message                             | When                                                                                       |
-| ------ | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| 400    | `Email and password are required.`          | Login with a missing field                                                                 |
-| 400    | `Name and email are required.`              | Register with a missing field                                                              |
-| 400    | `Enter a valid email address.`              | Register or forgot-password with a bad email                                               |
-| 400    | `Password must be at least 8 characters.`   | Register or reset-password with a short password                                           |
-| 400    | `Club name is required.`                    | Create club without a name                                                                 |
-| 400    | `Title is required.`                        | Create or update an event without a title                                                  |
-| 400    | `Unknown category: <name>`                  | Create or update a club or event with a category that doesn't exist                        |
-| 403    | `Tier 1 admin access required.`             | Create a club with a token that isn't tier1                                                |
-| 403    | `You don't have admin access to that club.` | Create, update or delete an event for a club you don't manage                              |
-| 403    | `Seed events are read-only.`                | Update or delete a built-in `event-` event                                                 |
-| 404    | `Event not found.`                          | Update or delete an event ID that doesn't exist                                            |
-| 404    | `Not found.`                                | Any URL that doesn't exist                                                                 |
-| 409    | `That email is already registered.`         | Register with an email that exists                                                         |
-| 429    | `Too many requests.`                        | The key exceeded 100 requests in 60 seconds; see `retryAfter` and the `Retry-After` header |
+| Status | `error` message                                    | When                                                                                       |
+| ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 400    | `Email and password are required.`                 | Login with a missing field                                                                 |
+| 400    | `Name and email are required.`                     | Register with a missing field                                                              |
+| 400    | `Enter a valid email address.`                     | Register or forgot-password with a bad email                                               |
+| 400    | `Password must be at least 8 characters.`          | Register or reset-password with a short password                                           |
+| 400    | `Club name is required.`                           | Create club without a name                                                                 |
+| 400    | `Title is required.`                               | Create or update an event without a title                                                  |
+| 400    | `Choose a category from the list.`                 | Create or update a club or event with a category that doesn't exist                        |
+| 403    | `Platform admin access required.`                  | Create a club with a token that isn't a platform admin                                     |
+| 403    | `You need club admin access to do that.`           | Create, update or delete an event for a club you don't manage                              |
+| 403    | `Built-in events can't be edited or deleted here.` | Update or delete a built-in `event-` event                                                 |
+| 404    | `Event not found.`                                 | Update or delete an event ID that doesn't exist                                            |
+| 404    | `Not found.`                                       | Any URL that doesn't exist                                                                 |
+| 409    | `That email is already registered.`                | Register with an email that exists                                                         |
+| 429    | `Too many requests.`                               | The key exceeded 100 requests in 60 seconds; see `retryAfter` and the `Retry-After` header |
 
 > **All responses are JSON now.** A request to a path that doesn't exist returns `404` with `{"error":"Not found."}` instead of Express's HTML page. There is no `GET /api/clubs/:id` or `GET /api/events/:id`; use the list endpoints and filter by `id`.
 
@@ -609,6 +609,8 @@ Opens at `http://localhost:5173` and talks to the API at `http://localhost:5000/
 
 ### Browser smoke test
 
-With both servers running and Chrome installed, `npm run smoke` drives a headless browser through the critical flows: logging in, RSVPing and cancelling, joining and leaving a full event's waitlist, and recovering from blocked API calls on My Events and Event Detail. It uses the seeded tier 1 admin (no existing RSVPs) and removes everything it creates, including after a failure.
+With both servers running and Chrome installed, `npm run smoke` drives a headless browser through the critical flows: logging in, RSVPing and cancelling, joining and leaving a full event's waitlist, and recovering from blocked API calls on My commitments and Event Detail. It uses the seeded tier 1 admin (no existing RSVPs) and removes everything it creates, including after a failure.
+
+A fresh standalone database has no full event, so apply the test-only fixture first: `mysql -u root campushub_standalone < scripts/smoke-fixture.sql`. It makes event-01 full for the waitlist check. Do not run it against production; the CI smoke job applies it to its disposable database.
 
 The test needs Node 22+ and Chrome. Set `CHROME_PATH` if Chrome is not in a standard location, or override `SMOKE_BASE_URL`, `SMOKE_EMAIL`, `SMOKE_PASSWORD`, `SMOKE_RSVP_EVENT_ID`, and `SMOKE_FULL_EVENT_ID` for a different setup.

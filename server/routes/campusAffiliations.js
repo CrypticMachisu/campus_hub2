@@ -171,7 +171,7 @@ campusAffiliationsRouter.delete("/me/:id", requireAuth, async (req, res) => {
 campusAffiliationsRouter.get("/", requireAuth, requireCampusAdmin, async (req, res) => {
   const status = String(req.query.status || "pending");
   if (!STATUSES.has(status)) {
-    return res.status(400).json({ error: "Unknown affiliation status." });
+    return res.status(400).json({ error: "Choose a valid request status." });
   }
 
   const where = ["a.status = :status"];

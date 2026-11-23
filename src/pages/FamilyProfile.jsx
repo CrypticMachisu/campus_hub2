@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getFamily } from "../utils/clubFamiliesStore";
+import { formatEventDate } from "../utils/dateTime";
 import { SkeletonGroup } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./Families.module.css";
 
 export default function FamilyProfile() {
@@ -12,6 +14,11 @@ export default function FamilyProfile() {
   const [family, setFamily] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  usePageMetadata({
+    title: family?.name || "Club family",
+    description: family?.description || "Explore a club family and its campus chapters.",
+  });
 
   const load = useCallback(async () => {
     setError("");
@@ -117,6 +124,13 @@ export default function FamilyProfile() {
                     {[chapter.meetingTime, chapter.meetingLocation].filter(Boolean).join(" · ")}
                   </p>
                 )}
+                {chapter.nextEvent && (
+                  <p className={styles.chapterNextEvent}>
+                    <span>Next network event</span>
+                    {formatEventDate(chapter.nextEvent.date)} · {chapter.nextEvent.time} —{" "}
+                    {chapter.nextEvent.title}
+                  </p>
+                )}
                 <Link
                   to={`/families/${family.id}/chapters/${chapter.id}`}
                   className={styles.cardLink}
@@ -132,8 +146,9 @@ export default function FamilyProfile() {
 
       <aside className={styles.boundaryNote}>
         <strong>Each chapter is local.</strong> The family shares identity only. Campus-only
-        activity, membership, posts and reports stay with the chapter on its campus; events,
-        commitments and notices appear here only when the chapter publishes them to the network.
+        activity, club membership, rosters, discussions and reports stay with the chapter on its
+        campus. Events, commitments and posts appear in My network only when the chapter shares
+        them.
       </aside>
     </main>
   );
@@ -173,6 +188,13 @@ function ChapterPage({ family, chapter, user }) {
           The {chapter.campusName} chapter of {family.name}. Its officers, members, events and
           moderation are managed on that campus.
         </p>
+        {chapter.nextEvent && (
+          <p className={styles.chapterNextEvent}>
+            <span>Next network event</span>
+            {formatEventDate(chapter.nextEvent.date)} · {chapter.nextEvent.time} —{" "}
+            {chapter.nextEvent.title}
+          </p>
+        )}
       </header>
 
       <section className={styles.chapterPanel} aria-labelledby="chapter-links-heading">
@@ -187,8 +209,8 @@ function ChapterPage({ family, chapter, user }) {
             </Link>
           ) : (
             <p className={styles.boundaryNote}>
-              The full club page is campus-gated. Sign in to {chapter.campusName} to open its local
-              activity.
+              The full club page is available to members of {chapter.campusName}. Join that campus
+              to open its local activity.
             </p>
           )}
         </div>

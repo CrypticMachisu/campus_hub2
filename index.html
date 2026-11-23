@@ -4,9 +4,33 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kesho — This week at campus</title>
+    <meta
+      name="description"
+      content="Find clubs and events across your campus, RSVP, and keep every commitment in one place."
+    />
+    <meta property="og:title" content="Kesho — This week on campus" />
+    <meta
+      property="og:description"
+      content="Find clubs and events across your campus, RSVP, and keep every commitment in one place."
+    />
+    <meta property="og:type" content="website" />
+    <title>Kesho — This week on campus</title>
     <link rel="preload" href="/fonts/anton-400.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/archivo-var.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      // Apply the saved (or system) theme before the first paint.
+      (function () {
+        try {
+          var saved = localStorage.getItem("campushub_theme");
+          var dark =
+            saved === "dark" ||
+            (saved !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+        } catch (error) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -14,6 +14,36 @@ const API_BASE = `${API_ROOT.replace(/\/+$/, "").replace(/\/v\d+$/, "")}/v2`;
 // per-consumer and rate-limited/revocable server-side.
 const API_KEY = import.meta.env.VITE_API_KEY || "";
 const TOKEN_KEY = "campushub_token";
+const MAX_SESSION_RETRIES = 2;
+
+// Requests that hit an expired session wait here for the re-auth modal, then
+// run again with the replacement token. The original caller never sees the 401.
+let sessionRetry = null;
+
+function waitForReauthentication(error) {
+  if (!sessionRetry) {
+    let resolve;
+    let reject;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    sessionRetry = { promise, resolve, reject, error };
+  }
+  return sessionRetry.promise;
+}
+
+export function resolveSessionRetry() {
+  const pending = sessionRetry;
+  sessionRetry = null;
+  pending?.resolve();
+}
+
+export function rejectSessionRetry() {
+  const pending = sessionRetry;
+  sessionRetry = null;
+  pending?.reject(pending.error);
+}
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -32,13 +62,14 @@ export function clearToken() {
  * Throws an Error with a readable message (from the API's { error }
  * field when present) on any non-2xx response.
  */
-export async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
+export async function apiFetch(
+  path,
+  { method = "GET", body, auth = true, retryOnExpiry = true, _authRetries = 0 } = {}
+) {
   const headers = { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" };
   if (API_KEY) headers["X-API-Key"] = API_KEY;
-  if (auth) {
-    const token = getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
+  const hadToken = auth ? getToken() : null;
+  if (hadToken) headers.Authorization = `Bearer ${hadToken}`;
 
   // A dead API should surface as an error state, not a skeleton that never
   // resolves. 10s is generous for a local/ngrok API but bounded.
@@ -55,8 +86,8 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
   } catch (err) {
     throw new Error(
       err.name === "AbortError"
-        ? "The server didn't respond in time. Try again."
-        : "Can't reach the server. Check that the API is running."
+        ? "That took too long. Try again."
+        : "We can't connect right now. Check your connection and try again."
     );
   } finally {
     clearTimeout(timer);
@@ -72,7 +103,36 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
   }
 
   if (!response.ok) {
-    throw new Error(data?.error || `Request failed (${response.status})`);
+    const error = new Error(data?.error || "Something went wrong. Try again in a moment.");
+    error.status = response.status;
+
+    if (
+      response.status === 401 &&
+      hadToken &&
+      retryOnExpiry &&
+      _authRetries < MAX_SESSION_RETRIES &&
+      typeof window !== "undefined"
+    ) {
+      const reauthenticated = waitForReauthentication(error);
+      window.dispatchEvent(
+        new CustomEvent("campushub:session-expired", {
+          detail: { message: error.message },
+        })
+      );
+      await reauthenticated;
+      return apiFetch(path, {
+        method,
+        body,
+        auth,
+        retryOnExpiry,
+        _authRetries: _authRetries + 1,
+      });
+    }
+
+    if (response.status === 401 && _authRetries >= MAX_SESSION_RETRIES) {
+      error.message = "Your session expired again. Reload the page and log in.";
+    }
+    throw error;
   }
   return data;
 }

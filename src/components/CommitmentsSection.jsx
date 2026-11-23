@@ -39,8 +39,8 @@ const EMPTY_FORM = {
 
 /**
  * A club's commitments: dated activities with a host and an optional cap.
- * Signing up is public (any signed-in reader), and the seat count is honest —
- * past the cap the button becomes "Join the waitlist". Managers can publish
+ * Committing is public (any signed-in reader), and the place count is honest —
+ * past the cap the button becomes "Join waitlist". Managers can publish
  * and remove activities without leaving the page.
  */
 export default function CommitmentsSection({
@@ -120,7 +120,7 @@ export default function CommitmentsSection({
         setNotice(
           result.signup.waitlisted
             ? `You're on the waitlist for ${row.title}${result.signup.position ? ` at position ${result.signup.position}` : ""}.`
-            : `You're going to ${row.title}. See you there.`
+            : `You're committed to ${row.title}. See you there.`
         );
       }
     } catch (err) {
@@ -207,8 +207,8 @@ export default function CommitmentsSection({
       </div>
 
       <p className={styles.lede}>
-        Dated work with a host and a real capacity. Join one and it appears in your commitments,
-        with a waitlist position if the seats are gone.
+        Dated work with a host and a real capacity. Commit to one and it appears in your
+        commitments, with a waitlist position if the seats are gone.
       </p>
 
       <p className="visually-hidden" role="status">
@@ -401,20 +401,22 @@ export default function CommitmentsSection({
                     className={row.joined ? styles.joinedButton : styles.primaryButton}
                     onClick={() => toggleSignup(row)}
                     disabled={pending}
-                    aria-label={row.joined ? `Withdraw from ${row.title}` : `Join ${row.title}`}
+                    aria-label={
+                      row.joined ? `Withdraw from ${row.title}` : `Commit to ${row.title}`
+                    }
                   >
                     {pending
                       ? "Saving…"
                       : row.joined
                         ? row.waitlisted
-                          ? "On the waitlist"
-                          : "You're going"
+                          ? "Leave waitlist"
+                          : "Withdraw"
                         : full
-                          ? "Join the waitlist"
-                          : "Join"}
+                          ? "Join waitlist"
+                          : "Commit"}
                   </button>{" "}
                   <Link to={`/commitments/${row.id}`} className={styles.noticeLink}>
-                    Read the notice
+                    View commitment
                   </Link>
                   {managesClub && (
                     <button
@@ -486,7 +488,7 @@ export default function CommitmentsSection({
                                   <span>{person.email}</span>
                                 </span>
                                 <span className={styles.personState}>
-                                  {person.waitlisted ? "Waitlist" : "Going"}
+                                  {person.waitlisted ? "Waitlist" : "Committed"}
                                 </span>
                               </li>
                             ))}

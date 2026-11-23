@@ -262,14 +262,14 @@
   padding: 0 0.8rem;
   border: 1px solid var(--signal);
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   font-size: 0.76rem;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .primaryButton:hover:not(:disabled) {
-  background: var(--signal-deep);
+  background: var(--signal-hover);
   border-color: var(--signal-deep);
 }
 
@@ -313,6 +313,6 @@
 
 .error {
   margin: 0.5rem 0 0;
-  color: #a3200f;
+  color: var(--danger);
   font-size: 0.82rem;
 }

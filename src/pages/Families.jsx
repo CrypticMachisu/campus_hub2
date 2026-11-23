@@ -3,9 +3,15 @@ import { Link } from "react-router-dom";
 import { getFamilies } from "../utils/clubFamiliesStore";
 import { SkeletonGroup } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./Families.module.css";
 
 export default function Families() {
+  usePageMetadata({
+    title: "Club families",
+    description: "Clubs with chapters across more than one campus.",
+  });
+
   const [families, setFamilies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

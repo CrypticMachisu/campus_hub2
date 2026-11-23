@@ -75,6 +75,8 @@ export function rowToEvent(row) {
   return {
     id: row.event_id,
     clubId: row.club_id,
+    clubName: row.club_name || "",
+    campusName: row.campus_name || "",
     title: row.title,
     description: row.description,
     category: row.category_name,

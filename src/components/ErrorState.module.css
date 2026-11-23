@@ -1,7 +1,7 @@
 .wrap {
   background: var(--card);
   border: 1px solid var(--rule);
-  border-left: 3px solid #a3200f;
+  border-left: 3px solid var(--danger);
   border-radius: 0 2px 2px 0;
   padding: 0.9rem 1.1rem;
   max-width: 60ch;
@@ -37,5 +37,5 @@
 }
 
 .retry:hover {
-  background: #000;
+  background: var(--ink-2);
 }

@@ -93,14 +93,14 @@ clubsRouter.post("/", requireAuth, async (req, res) => {
   const requestedCampusId =
     req.user.role === "tier1" ? req.body.campusId || (await defaultCampusId()) : req.user.campusId;
   if (!requestedCampusId) {
-    return res.status(400).json({ error: "campusId is required." });
+    return res.status(400).json({ error: "Choose a campus first." });
   }
   if (!(await campusExists(requestedCampusId))) {
     return res.status(404).json({ error: "Campus not found." });
   }
 
   const categoryId = await findCategoryIdByName(category);
-  if (!categoryId) return res.status(400).json({ error: `Unknown category: ${category}` });
+  if (!categoryId) return res.status(400).json({ error: "Choose a category from the list." });
 
   const id = `club-${Date.now()}`;
   await pool.query(
@@ -174,7 +174,7 @@ clubsRouter.put("/:clubId", requireAuth, async (req, res) => {
   });
   if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
   if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const body = req.body || {};

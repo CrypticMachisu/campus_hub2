@@ -51,13 +51,13 @@ const COMMITMENT_AUDIENCES = new Set(["campus", "network", "public"]);
 /** Audience is conservative: campus default, network needs the flag and a family. */
 function validateCommitmentAudience(value, club) {
   const audience = value === undefined ? "campus" : String(value).trim().toLowerCase();
-  if (!COMMITMENT_AUDIENCES.has(audience)) return { error: "Unknown commitment audience." };
+  if (!COMMITMENT_AUDIENCES.has(audience)) return { error: "Choose a valid commitment audience." };
   if (audience === "public") {
-    return { error: "Public commitments are not available yet." };
+    return { error: "Public commitments aren't available yet." };
   }
   if (audience === "network") {
     if (!crossUniversityEnabled()) {
-      return { error: "Network commitments are not enabled." };
+      return { error: "Network commitments aren't available here." };
     }
     if (!club?.family_id) {
       return { error: "Only a club in a family can publish to the network." };
@@ -283,7 +283,7 @@ commitmentsRouter.get("/:id", optionalAuth, async (req, res) => {
 commitmentsRouter.post("/", requireAuth, async (req, res) => {
   const body = req.body || {};
   const clubId = typeof body.clubId === "string" ? body.clubId.trim() : "";
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
 
   const [clubRows] = await pool.query(
     "SELECT club_id, family_id FROM clubs WHERE club_id = :clubId",
@@ -291,7 +291,7 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
   );
   if (!clubRows[0]) return res.status(404).json({ error: "Club not found." });
   if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const audienceResult = validateCommitmentAudience(body.audience, clubRows[0]);
@@ -300,7 +300,7 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
 
   const kind = typeof body.kind === "string" ? body.kind.trim() : "activity";
   if (!KINDS.includes(kind)) {
-    return res.status(400).json({ error: `kind must be one of: ${KINDS.join(", ")}.` });
+    return res.status(400).json({ error: "Choose a valid commitment type." });
   }
 
   const title = typeof body.title === "string" ? body.title.trim() : "";
@@ -312,7 +312,7 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
   if (location.length > 150) return res.status(400).json({ error: "Location is too long." });
 
   const start = parseStartTime({ startTime: body.startsAt, date: body.date, time: body.time });
-  if (!start) return res.status(400).json({ error: "Invalid startsAt." });
+  if (!start) return res.status(400).json({ error: "Choose a valid date and time." });
 
   let capacity = null;
   if (body.capacity !== undefined && body.capacity !== null && body.capacity !== "") {
@@ -320,7 +320,7 @@ commitmentsRouter.post("/", requireAuth, async (req, res) => {
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
       return res
         .status(400)
-        .json({ error: "capacity must be a whole number between 1 and 10000." });
+        .json({ error: "Capacity must be a whole number between 1 and 10,000." });
     }
     capacity = parsed;
   }
@@ -377,7 +377,7 @@ commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
   const commitment = rows[0];
   if (!commitment) return res.status(404).json({ error: "Commitment not found." });
   if (!canManageClub(req.user, commitment.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const body = req.body || {};
@@ -394,7 +394,7 @@ commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
       if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
         return res
           .status(400)
-          .json({ error: "capacity must be a whole number between 1 and 10000." });
+          .json({ error: "Capacity must be a whole number between 1 and 10,000." });
       }
       capacity = parsed;
     }
@@ -404,7 +404,7 @@ commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
   if (Object.prototype.hasOwnProperty.call(body, "kind")) {
     const kind = typeof body.kind === "string" ? body.kind.trim() : "";
     if (!KINDS.includes(kind)) {
-      return res.status(400).json({ error: `kind must be one of: ${KINDS.join(", ")}.` });
+      return res.status(400).json({ error: "Choose a valid commitment type." });
     }
     set("kind", "kind", kind);
   }
@@ -451,10 +451,10 @@ commitmentsRouter.patch("/:id", requireAuth, async (req, res) => {
 
   if (body.startsAt !== undefined || body.date !== undefined || body.time !== undefined) {
     if (body.startsAt === undefined && !(body.date && body.time)) {
-      return res.status(400).json({ error: "Send date and time together, or startsAt." });
+      return res.status(400).json({ error: "Send a date and time together." });
     }
     const start = parseStartTime({ startTime: body.startsAt, date: body.date, time: body.time });
-    if (!start) return res.status(400).json({ error: "Invalid startsAt." });
+    if (!start) return res.status(400).json({ error: "Choose a valid date and time." });
     set("starts_at", "startsAt", `${start.date} ${start.time}`);
   }
 
@@ -522,7 +522,7 @@ commitmentsRouter.delete("/:id/signups/:signupId", requireAuth, async (req, res)
   const commitment = commitmentRows[0];
   if (!commitment) return res.status(404).json({ error: "Commitment not found." });
   if (!canManageClub(req.user, commitment.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const [signupRows] = await pool.query(
@@ -560,7 +560,7 @@ commitmentsRouter.delete("/:id", requireAuth, async (req, res) => {
   const commitment = rows[0];
   if (!commitment) return res.status(404).json({ error: "Commitment not found." });
   if (!canManageClub(req.user, commitment.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   // Capture recipients before the cascade deletes their signup rows.
@@ -685,7 +685,7 @@ commitmentsRouter.get("/:id/roster", requireAuth, async (req, res) => {
   const commitment = rows[0];
   if (!commitment) return res.status(404).json({ error: "Commitment not found." });
   if (!canManageClub(req.user, commitment.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const [people] = await pool.query(
@@ -736,12 +736,12 @@ commitmentsRouter.patch("/:id/signups/:signupId/attendance", requireAuth, async 
   const commitment = rows[0];
   if (!commitment) return res.status(404).json({ error: "Commitment not found." });
   if (!canManageClub(req.user, commitment.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const status = typeof req.body?.status === "string" ? req.body.status : "";
   if (!["unknown", "attended", "no_show"].includes(status)) {
-    return res.status(400).json({ error: "status must be unknown, attended or no_show." });
+    return res.status(400).json({ error: "Choose a valid attendance status." });
   }
 
   const [result] = await pool.query(

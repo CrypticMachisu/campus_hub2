@@ -25,11 +25,11 @@ export default function AgriClubSpotlight() {
         </p>
         <div className={styles.cta}>
           <a href="#events" className={styles.primary}>
-            See our next event &amp; sign up
+            See our next event &amp; RSVP
           </a>
           {!user && (
             <Link to="/login" className={styles.secondary}>
-              Log in to join
+              Log in to RSVP
             </Link>
           )}
         </div>

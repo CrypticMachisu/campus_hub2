@@ -1,5 +1,9 @@
 node_modules/
 dist/
 .env
+deploy/.env
 server/.env
+backups/
 *.log
+playwright-report/
+test-results/

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./NotFound.module.css";
 
 // Peer review (00-shared-contracts.md): "Missing Fallback Route" —
@@ -6,6 +7,11 @@ import styles from "./NotFound.module.css";
 // a deleted custom event) rendered a blank white screen instead of
 // something a user could recover from.
 export default function NotFound() {
+  usePageMetadata({
+    title: "Page not found",
+    description: "The page you're looking for doesn't exist or may have been removed.",
+  });
+
   return (
     <div className={styles.page}>
       <p className={styles.eyebrow}>Stop press</p>

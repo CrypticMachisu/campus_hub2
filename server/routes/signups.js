@@ -2,6 +2,8 @@ import { pool } from "../db.js";
 import { rowToSignup } from "../rowMappers.js";
 import { requireAuth, canManageClub } from "../middleware/auth.js";
 import { createApiRouter } from "../middleware/apiGuards.js";
+import { campusInUserNetwork } from "../campus.js";
+import { crossUniversityEnabled } from "../features.js";
 
 export const signupsRouter = createApiRouter();
 
@@ -50,7 +52,7 @@ signupsRouter.get("/event/:eventId", requireAuth, async (req, res) => {
   const event = eventRows[0];
   if (!event) return res.status(404).json({ error: "Event not found." });
   if (!canManageClub(req.user, event.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const [rows] = await pool.query("SELECT * FROM event_signups WHERE event_id = :eventId", {
@@ -70,15 +72,23 @@ signupsRouter.post("/", requireAuth, async (req, res) => {
   if (!eventId) return res.status(400).json({ error: "eventId is required." });
 
   const [eventRows] = await pool.query(
-    `SELECT e.event_id, c.campus_id
+    `SELECT e.event_id, e.audience, c.campus_id, c.family_id
      FROM events e
      JOIN clubs c ON c.club_id = e.club_id
      WHERE e.event_id = :eventId`,
     { eventId }
   );
-  if (!eventRows[0]) return res.status(404).json({ error: "Event not found." });
-  if (req.user.role !== "tier1" && eventRows[0].campus_id !== req.user.campusId) {
-    return res.status(403).json({ error: "That event belongs to another campus." });
+  const event = eventRows[0];
+  if (!event) return res.status(404).json({ error: "Event not found." });
+  if (req.user.role !== "tier1" && event.campus_id !== req.user.campusId) {
+    const networkAllowed =
+      event.audience === "network" &&
+      event.family_id &&
+      crossUniversityEnabled() &&
+      (await campusInUserNetwork(req.user.id, req.user.campusId, event.campus_id));
+    if (!networkAllowed) {
+      return res.status(403).json({ error: "That event belongs to another campus." });
+    }
   }
 
   const [existing] = await pool.query(

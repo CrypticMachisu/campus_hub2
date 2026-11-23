@@ -14,6 +14,7 @@ import {
 import { formatEventDate, getEventTimestamp } from "../utils/dateTime";
 import { SkeletonGroup, CardStackSkeleton } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./MyEvents.module.css";
 
 /** Big calendar-page look: day number over a short month. */
@@ -32,6 +33,11 @@ function dateParts(isoDate) {
  * visibly stamped so nobody turns up expecting a seat.
  */
 export default function MyEvents() {
+  usePageMetadata({
+    title: "My commitments",
+    description: "Events you've RSVP'd to and activities you've joined, in one list.",
+  });
+
   const { user } = useAuth();
   const { clubs } = useClubs();
 
@@ -174,7 +180,7 @@ export default function MyEvents() {
             Your commitments are tied to your Kesho account, so they follow you between devices.
           </p>
           <Link to="/login" className={styles.emptyLink}>
-            Go to login
+            Log in
           </Link>
         </div>
       </div>
@@ -199,14 +205,14 @@ export default function MyEvents() {
             <div>
               <p className={styles.eyebrow}>Changes</p>
               <h2 id="notices-heading" className={styles.noticesTitle}>
-                Notices
+                Notifications
               </h2>
             </div>
             {unreadCount > 0 && (
               <div className={styles.noticesTools}>
                 <span className={styles.unreadCount}>{unreadCount} unread</span>
                 <button type="button" className={styles.readAllButton} onClick={handleReadAll}>
-                  Mark all read
+                  Mark all as read
                 </button>
               </div>
             )}
@@ -285,8 +291,8 @@ export default function MyEvents() {
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>Nothing committed yet</p>
           <p className={styles.emptyBody}>
-            Join a commitment or RSVP to something in this week&apos;s edition and it will appear
-            here.
+            Commit to an activity or RSVP to something in this week&apos;s edition and it will
+            appear here.
           </p>
           <Link to="/discover" className={styles.emptyLink}>
             Browse this week
@@ -367,7 +373,7 @@ export default function MyEvents() {
                     disabled={isCancelling}
                   >
                     {isCancelling
-                      ? "Saving…"
+                      ? "Cancelling…"
                       : waitlisted
                         ? "Leave waitlist"
                         : item.type === "commitment"

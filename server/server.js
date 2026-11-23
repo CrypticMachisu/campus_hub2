@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { app } from "./app.js";
 import { isV1Retired } from "./v1.js";
-import { assertDbConnection } from "./db.js";
+import { assertDbConnection, pool } from "./db.js";
 import { validApiKeyCount } from "./middleware/apiKey.js";
 import { mediaStorage } from "./storage.js";
 import { startReminderScheduler } from "./reminders.js";
@@ -14,7 +14,7 @@ import { startMediaCleanupScheduler } from "./mediaCleanup.js";
 const PORT = process.env.PORT || 5000;
 assertDbConnection()
   .then(() => {
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       const publicUrl = process.env.PUBLIC_URL;
       console.log(`CampusHub API listening on port ${PORT}`);
       // Log the COUNT of loaded keys at startup — never the keys themselves.
@@ -43,6 +43,29 @@ assertDbConnection()
           : "API versions: /api/v2 (current) and /api/v1 = /api (deprecated, sunsets 2026-11-30)"
       );
     });
+
+    // Containers send SIGTERM on deploy/restart. Stop accepting new requests,
+    // let in-flight ones finish, then close the pool so MySQL is not left with
+    // half-dead connections. The force timer prevents a stuck request from
+    // blocking a deploy forever.
+    let shuttingDown = false;
+    async function shutdown(signal) {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      console.log(`${signal} received; shutting down`);
+      const force = setTimeout(() => process.exit(1), 10_000);
+      force.unref();
+      server.close(async (error) => {
+        try {
+          await pool.end();
+        } finally {
+          clearTimeout(force);
+          process.exit(error ? 1 : 0);
+        }
+      });
+    }
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
   })
   .catch((err) => {
     console.error("\nCouldn't connect to MySQL. Is XAMPP's MySQL running,");

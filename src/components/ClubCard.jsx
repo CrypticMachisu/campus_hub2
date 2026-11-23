@@ -16,7 +16,7 @@ import styles from "./ClubCard.module.css";
  */
 export default function ClubCard({ club }) {
   return (
-    <Link to={`/clubs/${club.id}`} className={styles.card}>
+    <Link to={`/clubs/${club.id}`} className={styles.card} data-flip-card>
       <span className={styles.pin} aria-hidden="true" />
       <img className={styles.logo} src={club.logoUrl} alt="" />
       <div className={styles.body}>

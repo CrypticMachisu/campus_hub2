@@ -24,6 +24,7 @@ import { commitmentsRouter } from "./routes/commitments.js";
 import { notificationsRouter } from "./routes/notifications.js";
 import { postsRouter } from "./routes/posts.js";
 import { reportsRouter } from "./routes/reports.js";
+import { workspacePinsRouter } from "./routes/workspacePins.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { limiter } from "./middleware/apiGuards.js";
 import { crossUniversityEnabled } from "./features.js";
@@ -54,4 +55,7 @@ v2Router.use("/commitments", commitmentsRouter);
 v2Router.use("/notifications", notificationsRouter);
 v2Router.use("/posts", postsRouter);
 v2Router.use("/reports", reportsRouter);
+// New resource, so v2 only. Pins are club-wide editorial choices over the
+// merged workspace feed (announcements + top-level discussions).
+v2Router.use("/workspace-pins", workspacePinsRouter);
 v2Router.use("/admin", createAdminRouter(limiter));

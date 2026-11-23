@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Study 02 — Network at night</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./mockups.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/DrawSVGPlugin.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MotionPathPlugin.min.js"></script>
+    <style>
+      .study-02 {
+        background: var(--paper);
+      }
+      .study-02 .study-bar {
+        background: color-mix(in srgb, var(--paper) 82%, transparent);
+      }
+      .hero-02 {
+        position: relative;
+        min-height: 100svh;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding-block: 8.5rem 3rem;
+        overflow: hidden;
+        border-bottom: 1px solid var(--rule);
+      }
+      .hero-02::before {
+        content: "";
+        position: absolute;
+        inset: 12% -15% auto auto;
+        width: min(62vw, 760px);
+        aspect-ratio: 1;
+        border: 1px solid var(--rule);
+        border-radius: 50%;
+        opacity: 0.55;
+      }
+      .hero-02::after {
+        content: "";
+        position: absolute;
+        inset: 20% -5% auto auto;
+        width: min(42vw, 500px);
+        aspect-ratio: 1;
+        border: 1px dashed var(--rule);
+        border-radius: 50%;
+        opacity: 0.7;
+      }
+      .hero-02 .display {
+        position: relative;
+        z-index: 1;
+        max-width: 11ch;
+        font-size: clamp(4rem, 13vw, 11.5rem);
+      }
+      .hero-02 .display em {
+        color: var(--signal);
+        font-style: normal;
+      }
+      .hero-02 .lede {
+        position: relative;
+        z-index: 1;
+        max-width: 44ch;
+        margin-top: 1.6rem;
+      }
+      .hero-bottom {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 2rem;
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--rule);
+      }
+      .hero-bottom .mono {
+        color: var(--muted);
+        font-size: 0.64rem;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      .hero-mini-map {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+      }
+      .hero-mini-map i {
+        display: block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--signal);
+      }
+      .hero-mini-map span {
+        width: 42px;
+        height: 1px;
+        background: var(--rule);
+      }
+
+      .network-stage {
+        position: relative;
+        background: var(--paper-2);
+        border-bottom: 1px solid var(--ink);
+      }
+      .stage-pin {
+        min-height: 100svh;
+        display: grid;
+        grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: center;
+        padding-block: 6rem 2rem;
+        overflow: hidden;
+      }
+      .stage-copy {
+        position: relative;
+        min-height: 370px;
+      }
+      .stage-copy-block {
+        position: absolute;
+        inset: 0 auto auto 0;
+        max-width: 38ch;
+      }
+      .stage-copy-block:nth-child(2) {
+        opacity: 0;
+      }
+      .stage-copy-block h2 {
+        margin: 0.8rem 0 1rem;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(2.5rem, 5vw, 4.8rem);
+        line-height: 0.88;
+        text-transform: uppercase;
+      }
+      .stage-copy-block p {
+        color: var(--ink-2);
+      }
+      .stage-copy-block .index {
+        font-family: var(--mono);
+        font-size: 0.63rem;
+        letter-spacing: 0.12em;
+        color: var(--signal);
+      }
+      .stage-rule {
+        margin-top: 1.5rem;
+        border-top: 1px solid var(--rule);
+        padding-top: 0.8rem;
+        font-family: var(--mono);
+        font-size: 0.61rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .map-wrap {
+        position: relative;
+        width: 100%;
+        max-width: 760px;
+        justify-self: end;
+        will-change: transform;
+      }
+      .map-svg {
+        width: 100%;
+        height: auto;
+        overflow: visible;
+      }
+      .map-svg .ring {
+        fill: none;
+        stroke: var(--rule);
+        stroke-width: 0.7;
+      }
+      .map-svg .ring.signal {
+        stroke: var(--signal);
+        stroke-dasharray: 2 5;
+        opacity: 0.65;
+      }
+      .map-svg .route {
+        fill: none;
+        stroke: var(--rule);
+        stroke-width: 0.8;
+      }
+      .map-svg .route.signal {
+        stroke: var(--signal);
+        stroke-width: 1.2;
+      }
+      .map-svg .node {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 1.2;
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+      .map-svg .node.core {
+        fill: var(--signal);
+        stroke: var(--signal);
+      }
+      .map-svg .node-label {
+        fill: var(--ink);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .map-svg .node-sub {
+        fill: var(--muted);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.06em;
+      }
+      .map-svg .notice-dot circle {
+        fill: var(--signal);
+      }
+      .map-svg .notice-dot text {
+        fill: var(--paper);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .map-caption {
+        position: absolute;
+        right: 1rem;
+        bottom: 0;
+        max-width: 230px;
+        border-top: 1px solid var(--rule);
+        padding-top: 0.6rem;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 0.58rem;
+        letter-spacing: 0.06em;
+        line-height: 1.6;
+        text-transform: uppercase;
+      }
+
+      .network-stats {
+        padding-block: clamp(3rem, 7vw, 6rem);
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-top: 1px solid var(--ink);
+        border-bottom: 1px solid var(--ink);
+      }
+      .stat {
+        padding: 1.2rem 1rem 1.3rem 0;
+        border-right: 1px solid var(--rule);
+      }
+      .stat:last-child {
+        border-right: 0;
+        padding-left: 1rem;
+      }
+      .stat b {
+        display: block;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(2.8rem, 6vw, 5.2rem);
+        line-height: 0.9;
+      }
+      .stat span {
+        display: block;
+        margin-top: 0.35rem;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .stat:nth-child(2) b {
+        color: var(--signal);
+      }
+
+      .chapter-cards {
+        padding-block: clamp(3rem, 7vw, 6rem) clamp(5rem, 10vw, 9rem);
+      }
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        background: var(--rule);
+        border: 1px solid var(--rule);
+      }
+      .network-card {
+        min-height: 340px;
+        display: flex;
+        flex-direction: column;
+        padding: 1.3rem;
+        background: var(--card);
+        transition:
+          background 220ms var(--ease),
+          color 220ms var(--ease);
+      }
+      .network-card:hover {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .network-card:hover .card-meta,
+      .network-card:hover p {
+        color: color-mix(in srgb, var(--paper) 62%, transparent);
+      }
+      .network-card .card-index {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 0.61rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--signal);
+      }
+      .network-card h3 {
+        margin: auto 0 0.7rem;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(2rem, 3.2vw, 3.2rem);
+        line-height: 0.86;
+        text-transform: uppercase;
+      }
+      .network-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      .network-card .card-meta {
+        margin-top: 1rem;
+        padding-top: 0.7rem;
+        border-top: 1px solid currentColor;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 0.59rem;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+
+      .close-02 {
+        padding-block: clamp(4rem, 9vw, 8rem);
+        background: var(--signal);
+        color: #fff;
+      }
+      .close-02 .display {
+        max-width: 18ch;
+        font-size: clamp(3rem, 8vw, 7rem);
+      }
+      .close-02 .close-row {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 2rem;
+      }
+      .close-02 p {
+        max-width: 40ch;
+        color: color-mix(in srgb, #fff 80%, transparent);
+      }
+      .close-02 .button {
+        background: #fff;
+        border-color: #fff;
+        color: var(--ink);
+      }
+      .close-02 .button:hover {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
+      }
+
+      @media (max-width: 900px) {
+        .stage-pin {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+          padding-block: 5rem 3rem;
+        }
+        .stage-copy {
+          min-height: 0;
+        }
+        .stage-copy-block {
+          position: relative;
+        }
+        .stage-copy-block:nth-child(2) {
+          display: none;
+        }
+        .map-wrap {
+          justify-self: center;
+        }
+        .card-grid {
+          grid-template-columns: 1fr;
+        }
+        .network-card {
+          min-height: 240px;
+        }
+        .stat-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .stat:nth-child(2) {
+          border-right: 0;
+        }
+        .stat:nth-child(3),
+        .stat:nth-child(4) {
+          border-top: 1px solid var(--rule);
+        }
+        .stat:nth-child(4) {
+          padding-left: 1rem;
+        }
+        .close-02 .close-row {
+          align-items: start;
+          flex-direction: column;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .stage-copy-block:first-child {
+          position: relative;
+        }
+        .stage-copy-block:nth-child(2) {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="study study-02 dark">
+    <a class="skip-link" href="#main">Skip to the network</a>
+    <div class="scroll-progress" aria-hidden="true"></div>
+    <header class="study-bar">
+      <a class="study-brand" href="./index.html">kesho<span>.</span></a>
+      <span class="study-tag">Study 02 / Network at night</span>
+      <div class="study-actions">
+        <button class="chip-button" type="button" data-reduce-toggle aria-pressed="false">
+          Reduced motion
+        </button>
+        <a class="chip-button" href="./index.html">All studies</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero-02 container">
+        <p class="eyebrow">My network · Three campuses</p>
+        <h1 class="display">The network<br />is a <em>night sky.</em></h1>
+        <p class="lede">
+          A family is not a logo swap. It is a set of chapters that can see what each other
+          publishes — and still keeps its own floor, its own roster, its own room.
+        </p>
+        <div class="hero-bottom">
+          <span class="mono">Scroll to draw the constellation ↓</span>
+          <div class="hero-mini-map" aria-hidden="true">
+            <i></i><span></span><i></i><span></span><i></i>
+          </div>
+        </div>
+      </section>
+
+      <section class="network-stage" aria-labelledby="stage-title">
+        <div class="container stage-pin">
+          <div class="stage-copy">
+            <div class="stage-copy-block">
+              <span class="index">01 / THE MAP</span>
+              <h2 id="stage-title">Every chapter is a point of light.</h2>
+              <p>
+                Lines are shared identity, not shared control. Nairobi can publish to the network;
+                Kisumu still decides who attends on its own campus.
+              </p>
+              <div class="stage-rule">DrawSVG / scrubbed by scroll</div>
+            </div>
+            <div class="stage-copy-block" aria-hidden="true">
+              <span class="index">02 / THE NOTICE</span>
+              <h2>One notice travels. The roster stays home.</h2>
+              <p>
+                A network event can be seen everywhere. Attendance is intent; the host campus keeps
+                the door list and the discussion.
+              </p>
+              <div class="stage-rule">MotionPath / one continuous route</div>
+            </div>
+          </div>
+
+          <div class="map-wrap">
+            <svg
+              class="map-svg"
+              viewBox="0 0 1000 650"
+              role="img"
+              aria-label="Three campus nodes connected through a family network"
+            >
+              <circle class="ring" cx="500" cy="300" r="245"></circle>
+              <circle class="ring signal" cx="500" cy="300" r="175"></circle>
+              <circle class="ring" cx="500" cy="300" r="105"></circle>
+              <path class="route" d="M250 190 L500 300 L790 405"></path>
+              <path class="route" d="M250 190 L360 500 L500 300"></path>
+              <path class="route" d="M790 405 L665 150 L500 300"></path>
+              <path class="route" d="M500 300 L540 555"></path>
+              <path
+                class="route signal"
+                id="notice-route"
+                d="M250 190 Q370 250 500 300 T790 405"
+              ></path>
+
+              <g class="node-group">
+                <circle class="node core" cx="500" cy="300" r="17"></circle>
+                <circle class="node" cx="250" cy="190" r="11"></circle>
+                <circle class="node" cx="790" cy="405" r="11"></circle>
+                <circle class="node" cx="360" cy="500" r="8"></circle>
+                <circle class="node" cx="665" cy="150" r="8"></circle>
+                <circle class="node" cx="540" cy="555" r="6"></circle>
+              </g>
+
+              <g class="map-labels">
+                <text class="node-label" x="520" y="282">Nairobi</text>
+                <text class="node-sub" x="520" y="297">HOST / 12 GOING</text>
+                <text class="node-label" x="250" y="160" text-anchor="middle">Kisumu</text>
+                <text class="node-sub" x="250" y="174" text-anchor="middle">CHAPTER</text>
+                <text class="node-label" x="790" y="435" text-anchor="middle">Mombasa</text>
+                <text class="node-sub" x="790" y="449" text-anchor="middle">CHAPTER</text>
+                <text class="node-label" x="360" y="528" text-anchor="middle">Eldoret</text>
+                <text class="node-label" x="665" y="130" text-anchor="middle">Nakuru</text>
+                <text class="node-sub" x="540" y="580" text-anchor="middle">NETWORK</text>
+              </g>
+
+              <g class="notice-dot" aria-hidden="true">
+                <circle r="13"></circle>
+                <text x="0" y="2.5" text-anchor="middle">N</text>
+              </g>
+            </svg>
+            <p class="map-caption">
+              Fig. 02 — a family constellation. The signal route is an event published to the
+              network, not a claim on another campus's roster.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="network-stats container" aria-label="Network at a glance">
+        <div class="stat-grid">
+          <div class="stat"><b data-stat="3">3</b><span>Campuses</span></div>
+          <div class="stat"><b data-stat="5">5</b><span>Families</span></div>
+          <div class="stat"><b data-stat="18">18</b><span>Network notices</span></div>
+          <div class="stat"><b data-stat="1">1</b><span>Host roster per event</span></div>
+        </div>
+      </section>
+
+      <section class="chapter-cards container" aria-labelledby="chapters-02">
+        <div class="section-head">
+          <h2 id="chapters-02">Chapters on the map</h2>
+          <span>Three of five</span>
+        </div>
+        <div class="card-grid">
+          <a class="network-card" href="#stage-title">
+            <div class="card-index"><span>01 / Nairobi</span><span>Host</span></div>
+            <h3>Design<br />Society</h3>
+            <p>Open studio on Thursday. The shared mark gets a second draft.</p>
+            <div class="card-meta">18:30 · 12 going · Campus roster</div>
+          </a>
+          <a class="network-card" href="#stage-title">
+            <div class="card-index"><span>02 / Kisumu</span><span>Chapter</span></div>
+            <h3>Debate<br />Union</h3>
+            <p>Cross-campus motion, local floor. The argument travels; the room does not.</p>
+            <div class="card-meta">Saturday · 28 going · Campus roster</div>
+          </a>
+          <a class="network-card" href="#stage-title">
+            <div class="card-index"><span>03 / Mombasa</span><span>Chapter</span></div>
+            <h3>Film<br />Circle</h3>
+            <p>One programme, three screenings. Six seats left on the host campus.</p>
+            <div class="card-meta">20:15 · 6 seats · Campus roster</div>
+          </a>
+        </div>
+      </section>
+
+      <section class="close-02">
+        <div class="container close-row">
+          <div>
+            <p class="eyebrow" style="color: #fff">The boundary</p>
+            <h2 class="display">See the network. Keep the room.</h2>
+          </div>
+          <div>
+            <p>
+              Motion can make a boundary legible: this is shared, this is hosted, this is where you
+              actually show up.
+            </p>
+            <a class="button" href="./03-day-sheet.html">Next study: the day sheet →</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="container footer">
+      <span>Kesho / study 02</span>
+      <a href="./index.html">All studies</a>
+    </footer>
+
+    <script>
+      const reduceQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      let reduceMotion = reduceQuery.matches;
+      let ctx = null;
+      const toggle = document.querySelector("[data-reduce-toggle]");
+
+      function build() {
+        if (!window.gsap) return;
+        if (ctx) ctx.revert();
+        ctx = null;
+        gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin, MotionPathPlugin);
+
+        ctx = gsap.context(() => {
+          if (reduceMotion) {
+            gsap.set(".map-svg .route, .map-svg .ring", { clearProps: "all" });
+            gsap.set(".stage-copy-block:nth-child(2)", { opacity: 0 });
+            gsap.set(".notice-dot", { opacity: 1, x: 500, y: 300 });
+            return;
+          }
+
+          gsap
+            .timeline({ defaults: { ease: "power3.out" } })
+            .from(".hero-02 .eyebrow", { opacity: 0, y: 12, duration: 0.5 })
+            .from(
+              ".hero-02 .display",
+              { opacity: 0, y: 55, duration: 1, ease: "power4.out" },
+              "-=0.15"
+            )
+            .from(".hero-02 .lede", { opacity: 0, y: 24, duration: 0.7 }, "-=0.55")
+            .from(".hero-02 .hero-bottom", { opacity: 0, y: 18, duration: 0.6 }, "-=0.35");
+
+          gsap.from(".map-svg .ring", {
+            opacity: 0,
+            scale: 0.85,
+            transformOrigin: "500px 300px",
+            duration: 1,
+            stagger: 0.12,
+            ease: "power2.out",
+            scrollTrigger: { trigger: ".network-stage", start: "top 75%" },
+          });
+
+          gsap.set(".map-svg .route", { drawSVG: "0%" });
+          gsap.set(".node-group .node", { scale: 0, transformOrigin: "center" });
+          gsap.set(".map-labels", { opacity: 0 });
+          gsap.set(".notice-dot", { opacity: 0 });
+
+          const stage = gsap.timeline({
+            defaults: { ease: "none" },
+            scrollTrigger: {
+              trigger: ".network-stage",
+              start: "top top",
+              end: "+=180%",
+              pin: window.matchMedia("(min-width: 901px)").matches ? ".stage-pin" : false,
+              scrub: 1,
+              anticipatePin: 1,
+            },
+          });
+
+          stage
+            .to(".map-svg .route:not(.signal)", { drawSVG: "100%", stagger: 0.08, duration: 0.8 })
+            .to(
+              ".node-group .node",
+              {
+                scale: 1,
+                stagger: 0.1,
+                duration: 0.5,
+                ease: "back.out(1.8)",
+              },
+              "-=0.55"
+            )
+            .to(".map-labels", { opacity: 1, duration: 0.4 }, "-=0.4")
+            .to(".map-svg .route.signal", { drawSVG: "100%", duration: 0.9 }, "-=0.1")
+            .to(".notice-dot", { opacity: 1, duration: 0.2 }, "-=0.2")
+            .to(
+              ".notice-dot",
+              {
+                motionPath: {
+                  path: "#notice-route",
+                  align: "#notice-route",
+                  alignOrigin: [0.5, 0.5],
+                },
+                duration: 1.2,
+                ease: "power1.inOut",
+              },
+              "-=0.1"
+            )
+            .to(".stage-copy-block:first-child", { opacity: 0, y: -24, duration: 0.35 }, "-=1.2")
+            .fromTo(
+              ".stage-copy-block:nth-child(2)",
+              { opacity: 0, y: 24 },
+              { opacity: 1, y: 0, duration: 0.5 },
+              "-=0.55"
+            );
+
+          gsap.utils.toArray(".network-card").forEach((card) => {
+            gsap.from(card, {
+              opacity: 0,
+              y: 40,
+              duration: 0.7,
+              ease: "power2.out",
+              scrollTrigger: { trigger: card, start: "top 88%" },
+            });
+          });
+
+          gsap.from(".stat", {
+            opacity: 0,
+            y: 24,
+            duration: 0.6,
+            stagger: 0.08,
+            ease: "power2.out",
+            scrollTrigger: { trigger: ".stat-grid", start: "top 85%" },
+          });
+
+          gsap.from(".close-02 .display", {
+            opacity: 0,
+            y: 40,
+            duration: 0.9,
+            ease: "power3.out",
+            scrollTrigger: { trigger: ".close-02", start: "top 70%" },
+          });
+
+          const map = document.querySelector(".map-wrap");
+          const moveX = gsap.quickTo(map, "x", { duration: 0.6, ease: "power3" });
+          const moveY = gsap.quickTo(map, "y", { duration: 0.6, ease: "power3" });
+          const stageEl = document.querySelector(".network-stage");
+          stageEl.addEventListener("mousemove", (event) => {
+            const rect = stageEl.getBoundingClientRect();
+            moveX(((event.clientX - rect.left) / rect.width - 0.5) * 16);
+            moveY(((event.clientY - rect.top) / rect.height - 0.5) * 12);
+          });
+          stageEl.addEventListener("mouseleave", () => {
+            moveX(0);
+            moveY(0);
+          });
+
+          gsap.to(".scroll-progress", {
+            scaleX: 1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: document.body,
+              start: "top top",
+              end: "bottom bottom",
+              scrub: true,
+            },
+          });
+        });
+
+        if (window.ScrollTrigger) ScrollTrigger.refresh();
+        toggle.setAttribute("aria-pressed", String(reduceMotion));
+        toggle.textContent = reduceMotion ? "Motion on" : "Reduced motion";
+      }
+
+      toggle.addEventListener("click", () => {
+        reduceMotion = !reduceMotion;
+        if (ctx) ctx.revert();
+        ctx = null;
+        build();
+      });
+
+      reduceQuery.addEventListener("change", () => {
+        reduceMotion = reduceQuery.matches;
+        build();
+      });
+
+      build();
+      window.addEventListener("load", () => {
+        if (window.ScrollTrigger) ScrollTrigger.refresh();
+      });
+    </script>
+  </body>
+</html>

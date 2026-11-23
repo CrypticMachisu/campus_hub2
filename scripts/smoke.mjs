@@ -25,9 +25,11 @@
  *   SMOKE_API_HEALTH_URL API health URL    (default http://localhost:5000/api/health)
  *   SMOKE_EMAIL          test account      (default amara.okafor@campus.edu)
  *   SMOKE_PASSWORD       test password     (default campushub123)
- *   SMOKE_RSVP_EVENT_ID  event with seats  (default event-13)
+ *   SMOKE_RSVP_EVENT_ID  event with seats  (default event-05)
  *   SMOKE_FULL_EVENT_ID  event at capacity (default event-01)
  *   CHROME_PATH          Chrome binary, if it is not in a standard location
+ *
+ * A test stack can make event-01 full with scripts/smoke-fixture.sql.
  */
 
 import { spawn } from "node:child_process";
@@ -40,7 +42,7 @@ const CONFIG = {
   apiHealthUrl: process.env.SMOKE_API_HEALTH_URL || "http://localhost:5000/api/health",
   email: process.env.SMOKE_EMAIL || "amara.okafor@campus.edu",
   password: process.env.SMOKE_PASSWORD || "campushub123",
-  rsvpEventId: process.env.SMOKE_RSVP_EVENT_ID || "event-13",
+  rsvpEventId: process.env.SMOKE_RSVP_EVENT_ID || "event-05",
   fullEventId: process.env.SMOKE_FULL_EVENT_ID || "event-01",
 };
 
@@ -100,7 +102,7 @@ async function reachable(url) {
   }
 }
 
-const PRIMARY_LABELS = ["I'm going", "Cancel my RSVP", "Join the waitlist", "Leave waitlist"];
+const PRIMARY_LABELS = ["RSVP", "Cancel RSVP", "Join waitlist", "Leave waitlist"];
 
 function buttonExistsExpression(label) {
   return `Array.from(document.querySelectorAll("button")).some((node) => node.textContent.trim() === ${JSON.stringify(label)})`;
@@ -257,11 +259,11 @@ async function main() {
         const label = await evaluate(primaryLabelExpression());
         if (label === "Leave waitlist") {
           await clickButton("Leave waitlist");
-          await waitForButton("Join the waitlist", 10000);
+          await waitForButton("Join waitlist", 10000);
           console.log(`  cleanup: left the ${eventId} waitlist`);
-        } else if (label === "Cancel my RSVP") {
-          await clickButton("Cancel my RSVP");
-          await waitForButton("I'm going", 10000);
+        } else if (label === "Cancel RSVP") {
+          await clickButton("Cancel RSVP");
+          await waitForButton("RSVP", 10000);
           console.log(`  cleanup: cancelled the ${eventId} RSVP`);
         }
       } catch (error) {
@@ -356,9 +358,12 @@ async function main() {
     });
 
     await step("Confirm the test account starts with no RSVPs", async () => {
-      await goto(`${CONFIG.baseUrl}/my-events`, 'document.body.innerText.includes("My Events")');
+      await goto(
+        `${CONFIG.baseUrl}/my-events`,
+        'document.body.innerText.toLowerCase().includes("my commitments")'
+      );
       try {
-        await waitForText("No events on your calendar", 10000);
+        await waitForText("Nothing committed yet", 10000);
       } catch {
         throw new Error(
           `The smoke account (${CONFIG.email}) already has RSVPs. Use an account with none, or cancel them first.`
@@ -372,16 +377,16 @@ async function main() {
         `Boolean(${primaryLabelExpression()})`
       );
       const label = await evaluate(primaryLabelExpression());
-      if (label !== "I'm going") {
+      if (label !== "RSVP") {
         throw new Error(
           `Expected "${CONFIG.rsvpEventId}" to have free seats, but its action reads "${label}". Set SMOKE_RSVP_EVENT_ID to an event with capacity available.`
         );
       }
-      await clickButton("I'm going");
-      await waitForButton("Cancel my RSVP");
+      await clickButton("RSVP");
+      await waitForButton("Cancel RSVP");
       await assertText("You're going", "RSVP confirmation");
-      await clickButton("Cancel my RSVP");
-      await waitForButton("I'm going");
+      await clickButton("Cancel RSVP");
+      await waitForButton("RSVP");
     });
 
     await step(`Join and leave the ${CONFIG.fullEventId} waitlist`, async () => {
@@ -390,38 +395,38 @@ async function main() {
         `Boolean(${primaryLabelExpression()})`
       );
       const label = await evaluate(primaryLabelExpression());
-      if (label !== "Join the waitlist") {
+      if (label !== "Join waitlist") {
         throw new Error(
           `Expected "${CONFIG.fullEventId}" to be at capacity, but its action reads "${label}". Set SMOKE_FULL_EVENT_ID to a full event.`
         );
       }
-      await clickButton("Join the waitlist");
+      await clickButton("Join waitlist");
       await waitForButton("Leave waitlist");
       await waitForText("position");
       await clickButton("Leave waitlist");
-      await waitForButton("Join the waitlist");
+      await waitForButton("Join waitlist");
     });
 
     await step("Show and recover My Events when the API fails", async () => {
       await send("Network.setBlockedURLs", {
-        urls: ["*/api/events*", "*/api/signups*"],
+        urls: ["*/api/v2/events*", "*/api/v2/signups*"],
       });
       try {
         await goto(
           `${CONFIG.baseUrl}/my-events`,
           `Boolean(document.querySelector('[role="alert"]'))`
         );
-        await assertText("Your events didn't load", "My Events error");
+        await assertText("Your commitments didn't load", "My commitments error");
         await waitForButton("Try again");
       } finally {
         await send("Network.setBlockedURLs", { urls: [] });
       }
       await clickButton("Try again");
-      await waitForText("No events on your calendar", 20000);
+      await waitForText("Nothing committed yet", 20000);
     });
 
     await step("Show and recover Event Detail when the API fails", async () => {
-      await send("Network.setBlockedURLs", { urls: ["*/api/events*"] });
+      await send("Network.setBlockedURLs", { urls: ["*/api/v2/events*"] });
       try {
         await goto(
           `${CONFIG.baseUrl}/events/${CONFIG.rsvpEventId}`,
@@ -433,12 +438,15 @@ async function main() {
         await send("Network.setBlockedURLs", { urls: [] });
       }
       await clickButton("Try again");
-      await waitForButton("I'm going", 20000);
+      await waitForButton("RSVP", 20000);
     });
 
     await step("Verify the test account is clean again", async () => {
-      await goto(`${CONFIG.baseUrl}/my-events`, 'document.body.innerText.includes("My Events")');
-      await waitForText("No events on your calendar", 15000);
+      await goto(
+        `${CONFIG.baseUrl}/my-events`,
+        'document.body.innerText.toLowerCase().includes("my commitments")'
+      );
+      await waitForText("Nothing committed yet", 15000);
     });
 
     if (pageProblems.length > 0) {

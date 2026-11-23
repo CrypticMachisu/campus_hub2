@@ -40,7 +40,7 @@ usersRouter.get("/", requireAuth, requireCampusAdmin, async (req, res) => {
  */
 usersRouter.post("/:id/promote", requireAuth, requireCampusAdmin, async (req, res) => {
   const { clubId } = req.body;
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
 
   const [clubRows] = await pool.query(
     "SELECT club_id, campus_id FROM clubs WHERE club_id = :clubId",
@@ -60,7 +60,7 @@ usersRouter.post("/:id/promote", requireAuth, requireCampusAdmin, async (req, re
   if (!target) return res.status(404).json({ error: "User not found." });
 
   if (target.role === "tier1") {
-    return res.status(400).json({ error: "That user is already a tier 1 admin." });
+    return res.status(400).json({ error: "That person is already a platform admin." });
   }
   if (target.campus_id !== club.campus_id) {
     return res.status(400).json({ error: "That user belongs to another campus." });
@@ -89,7 +89,7 @@ usersRouter.post("/:id/campus-admin", requireAuth, requireTier1, async (req, res
   const target = userRows[0];
   if (!target) return res.status(404).json({ error: "User not found." });
   if (target.role === "tier1") {
-    return res.status(400).json({ error: "Tier 1 admins already have platform access." });
+    return res.status(400).json({ error: "Platform admins already have access to every campus." });
   }
 
   await pool.query("UPDATE users SET role = 'campus_admin' WHERE user_id = :id", {
@@ -141,7 +141,7 @@ usersRouter.delete("/:id/campus-admin", requireAuth, requireTier1, async (req, r
  */
 usersRouter.post("/:id/demote", requireAuth, requireCampusAdmin, async (req, res) => {
   const { clubId } = req.body;
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
 
   const [clubRows] = await pool.query(
     "SELECT club_id, campus_id FROM clubs WHERE club_id = :clubId",
@@ -157,7 +157,7 @@ usersRouter.post("/:id/demote", requireAuth, requireCampusAdmin, async (req, res
   });
   if (!userRows[0]) return res.status(404).json({ error: "User not found." });
   if (userRows[0].role === "tier1") {
-    return res.status(400).json({ error: "Tier 1 admins can't be demoted here." });
+    return res.status(400).json({ error: "Platform admins can't be demoted here." });
   }
 
   const user = await demoteUserFromClubAdmin(req.params.id, clubId);

@@ -233,5 +233,5 @@ test("GET /admin rejects a non-admin account with 403", async () => {
   const res = await apiGet("/admin", { ...withValidKey, Authorization: `Bearer ${token}` });
   assert.equal(res.status, 403);
   const body = await res.json();
-  assert.match(body.error, /Tier 1/i);
+  assert.match(body.error, /platform admin/i);
 });

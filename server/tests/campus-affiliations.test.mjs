@@ -78,7 +78,9 @@ test(
     t.after(async () => {
       const ids = [requesterId, adminId].filter(Boolean);
       if (affiliationIds.length) {
-        await pool.query("DELETE FROM audit_log WHERE target_id IN (?)", [affiliationIds]);
+        await pool.query("DELETE FROM audit_log WHERE target_id IN (?)", [
+          affiliationIds.map(String),
+        ]);
       }
       if (ids.length) {
         await pool.query("DELETE FROM audit_log WHERE actor_id IN (?)", [ids]);

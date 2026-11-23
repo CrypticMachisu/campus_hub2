@@ -27,6 +27,14 @@ export async function createFamily({ name, slug, homeCampusId, description, logo
   return family;
 }
 
+export async function uploadFamilyMark(familyId, dataUrl) {
+  const { family } = await apiFetch(`/club-families/${encodeURIComponent(familyId)}/mark`, {
+    method: "POST",
+    body: { dataUrl },
+  });
+  return family;
+}
+
 export async function updateFamily(familyId, { name, slug, description, logoUrl }) {
   const { family } = await apiFetch(`/club-families/${encodeURIComponent(familyId)}`, {
     method: "PATCH",

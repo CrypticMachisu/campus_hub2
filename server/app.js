@@ -7,6 +7,8 @@ import express from "express";
 // JSON 500 handler below assumes.
 import "express-async-errors";
 import cors from "cors";
+import helmet from "helmet";
+import { databaseReady } from "./db.js";
 import { isV1Retired, v1Router } from "./v1.js";
 import { v2Router } from "./v2.js";
 import { apiGuards } from "./middleware/apiGuards.js";
@@ -24,6 +26,20 @@ export function createApp({ now = () => new Date() } = {}) {
   // Week 12 (Part B): request logging. Registered FIRST so rejected requests
   // (401, 429) are logged too. One JSON line per request — see monitoring.js.
   app.use(monitor);
+
+  // Standard response hardening: no MIME sniffing, no framework header, a
+  // conservative referrer policy, HSTS when served over HTTPS, and clickjacking
+  // protection. CSP is left to the static frontend, which owns the HTML.
+  app.use(helmet());
+
+  // Behind the bundled nginx (or another reverse proxy) req.ip is the proxy
+  // address unless Express is told how many hops to trust. Opt in explicitly:
+  // trusting a proxy that is not there lets clients spoof their IP.
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy === "true" || trustProxy === "1") app.set("trust proxy", 1);
+  else if (trustProxy && Number.isFinite(Number(trustProxy))) {
+    app.set("trust proxy", Number(trustProxy));
+  }
 
   // Browser origins allowed to call the API. Server-to-server callers (our
   // partner, curl, the test suites) send no Origin header and are unaffected.
@@ -48,13 +64,29 @@ export function createApp({ now = () => new Date() } = {}) {
       },
     })
   );
-  app.use(express.json());
+  app.use(express.json({ limit: "100kb" }));
 
   // Week 9 (Part B) — the only endpoint left without an API key. It
   // reveals no data and exists so external uptime checks (and partners
   // checking we're alive before spending their quota) get a cheap answer.
   // Registered BEFORE the auth middleware, which is what exempts it.
-  app.get("/api/health", (req, res) => res.json({ ok: true }));
+  app.get("/api/health", (req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true });
+  });
+
+  // Readiness is separate from liveness: health says the process is up, ready
+  // says it can actually serve authenticated data. The database probe is
+  // bounded and deliberately returns no driver details.
+  app.get("/api/ready", async (req, res) => {
+    const db = await databaseReady();
+    res.set("Cache-Control", "no-store");
+    res.status(db ? 200 : 503).json({
+      ok: db,
+      db: db ? "up" : "down",
+      uptimeSeconds: Math.round(process.uptime()),
+    });
+  });
 
   // Week 12 (Part C): the /stats endpoint. After the key check on purpose —
   // it needs a key like every other endpoint. Unversioned: it reports on the

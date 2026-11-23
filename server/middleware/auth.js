@@ -62,7 +62,7 @@ export function requireCampusAdmin(req, res, next) {
 /** Rejects with 403 unless the caller is a tier1 (platform) admin. */
 export function requireTier1(req, res, next) {
   if (req.user?.role !== "tier1") {
-    return res.status(403).json({ error: "Tier 1 admin access required." });
+    return res.status(403).json({ error: "Platform admin access required." });
   }
   next();
 }

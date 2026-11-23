@@ -13,7 +13,10 @@
     "migrate:status": "node migrate.js --status",
     "migrate:baseline": "node migrate.js --baseline",
     "set-passwords": "node set-passwords.js",
+    "bootstrap:admin": "node scripts/bootstrap-admin.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
+    "seed:preview": "node scripts/seed-network-preview.mjs",
+    "cleanup:preview": "node scripts/cleanup-network-preview.mjs",
     "refresh:agro": "node scripts/refresh-agro-dates.mjs",
     "test": "node --test \"tests/**/*.test.mjs\""
   },
@@ -25,6 +28,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-async-errors": "^3.1.1",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.11.0",
     "sharp": "^0.35.5"

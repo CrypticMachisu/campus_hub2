@@ -69,9 +69,12 @@ const get = (path, headers = KEY) => request(app).get(`/api${path}`).set(headers
 const V1_KEYS = [
   "id",
   "clubId",
+  "clubName",
+  "campusName",
   "title",
   "description",
   "category",
+  "audience",
   "date",
   "time",
   "location",

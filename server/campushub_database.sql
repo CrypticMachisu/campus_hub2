@@ -365,6 +365,26 @@ CREATE TABLE announcements (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
+-- workspace_pins
+-- Club-wide pins over the merged member workspace feed. The feed combines
+-- announcements and top-level club comments, so the source is stored here
+-- instead of adding a pinned flag to both tables.
+-- ----------------------------------------------------------------------------
+CREATE TABLE workspace_pins (
+    pin_id      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    club_id     VARCHAR(30) NOT NULL,
+    item_type   ENUM('announcement', 'comment') NOT NULL,
+    item_id     VARCHAR(64) NOT NULL,
+    pinned_by   VARCHAR(30) NULL,
+    pinned_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_workspace_pin (club_id, item_type, item_id),
+    INDEX idx_workspace_pins_club (club_id, pinned_at),
+    CONSTRAINT fk_workspace_pins_club
+        FOREIGN KEY (club_id) REFERENCES clubs(club_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
 -- notifications
 -- Targeted in-app notices (commitment moved or cancelled). Read state is
 -- per user; the client only ever sees its own rows.
@@ -702,9 +722,9 @@ INSERT INTO events (event_id, club_id, title, description, category_id, event_da
 INSERT IGNORE INTO categories (name) VALUES ('Agriculture');
 
 INSERT IGNORE INTO clubs
-    (club_id, name, category_id, description, logo_url, meeting_time, meeting_location)
+    (club_id, campus_id, name, category_id, description, logo_url, meeting_time, meeting_location)
 VALUES
-    ('club-07', 'Agri-Business & Farming Club',
+    ('club-07', 'campus-01', 'Agri-Business & Farming Club',
         (SELECT category_id FROM categories WHERE name = 'Agriculture'),
         'For students curious about farming, food systems and agri-business. We connect campus to real growers through AgroConnect, a marketplace where Kenyan farmers list produce and buyers discover them.',
         '/images/agri-club.svg',

@@ -39,12 +39,12 @@
   padding: 0 1rem;
   background: var(--signal);
   border: 1px solid var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   font-size: 0.84rem;
   font-weight: 600;
 }
 
 .link:hover {
-  background: var(--signal-deep);
+  background: var(--signal-hover);
   border-color: var(--signal-deep);
 }

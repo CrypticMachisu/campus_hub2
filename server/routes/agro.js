@@ -94,13 +94,13 @@ agroRouter.get("/opportunities", requireAuth, async (req, res) => {
  */
 agroRouter.post("/opportunities", requireAuth, async (req, res) => {
   if (!canManageClub(req.user, AGRI_CLUB_ID)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const body = req.body || {};
   const kind = typeof body.kind === "string" ? body.kind.trim() : "";
   if (!OPPORTUNITY_KINDS.includes(kind)) {
-    return res.status(400).json({ error: `kind must be one of: ${OPPORTUNITY_KINDS.join(", ")}.` });
+    return res.status(400).json({ error: "Choose a valid opportunity type." });
   }
 
   const title = typeof body.title === "string" ? body.title.trim() : "";
@@ -116,7 +116,7 @@ agroRouter.post("/opportunities", requireAuth, async (req, res) => {
     date: body.date,
     time: body.time,
   });
-  if (!start) return res.status(400).json({ error: "Invalid startsAt." });
+  if (!start) return res.status(400).json({ error: "Choose a valid date and time." });
 
   let capacity = null;
   if (body.capacity !== undefined && body.capacity !== null && body.capacity !== "") {
@@ -124,7 +124,7 @@ agroRouter.post("/opportunities", requireAuth, async (req, res) => {
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) {
       return res
         .status(400)
-        .json({ error: "capacity must be a whole number between 1 and 10000." });
+        .json({ error: "Capacity must be a whole number between 1 and 10,000." });
     }
     capacity = parsed;
   }
@@ -163,7 +163,7 @@ agroRouter.post("/opportunities", requireAuth, async (req, res) => {
 /** DELETE /api/v2/agro/opportunities/:id — admins only; interests cascade. */
 agroRouter.delete("/opportunities/:id", requireAuth, async (req, res) => {
   if (!canManageClub(req.user, AGRI_CLUB_ID)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
   const [rows] = await pool.query(
     "SELECT opportunity_id, title FROM agro_opportunities WHERE opportunity_id = :id",
@@ -191,7 +191,7 @@ agroRouter.delete("/opportunities/:id", requireAuth, async (req, res) => {
  */
 agroRouter.get("/opportunities/:id/interested", requireAuth, async (req, res) => {
   if (!canManageClub(req.user, AGRI_CLUB_ID)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const [opportunities] = await pool.query(

@@ -51,96 +51,11 @@
   margin: 0 0 1.1rem;
 }
 
-/* Role path */
-.rolePath {
-  border: 1px solid var(--rule);
-  padding: 0.8rem;
-  margin-bottom: 0.9rem;
-}
-
-.demoLabel {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 0.55rem;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 0.4rem;
-}
-
-.rolePathButtons,
-.demoButtons {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.rolePathButton,
-.rolePathButtonActive {
-  min-height: 36px;
-  padding: 0 0.75rem;
-  border: 1px solid var(--rule);
-  background: transparent;
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-
-.rolePathButton:hover {
-  border-color: var(--ink);
-  color: var(--ink);
-}
-
-.rolePathButtonActive {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
-}
-
 .rolePathHint {
   font-size: 0.76rem;
   color: var(--muted);
   margin: 0.5rem 0 0;
   max-width: 62ch;
-}
-
-/* Demo accounts */
-.demoPicker {
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-  padding: 0.8rem 0;
-  margin-bottom: 1.2rem;
-}
-
-.demoButton {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  text-align: left;
-  border: 1px solid var(--rule);
-  background: var(--card);
-  padding: 0.5rem 0.7rem;
-  flex: 1 1 220px;
-}
-
-.demoButton:hover {
-  border-color: var(--ink);
-  background: var(--paper-2);
-}
-
-.demoRole {
-  font-family: var(--font-mono);
-  font-size: 0.52rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--signal-deep);
-}
-
-.demoName {
-  font-size: 0.8rem;
-  color: var(--ink);
 }
 
 /* Form */
@@ -191,8 +106,8 @@
 
 .error {
   font-size: 0.82rem;
-  color: #a3200f;
-  border-left: 3px solid #a3200f;
+  color: var(--danger);
+  border-left: 3px solid var(--danger);
   padding-left: 0.5rem;
   margin: 0.5rem 0 0;
 }
@@ -202,13 +117,13 @@
   margin-top: 0.8rem;
   border: 1px solid var(--signal);
   background: var(--signal);
-  color: #fff;
+  color: var(--on-signal);
   font-size: 0.88rem;
   font-weight: 600;
 }
 
 .submitButton:hover {
-  background: var(--signal-deep);
+  background: var(--signal-hover);
   border-color: var(--signal-deep);
 }
 
@@ -229,9 +144,5 @@
   .wrap {
     padding-left: 1rem;
     padding-right: 1rem;
-  }
-
-  .demoButton {
-    flex: 1 1 100%;
   }
 }

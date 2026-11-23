@@ -13,6 +13,7 @@ import {
 import { SkeletonGroup } from "../components/Skeleton";
 import ErrorState from "../components/ErrorState";
 import CommentSection from "../components/CommentSection";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./CommitmentDetail.module.css";
 
 /** Builds and downloads a one-commitment .ics file (no dependency needed). */
@@ -84,6 +85,11 @@ export default function CommitmentDetail() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
 
+  usePageMetadata({
+    title: data?.commitment?.title || "Commitment",
+    description: data?.commitment?.description || "View a club commitment and join on Kesho.",
+  });
+
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
@@ -138,7 +144,7 @@ export default function CommitmentDetail() {
         setNotice(
           result.signup.waitlisted
             ? `You're on the waitlist at position ${result.signup.position}. You'll move up if someone withdraws.`
-            : `You're going. ${data.commitment.title} is now in your commitments.`
+            : `You're committed. ${data.commitment.title} is now in your commitments.`
         );
       }
     } catch (err) {
@@ -163,7 +169,7 @@ export default function CommitmentDetail() {
   if (status === "missing") {
     return (
       <div className={styles.page}>
-        <p className={styles.eyebrow}>Kesho · Notice</p>
+        <p className={styles.eyebrow}>Kesho · Commitment</p>
         <h1 className={styles.title}>Commitment not found.</h1>
         <p className={styles.prose}>
           This activity may have been removed, or the link is out of date. The club page lists what
@@ -197,7 +203,7 @@ export default function CommitmentDetail() {
   const full = capacity != null && going >= capacity;
   const joinedLabel = signup?.waitlisted
     ? `You're #${signup.position} on the waitlist`
-    : "You're going";
+    : "You're committed";
 
   return (
     <div className={styles.page}>
@@ -256,7 +262,7 @@ export default function CommitmentDetail() {
             <h2 className={styles.sectionTitle}>What happens</h2>
             <p className={styles.prose}>
               {commitment.description ||
-                "The host hasn't written the run of the day yet. Join and you'll be counted; the club will share details before the date."}
+                "The host hasn't written the run of the day yet. Commit and you'll be counted; the club will share details before the date."}
             </p>
 
             <h2 className={styles.sectionTitle}>Who's going</h2>
@@ -324,13 +330,13 @@ export default function CommitmentDetail() {
                 onClick={handleJoin}
                 disabled={busy}
               >
-                {busy ? "Saving…" : full ? "Join the waitlist" : "Commit to this"}
+                {busy ? "Saving…" : full ? "Join waitlist" : "Commit to this"}
               </button>
             )}
 
             {!user && (
               <p className={styles.signInHint}>
-                <Link to="/login">Sign in</Link> to commit; browsing stays open.
+                <Link to="/login">Log in</Link> to commit; browsing stays open.
               </p>
             )}
 
@@ -355,7 +361,8 @@ export default function CommitmentDetail() {
       <section className={styles.discussion} aria-label="Commitment discussion">
         {commitment.audience === "network" ? (
           <p className={styles.prose}>
-            This commitment is open across the club network. Its roster and discussion stay with
+            This commitment is open across the club network. You can commit here; its roster and
+            discussion stay with
             {commitment.campusName ? ` ${commitment.campusName}` : " the host campus"}.
           </p>
         ) : (

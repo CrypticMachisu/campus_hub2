@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import useUnsavedChanges from "../hooks/useUnsavedChanges";
 import { canManageClub } from "../utils/authStore";
 import {
   createPost,
@@ -67,6 +68,11 @@ export default function ClubFeed({ clubId, canPublishToNetwork = false }) {
   const [mediaEnabled, setMediaEnabled] = useState(false);
   const [savingLabel, setSavingLabel] = useState("");
   const photosRef = useRef(photos);
+
+  useUnsavedChanges(
+    Boolean(draft.trim() || photos.length),
+    "You have an unpublished club update. Leave this page and discard it?"
+  );
 
   useEffect(() => {
     photosRef.current = photos;
@@ -339,7 +345,7 @@ export default function ClubFeed({ clubId, canPublishToNetwork = false }) {
       if (updated.pinned) {
         setPinned(updated);
         setPosts((current) => current.filter((entry) => entry.id !== updated.id));
-        setNotice("Pinned as the club's standing notice.");
+        setNotice("Pinned to the top of the club page.");
       } else {
         setPinned(null);
         load();
@@ -370,7 +376,7 @@ export default function ClubFeed({ clubId, canPublishToNetwork = false }) {
             aria-expanded={composerOpen}
             onClick={() => setComposerOpen((open) => !open)}
           >
-            {composerOpen ? "Close" : "Post an update"}
+            {composerOpen ? "Close" : "Write a post"}
           </button>
         )}
       </div>
@@ -387,7 +393,7 @@ export default function ClubFeed({ clubId, canPublishToNetwork = false }) {
       {composerOpen && managesClub && (
         <form className={styles.composer} onSubmit={handlePublish}>
           <label className={styles.composerLabel}>
-            <span>Update</span>
+            <span>Post</span>
             <textarea
               required
               rows={4}
@@ -444,7 +450,7 @@ export default function ClubFeed({ clubId, canPublishToNetwork = false }) {
       )}
 
       {status === "ok" && posts.length === 0 && !pinned && (
-        <p className={styles.empty}>No updates from this club yet.</p>
+        <p className={styles.empty}>No posts from this club yet.</p>
       )}
 
       {status === "ok" && visiblePosts.length > 0 && (
@@ -529,7 +535,7 @@ export default function ClubFeed({ clubId, canPublishToNetwork = false }) {
                       <p className={styles.body}>{post.body}</p>
                       <PostPhotos
                         media={post.media}
-                        label={`Photos with ${post.authorName}'s update`}
+                        label={`Photos with ${post.authorName}'s post`}
                         showReport={Boolean(user) && !canEdit}
                       />
                     </>

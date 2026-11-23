@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getCampuses } from "../utils/campusesStore";
 import {
@@ -10,6 +10,7 @@ import {
   getMyCampusAffiliations,
   requestCampusAffiliation,
 } from "../utils/campusAffiliationsStore";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 import styles from "./CampusAccess.module.css";
 
 const KIND_LABELS = {
@@ -35,7 +36,14 @@ function shortDate(value) {
 }
 
 export default function CampusAccess() {
+  usePageMetadata({
+    title: "Campus access",
+    description: "Request and manage access to additional campuses.",
+  });
+
   const { user, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const requestedCampusId = searchParams.get("campus") || "";
   const [mine, setMine] = useState(null);
   const [campuses, setCampuses] = useState([]);
   const [queue, setQueue] = useState([]);
@@ -44,7 +52,11 @@ export default function CampusAccess() {
   const [notice, setNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deciding, setDeciding] = useState(null);
-  const [form, setForm] = useState({ campusId: "", kind: "exchange", note: "" });
+  const [form, setForm] = useState({
+    campusId: requestedCampusId,
+    kind: "exchange",
+    note: "",
+  });
 
   const isAdmin = ["tier1", "campus_admin"].includes(user?.role);
 
@@ -159,7 +171,7 @@ export default function CampusAccess() {
           <h1>One home campus. Additional campuses by approval.</h1>
         </header>
         <p className={styles.notice}>
-          <Link to="/login">Sign in</Link> to request access to another campus.
+          <Link to="/login">Log in</Link> to request access to another campus.
         </p>
       </div>
     );
@@ -353,7 +365,8 @@ export default function CampusAccess() {
                       {request.note && <p className={styles.note}>{request.note}</p>}
                       {ownRequest && (
                         <p className={styles.ownRequest}>
-                          This is your own request. Another campus admin or tier 1 must decide it.
+                          This is your own request. Another campus admin or a platform admin must
+                          decide it.
                         </p>
                       )}
                     </div>

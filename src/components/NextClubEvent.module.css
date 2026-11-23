@@ -22,7 +22,7 @@
   height: 9px;
   border-radius: 50%;
   background: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(193, 67, 46, 0.14);
+  box-shadow: 0 0 0 3px var(--signal-halo);
 }
 
 .dateBlock {
@@ -182,12 +182,12 @@
   color: var(--color-white);
   background: var(--color-primary);
   border: 1px solid var(--color-primary-dark);
-  box-shadow: 0 2px 0 rgba(36, 33, 29, 0.12);
+  box-shadow: 0 2px 0 var(--desk-shadow);
 }
 
 .primaryButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 0 rgba(36, 33, 29, 0.12);
+  box-shadow: 0 4px 0 var(--desk-shadow);
 }
 
 .secondaryButton {
@@ -197,7 +197,7 @@
 }
 
 .secondaryButton:hover:not(:disabled) {
-  background: rgba(193, 67, 46, 0.06);
+  background: var(--signal-soft);
 }
 
 .ghostButton {

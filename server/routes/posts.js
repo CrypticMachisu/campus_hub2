@@ -28,12 +28,14 @@ const STATUSES = ["published", "hidden", "removed"];
 
 const POST_QUERY = `
   SELECT p.*, cl.name AS club_name, cl.campus_id AS club_campus_id,
+         camp.name AS campus_name,
          (SELECT COUNT(*) FROM comments c
            WHERE c.target_type = 'post' AND c.target_id = p.post_id) AS comment_count,
          (SELECT COUNT(*) FROM post_media m
            WHERE m.post_id = p.post_id AND m.status = 'ready') AS photo_count
   FROM posts p
   JOIN clubs cl ON cl.club_id = p.club_id
+  JOIN campuses camp ON camp.campus_id = cl.campus_id
 `;
 
 const MANAGE_QUERY = `
@@ -47,6 +49,7 @@ const MANAGE_QUERY = `
            WHERE m.post_id = p.post_id AND m.status = 'ready') AS photo_count
   FROM posts p
   JOIN clubs cl ON cl.club_id = p.club_id
+  JOIN campuses camp ON camp.campus_id = cl.campus_id
 `;
 
 function rowToPost(row) {
@@ -54,6 +57,7 @@ function rowToPost(row) {
     id: row.post_id,
     clubId: row.club_id,
     clubName: row.club_name,
+    campusName: row.campus_name || "",
     authorId: row.author_id,
     authorName: row.author_name_snapshot,
     body: row.body,
@@ -131,13 +135,13 @@ const POST_AUDIENCES = new Set(["campus", "network", "public"]);
 
 function validatePostAudience(value, club) {
   const audience = value === undefined ? "campus" : String(value).trim().toLowerCase();
-  if (!POST_AUDIENCES.has(audience)) return { error: "Unknown post audience." };
+  if (!POST_AUDIENCES.has(audience)) return { error: "Choose a valid post audience." };
   if (audience === "public") {
-    return { error: "Public posts are not available yet." };
+    return { error: "Public posts aren't available yet." };
   }
   if (audience === "network") {
     if (!crossUniversityEnabled()) {
-      return { error: "Network posts are not enabled." };
+      return { error: "Network posts aren't available here." };
     }
     if (!club?.family_id) {
       return { error: "Only a club in a family can publish to the network." };
@@ -206,10 +210,10 @@ postsRouter.post("/media", requireAuth, async (req, res) => {
   const width = cleanDimension(body.width);
   const height = cleanDimension(body.height);
 
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
   if (!(await clubExists(clubId))) return res.status(404).json({ error: "Club not found." });
   if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
   if (!allowedMediaMime(mime)) {
     return res.status(400).json({ error: "Photos must be a JPEG, PNG or WebP image." });
@@ -303,11 +307,11 @@ postsRouter.delete("/media/:mediaId", requireAuth, async (req, res) => {
 postsRouter.post("/", requireAuth, async (req, res) => {
   const body = req.body || {};
   const clubId = typeof body.clubId === "string" ? body.clubId.trim() : "";
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
   const club = await findClub(clubId);
   if (!club) return res.status(404).json({ error: "Club not found." });
   if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const cleaned = cleanBody(body.text);
@@ -324,7 +328,7 @@ postsRouter.post("/", requireAuth, async (req, res) => {
       ]
     : [];
   if (body.mediaIds !== undefined && !Array.isArray(body.mediaIds)) {
-    return res.status(400).json({ error: "mediaIds must be a list." });
+    return res.status(400).json({ error: "The selected photos are invalid." });
   }
   if (mediaIds.length > MAX_POST_MEDIA) {
     return res.status(400).json({ error: `A post can have at most ${MAX_POST_MEDIA} photos.` });
@@ -462,7 +466,7 @@ postsRouter.patch("/:id/media/:mediaId", requireAuth, async (req, res) => {
 
   const decorative = req.body?.decorative;
   if (typeof decorative !== "boolean") {
-    return res.status(400).json({ error: "decorative must be true or false." });
+    return res.status(400).json({ error: "Choose whether the photo is decorative." });
   }
   const altText = decorative ? "" : cleanAlt(req.body?.altText);
   if (!decorative && !altText) {
@@ -562,7 +566,7 @@ async function findClub(clubId) {
  */
 postsRouter.get("/", optionalAuth, async (req, res) => {
   const clubId = typeof req.query.clubId === "string" ? req.query.clubId.trim() : "";
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
 
   const [clubRows] = await pool.query(
     "SELECT club_id, campus_id FROM clubs WHERE club_id = :clubId",
@@ -586,7 +590,7 @@ postsRouter.get("/", optionalAuth, async (req, res) => {
       "SELECT created_at FROM posts WHERE post_id = :before AND club_id = :clubId",
       { before, clubId }
     );
-    if (!cursorRows[0]) return res.status(400).json({ error: "Unknown page cursor." });
+    if (!cursorRows[0]) return res.status(400).json({ error: "This page of posts has expired. Reload the feed." });
     params.beforeCreated = cursorRows[0].created_at;
     params.before = before;
     cursorClause = `AND (p.created_at < :beforeCreated
@@ -633,10 +637,10 @@ postsRouter.get("/", optionalAuth, async (req, res) => {
  */
 postsRouter.get("/manage", requireAuth, async (req, res) => {
   const clubId = typeof req.query.clubId === "string" ? req.query.clubId.trim() : "";
-  if (!clubId) return res.status(400).json({ error: "clubId is required." });
+  if (!clubId) return res.status(400).json({ error: "Choose a club first." });
   if (!(await clubExists(clubId))) return res.status(404).json({ error: "Club not found." });
   if (!canManageClub(req.user, clubId)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
 
   const [rows] = await pool.query(
@@ -757,7 +761,7 @@ postsRouter.patch("/:id", requireAuth, async (req, res) => {
 postsRouter.patch("/:id/pin", requireAuth, async (req, res) => {
   const pinned = req.body?.pinned;
   if (typeof pinned !== "boolean") {
-    return res.status(400).json({ error: "pinned must be true or false." });
+    return res.status(400).json({ error: "Choose whether to pin this post." });
   }
 
   const [rows] = await pool.query("SELECT * FROM posts WHERE post_id = :id", {
@@ -766,7 +770,7 @@ postsRouter.patch("/:id/pin", requireAuth, async (req, res) => {
   const post = rows[0];
   if (!post) return res.status(404).json({ error: "Post not found." });
   if (!canManageClub(req.user, post.club_id)) {
-    return res.status(403).json({ error: "You don't have admin access to that club." });
+    return res.status(403).json({ error: "You need club admin access to do that." });
   }
   if (pinned && post.status !== "published") {
     return res.status(400).json({ error: "Publish this post before pinning it." });
@@ -836,7 +840,7 @@ postsRouter.patch("/:id/status", requireAuth, async (req, res) => {
 
   const status = typeof req.body?.status === "string" ? req.body.status : "";
   if (!STATUSES.includes(status)) {
-    return res.status(400).json({ error: `status must be one of: ${STATUSES.join(", ")}.` });
+    return res.status(400).json({ error: "Choose a valid post status." });
   }
 
   const canManage = canManageClub(req.user, post.club_id);
@@ -845,7 +849,7 @@ postsRouter.patch("/:id/status", requireAuth, async (req, res) => {
     return res.status(403).json({
       error: isAuthor
         ? "You can only remove your own post."
-        : "You don't have admin access to that club.",
+        : "You need club admin access to do that.",
     });
   }
 

@@ -1,11 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ClubsProvider, useClubs } from "./context/ClubsContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { canManageClub, clubsForUser } from "./utils/authStore";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Navbar from "./components/Navbar";
+import ConnectionStatus from "./components/ConnectionStatus";
 import Footer from "./components/Footer";
 import MemberShell from "./components/MemberShell";
+import SessionExpiryModal from "./components/SessionExpiryModal";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -107,6 +110,7 @@ function AppRoutes() {
   return (
     <>
       <Navbar />
+      <ConnectionStatus />
       <div id="main" tabIndex={-1}>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -158,14 +162,21 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ClubsProvider>
-        <BrowserRouter>
-          <ErrorBoundary>
-            <AppRoutes />
-          </ErrorBoundary>
-        </BrowserRouter>
-      </ClubsProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ClubsProvider>
+          <BrowserRouter>
+            <ErrorBoundary
+              className={styles.boundary}
+              title="Kesho couldn't open this view"
+              message="The app hit an unexpected error. Try this view again; your account is still signed in."
+            >
+              <AppRoutes />
+            </ErrorBoundary>
+          </BrowserRouter>
+          <SessionExpiryModal />
+        </ClubsProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
